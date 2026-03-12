@@ -1,0 +1,71 @@
+@import "./variables.css";
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+main{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:calc(100vh - 70px);
+}
+
+body{
+  font-family: var(--font-text);
+  background: var(--light-gray);
+}
+
+/* TITULOS */
+
+h1{
+  font-family: var(--font-title);
+  font-size:32px;
+  font-weight:600;
+}
+
+h2{
+  font-family: var(--font-title);
+  font-size:24px;
+  font-weight:600;
+}
+
+h3{
+  font-family: var(--font-title);
+  font-size:20px;
+  font-weight:500;
+}
+
+/* TEXTO PADRÃO */
+
+p{
+  font-size:16px;
+}
+
+/* SUBTEXTO */
+
+.small-text{
+  font-size:14px;
+}
+
+.button{
+  width:100%;
+  padding:12px;
+  background:#16A34A;
+  border:2px solid #16A34A;
+  color:white;
+  border-radius:6px;
+  font-size:16px;
+  cursor:pointer;
+
+  margin:10px 0;
+
+  transition:all 0.2s ease;
+}
+
+.button:hover{
+  background:white;
+  color:#16A34A;
+}
