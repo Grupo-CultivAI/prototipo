@@ -3,8 +3,15 @@
 .chatContainer {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px); 
   background-color: #FFFFFF;
+  
+  /* Faz o chat ignorar os paddings do layout global e se fixar na tela */
+  position: fixed;
+  top: 64px; /* Altura estimada da barra verde superior do seu amigo */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 
 .header {
