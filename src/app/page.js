@@ -2,6 +2,7 @@ import Card from "@/components/Card";
 import Button from "@/components/Button";
 import Image from "next/image";
 import folha from "@/assets/leaves-of-a-plant.png";
+import Link from "next/link";
 
 export default function Home(){
 
@@ -43,10 +44,13 @@ export default function Home(){
         <p>de culturas.</p>
       </div>
 
-      <Button text="Entrar"/>
-      <br/>
-      <Button text="Cadastrar"/>
-
+      <Link href="/login">
+        <Button text="Entrar"/>
+      </Link>
+            <br/>
+      <Link href="/cadastro">
+        <Button text="Cadastrar"/>
+      </Link>
     </div>
 
   )

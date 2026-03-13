@@ -20,6 +20,10 @@ body{
 
 /* TITULOS */
 
+.title{
+  color: var(--primary-dark);
+}
+
 h1{
   font-family: var(--font-title);
   font-size:32px;

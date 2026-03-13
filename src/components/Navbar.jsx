@@ -1,5 +1,6 @@
 import Image from "next/image";
 import folha from "@/assets/leaves-of-a-plant.png";
+import Link from "next/link";
 
 export default function Navbar(){
 
@@ -14,13 +15,14 @@ export default function Navbar(){
       padding:"0 20px",
       color:"white"
     }}>
-
-      <Image
-        src={folha}
-        alt="Logo CultivAI"
-        width={40}
-        height={40}
-      />
+      <Link href="/">
+        <Image
+         src={folha}
+          alt="Logo CultivAI"
+          width={40}
+          height={40}
+        />
+      </Link>
 
 
       <div style={{fontSize:"24px"}}>

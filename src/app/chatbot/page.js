@@ -1,10 +1,25 @@
 // src/app/chat/page.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./chat.module.css"; // Importando o CSS puro
 
 export default function ChatCultivAI() {
+
+  const router = useRouter()
+
+  // proteção da rota
+  useEffect(() => {
+
+    const usuarioLogado = localStorage.getItem("usuarioLogado")
+
+    if(!usuarioLogado){
+      router.push("/login")
+    }
+
+  }, [])
+
   const [messages, setMessages] = useState([
     { 
       id: 1, 
@@ -37,11 +52,25 @@ export default function ChatCultivAI() {
     }, 1500);
   };
 
+  // função de logout
+  const sair = () => {
+
+    localStorage.removeItem("usuarioLogado")
+
+    router.push("/login")
+
+  }
+
   return (
     <div className={styles.chatContainer}>
       
       <header className={styles.header}>
         <h1 className={styles.headerTitle}>CultivAI</h1>
+
+        <button onClick={sair} className={styles.logoutButton}>
+          Sair
+        </button>
+
       </header>
 
       <main className={styles.chatArea}>

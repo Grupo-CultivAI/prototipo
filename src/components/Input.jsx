@@ -1,10 +1,11 @@
-export default function Input({placeholder, type="text"}){
+export default function Input({placeholder, type="text", ...props}){
 
   return(
 
     <input
       type={type}
       placeholder={placeholder}
+      {...props}
       style={{
         width:"100%",
         padding:"10px",

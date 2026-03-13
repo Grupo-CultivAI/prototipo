@@ -1,5 +1,37 @@
 /* src/app/chatbot/chat.module.css */
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #E0E0E0;
+  background-color: #FFFFFF;
+}
+
+.headerTitle {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.5rem;
+  color: #16A34A;
+}
+
+.logoutButton {
+  background-color: transparent;
+  border: 1px solid #16A34A;
+  color: #16A34A;
+  padding: 0.5rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.logoutButton:hover {
+  background-color: #16A34A;
+  color: #FFFFFF;
+}
+
 .chatContainer {
   /* Fixa o chat na tela quebrando qualquer margem do layout global */
   position: fixed;
