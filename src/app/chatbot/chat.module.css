@@ -1,40 +1,25 @@
-/* src/app/chat/chat.module.css */
+/* src/app/chatbot/chat.module.css */
 
 .chatContainer {
-  display: flex;
-  flex-direction: column;
-  background-color: #FFFFFF;
-
-  
+  /* Fixa o chat na tela quebrando qualquer margem do layout global */
   position: fixed;
-  top: 75px; 
+  top: 64px; /* Ajuste se a barra verde do topo ficar por cima do chat */
   bottom: 0;
   left: 0;
   right: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #FFFFFF;
   z-index: 10;
 }
 
-.header {
-  background-color: #06402B;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.headerTitle {
-  color: #FFFFFF;
-  margin: 0;
-  font-size: 1.5rem;
-  font-family: 'Poppins', sans-serif;
-}
-
 .chatArea {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0; /* O SEGREDO: impede a área de crescer infinitamente e sumir com o rodapé */
+  overflow-y: auto;
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   gap: 1rem;
 }
 
@@ -60,16 +45,17 @@
 }
 
 .bubbleUser {
-  background-color: #16A34A;
+  background-color: #16A34A; /* Verde Principal */
   color: #FFFFFF;
 }
 
 .bubbleBot {
-  background-color: #F5F5F5;
+  background-color: #F5F5F5; /* Cinza Claro */
   color: #424242;
 }
 
 .footer {
+  flex: 0 0 auto; /* Impede que o rodapé seja esmagado */
   padding: 1.5rem;
   border-top: 1px solid #E0E0E0;
   display: flex;
