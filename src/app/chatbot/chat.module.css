@@ -5,9 +5,9 @@
   flex-direction: column;
   background-color: #FFFFFF;
   
-  /* Faz o chat ignorar os paddings do layout global e se fixar na tela */
+  /* Fixa o chat na tela */
   position: fixed;
-  top: 64px; /* Altura estimada da barra verde superior do seu amigo */
+  top: 75px; /* Altura da barra do seu amigo (ajuste esse número se precisar) */
   bottom: 0;
   left: 0;
   right: 0;
