@@ -20,7 +20,13 @@ export default function Login(){
     const usuarioLogado = localStorage.getItem("usuarioLogado")
 
     if(usuarioLogado){
-      router.push("/chatbot")
+      const dados = localStorage.getItem("cultivAI_user_input")
+
+      if(dados){
+        router.push("/chatbot")
+      } else {
+       router.push("/perfil-propriedade")
+      }
     }
 
   }, [])
@@ -48,7 +54,13 @@ export default function Login(){
 
       localStorage.setItem("usuarioLogado", "true")
 
-      router.push("/chatbot")
+      const dados = localStorage.getItem("cultivAI_user_input")
+
+      if(dados){
+        router.push("/chatbot")
+      } else {
+       router.push("/perfil-propriedade")
+      }
 
     }
     else{

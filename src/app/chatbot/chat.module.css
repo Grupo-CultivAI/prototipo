@@ -35,7 +35,7 @@
 .chatContainer {
   /* Fixa o chat na tela quebrando qualquer margem do layout global */
   position: fixed;
-  top: 64px; /* Ajuste se a barra verde do topo ficar por cima do chat */
+  top: 70px; /* Ajuste se a barra verde do topo ficar por cima do chat */
   bottom: 0;
   left: 0;
   right: 0;
