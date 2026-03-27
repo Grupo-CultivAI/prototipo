@@ -1,0 +1,105 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* Ajuste dependendo do tamanho do seu Header no layout */
+    background-color: #ffffff;
+    font-family: sans-serif;
+    padding: 20px;
+}
+
+.card {
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 30px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.iconContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: -50px;
+    margin-bottom: 20px;
+}
+
+.themeBtn {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.header {
+    text-align: left;
+    margin-bottom: 25px;
+}
+
+.header h2 {
+    color: #0b4f2c; /* Verde escuro do CultivAI */
+    margin: 0 0 5px 0;
+    font-size: 22px;
+}
+
+.header p {
+    color: #555;
+    font-size: 13px;
+    margin: 0;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.inputGroup label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.inputGroup input,
+.inputGroup select {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.inputGroup input:focus,
+.inputGroup select:focus {
+    border-color: #1a9e4e;
+}
+
+.submitBtn {
+    background-color: #1a9e4e; /* Verde claro do botão Entrar/Cadastrar */
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+.submitBtn:hover {
+    background-color: #14803d;
+}
