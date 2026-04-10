@@ -1,4 +1,22 @@
 :root {
+<<<<<<< HEAD
+  --primary: #16A34A;
+  --primary-dark: #06402B;
+  --primary-light: #22C55E;
+  
+  --white: #FFFFFF;
+  --bg: #F8FAF9;
+  --surface: #FFFFFF;
+  --border: #EEF2EF;
+  
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+
+  --shadow-sm: 0 1px 2px rgba(6, 64, 43, 0.05);
+  --shadow-md: 0 4px 12px rgba(6, 64, 43, 0.08);
+  --shadow-lg: 0 12px 30px rgba(6, 64, 43, 0.12);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+=======
 
   --primary: #16A34A;
   --primary-dark: #06402B;
@@ -7,4 +25,5 @@
   --light-gray: #F5F5F5;
   --dark-gray: #424242;
 
+>>>>>>> 502531a59aafcdcc304b2ac35ac61910f039a2a3
 }
