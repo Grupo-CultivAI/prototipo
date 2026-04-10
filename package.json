@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-<<<<<<< HEAD
     "@hookform/resolvers": "^5.2.2",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
@@ -30,16 +29,5 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^6.0.2"
-=======
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4"
->>>>>>> 502531a59aafcdcc304b2ac35ac61910f039a2a3
   }
 }
