@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import https from 'https';
+import dbConnect from '@/lib/mongodb';
+import Knowledge from '@/models/Knowledge';
+import { generateEmbedding } from '@/lib/rag/vectors';
 
 const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || 'fallback_secret'
@@ -19,12 +22,40 @@ async function getUserIdFromToken() {
     }
 }
 
-function callGroq(promptText, apiKey) {
+function callGroq(promptText, apiKey, history = []) {
+    const systemPrompt = `Você é o CultivAI, um agrônomo especialista em agricultura sustentável amigável e prestativo.
+Seu objetivo é ajudar pequenos produtores com recomendações PRÁTICAS, mas mantendo um tom de conversa humano e acolhedor.
+
+Obrigatório: VOCÊ DEVE RESPONDER EXATAMENTE NESTE FORMATO JSON:
+{
+  "tipo": "texto" | "coleta_dados",
+  "resposta": "Sua mensagem para o usuário",
+  "campos_necessarios": [ // Se tipo == "coleta_dados"
+    { "chave": "nomeDaChaveNoBanco", "label": "Pergunta para o usuário", "tipo": "text" | "number" | "select", "opcoes": ["Opção 1", "Opção 2"] }
+  ]
+}
+
+Regras de Comportamento:
+1. Comece sendo educado. Se o usuário estiver apenas te cumprimentando, responda de forma amigável e pergunte como pode ajudar hoje, sem despejar dados técnicos imediatamente.
+2. Analise o perfil da propriedade. Se faltar dados vitais PARA UMA RECOMENDAÇÃO TÉCNICA que foi solicitada, use "tipo": "coleta_dados".
+3. NUNCA peça dados que já aparecem no perfil (pH, Tipo de Solo, etc).
+4. Explique o "porquê" das suas sugestões de forma simples (causa -> efeito).
+5. Se for dar uma recomendação, seja direto e use ações práticas.
+6. SÓ RESPONDA EM JSON VALIDO.`;
+
+    // Map history to OpenAI format
+    const historyMessages = history.map(m => ({
+        role: m.sender === 'bot' ? 'assistant' : 'user',
+        content: m.text
+    }));
+
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify({
             model: "llama-3.1-8b-instant",
+            response_format: { type: "json_object" },
             messages: [
-                { role: "system", content: "Responda em Português." },
+                { role: "system", content: systemPrompt },
+                ...historyMessages, // Past context
                 { role: "user", content: promptText }
             ]
         });
@@ -61,7 +92,7 @@ export async function POST(req) {
         const userId = await getUserIdFromToken();
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const { question, user, propriedade } = await req.json();
+        const { question, user, propriedade, history } = await req.json();
 
         // 1. Inferência de Clima e Estação
         const dateNow = new Date();
@@ -79,40 +110,61 @@ export async function POST(req) {
         const objs = propriedade?.objetivos?.length > 0 ? propriedade.objetivos.join(', ') : 'Nenhum reportado';
         const culturas = propriedade?.culturasHistorico?.length > 0 ? propriedade.culturasHistorico.join(', ') : (propriedade?.culturas || 'Não informado');
 
+        // 3. RAG - Recuperação de Conhecimento
+        await dbConnect();
+        let ragContext = '';
+        try {
+            const queryEmbedding = await generateEmbedding(question);
+            // Requer que um índice vetorial chamado "vector_index" esteja configurado no MongoDB Atlas
+            const results = await Knowledge.aggregate([
+                {
+                    "$vectorSearch": {
+                        "index": "vector_index",
+                        "path": "embedding",
+                        "queryVector": queryEmbedding,
+                        "numCandidates": 50,
+                        "limit": 3
+                    }
+                }
+            ]);
+            if (results && results.length > 0) {
+                ragContext = results.map(r => r.content).join('\n\n');
+            }
+        } catch (error) {
+            console.error("Erro na busca vetorial (RAG):", error);
+            // Continua sem contexto se falhar (ex: índice não criado ainda)
+        }
+
+        const ragSection = ragContext ? `\n--- MANUAIS TÉCNICOS (BASE DE CONHECIMENTO) ---\nUse estas informações oficias para embasar sua resposta técnica:\n${ragContext}\n` : '';
+
         const contextPrompt = `
-Você é um agrônomo especialista em agricultura sustentável focado em ajudar pequenos e médios produtores.
-Não explique teorias genéricas. Dê recomendações PRÁTICAS, DIRETAS e APLICÁVEIS.
-
---- DADOS INFERIDOS PELO SISTEMA ---
-Estação atual no Brasil: ${estacao} ${regiaoClimaticaMsg}
-
---- REGRAS OBRIGATÓRIAS ---
-- Adapte a resposta estritamente ao contexto da propriedade fornecido abaixo.
-- Seja simples e direto. Sem jargões técnicos excessivos.
-- Explique sempre o PORQUÊ (causa → efeito). Ex: "Porque o seu solo é arenoso e a drenagem é alta..."
-- Sempre sugira ações práticas.
-- Sugira rotação de cultura ou plantio consorciado SOMENTE se for coerente com o problema e objetivo da área. Não force essas ideias se não fizer sentido.
-
---- O PERFIL DESTA PROPRIEDADE ---
+--- DADOS ATUAIS DA PROPRIEDADE (CONTEXTO) ---
 Localização: ${propriedade?.cidade || '-'} / ${estado}
 Solo Físico: ${propriedade?.tipoSolo || '-'}, pH: ${propriedade?.phSolo || 'Não medido'}, Matéria Org.: ${propriedade?.materiaOrganica || '-'}, Drenagem: ${propriedade?.drenagem || '-'}
 Histórico/Plantio: Plantando ${culturas} (Tempo na área: ${propriedade?.tempoCulturaAtual || '-'} anos). Uso de fertilizantes: ${propriedade?.usoFertilizantes || '-'}
 Problemas Recentes Enfrentados: ${probs}
 Objetivos Principais: ${objs}
-Observações Extras: ${propriedade?.observacoes || 'Nenhuma'}
 
---- A PERGUNTA DADA PELO USUÁRIO ---
+Estação atual: ${estacao} ${regiaoClimaticaMsg}
+${ragSection}
+--- PERGUNTA ATUAL ---
 ${question}
 `;
 
         const apiKey = process.env.GROQ_API_KEY || "";
-        const response = await callGroq(contextPrompt, apiKey);
+        const response = await callGroq(contextPrompt, apiKey, history);
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
             const data = JSON.parse(response.data);
 
             if (data.choices && data.choices.length > 0) {
-                return NextResponse.json({ success: true, text: data.choices[0].message.content });
+                try {
+                    const parsedData = JSON.parse(data.choices[0].message.content);
+                    return NextResponse.json({ success: true, parsedData });
+                } catch (e) {
+                    console.error("Groq não retornou JSON valido:", data.choices[0].message.content);
+                    return NextResponse.json({ success: false, message: 'Falha no formato da resposta da IA.' }, { status: 500 });
+                }
             } else {
                 console.error("Groq retornou formato invalido:", data);
                 return NextResponse.json({ success: false, message: 'Nenhuma resposta gerada.' }, { status: 500 });
