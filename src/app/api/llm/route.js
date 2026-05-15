@@ -87,6 +87,17 @@ Regras de Comportamento:
     });
 }
 
+async function fetchWeather(propriedade) {
+  const cidade = propriedade?.cidade;
+  if (!cidade) return null;
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/weather?city=${encodeURIComponent(cidade)}`
+  );
+  if (!response.ok) return null;
+  return response.json();
+}
+
 export async function POST(req) {
     try {
         const userId = await getUserIdFromToken();
@@ -137,9 +148,16 @@ export async function POST(req) {
 
         const ragSection = ragContext ? `\n--- MANUAIS TÉCNICOS (BASE DE CONHECIMENTO) ---\nUse estas informações oficias para embasar sua resposta técnica:\n${ragContext}\n` : '';
 
+        const weather = await fetchWeather(propriedade);
+        const climaTexto = weather
+            ? `Clima atual: ${weather.weather?.[0]?.description}, ${weather.main?.temp}°C, umidade ${weather.main?.humidity}%`
+            : 'Dados de clima não disponíveis.';
+
+
         const contextPrompt = `
 --- DADOS ATUAIS DA PROPRIEDADE (CONTEXTO) ---
 Localização: ${propriedade?.cidade || '-'} / ${estado}
+Clima: ${climaTexto}
 Solo Físico: ${propriedade?.tipoSolo || '-'}, pH: ${propriedade?.phSolo || 'Não medido'}, Matéria Org.: ${propriedade?.materiaOrganica || '-'}, Drenagem: ${propriedade?.drenagem || '-'}
 Histórico/Plantio: Plantando ${culturas} (Tempo na área: ${propriedade?.tempoCulturaAtual || '-'} anos). Uso de fertilizantes: ${propriedade?.usoFertilizantes || '-'}
 Problemas Recentes Enfrentados: ${probs}
