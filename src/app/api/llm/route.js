@@ -41,7 +41,8 @@ Regras de Comportamento:
 3. NUNCA peça dados que já aparecem no perfil (pH, Tipo de Solo, etc).
 4. Explique o "porquê" das suas sugestões de forma simples (causa -> efeito).
 5. Se for dar uma recomendação, seja direto e use ações práticas.
-6. SÓ RESPONDA EM JSON VALIDO.`;
+6. Se o contexto incluir dados climáticos, trate-os como fatos. Use temperatura, umidade, chuva, vento e previsões fornecidas pela API para responder, e não invente valores diferentes dos dados climáticos presentes no contexto.
+7. SÓ RESPONDA EM JSON VALIDO.`;
 
     // Map history to OpenAI format
     const historyMessages = history.map(m => ({
@@ -91,9 +92,14 @@ async function fetchWeather(propriedade) {
   const cidade = propriedade?.cidade;
   if (!cidade) return null;
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/weather?city=${encodeURIComponent(cidade)}`
-  );
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+  const url = new URL('/api/weather', baseUrl);
+  url.searchParams.set('city', cidade);
+
+  const response = await fetch(url.toString());
   if (!response.ok) return null;
   return response.json();
 }
@@ -157,7 +163,7 @@ export async function POST(req) {
         const contextPrompt = `
 --- DADOS ATUAIS DA PROPRIEDADE (CONTEXTO) ---
 Localização: ${propriedade?.cidade || '-'} / ${estado}
-Clima: ${climaTexto}
+Dados do clima da API: ${climaTexto}
 Solo Físico: ${propriedade?.tipoSolo || '-'}, pH: ${propriedade?.phSolo || 'Não medido'}, Matéria Org.: ${propriedade?.materiaOrganica || '-'}, Drenagem: ${propriedade?.drenagem || '-'}
 Histórico/Plantio: Plantando ${culturas} (Tempo na área: ${propriedade?.tempoCulturaAtual || '-'} anos). Uso de fertilizantes: ${propriedade?.usoFertilizantes || '-'}
 Problemas Recentes Enfrentados: ${probs}
