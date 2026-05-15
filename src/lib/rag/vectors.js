@@ -14,7 +14,6 @@ export async function generateEmbedding(text) {
         throw new Error("GEMINI_API_KEY is not defined in environment variables.");
     }
     
-    // Using text-embedding-004
     const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
     
     try {
