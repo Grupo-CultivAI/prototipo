@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import DynamicForm from "@/components/DynamicForm";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, RefreshCw } from "lucide-react";
 
 export default function ChatCultivAI() {
   const router = useRouter();
@@ -33,11 +33,19 @@ export default function ChatCultivAI() {
           setPropriedade(dataP.propriedade);
         }
 
-        setMessages([{
-          id: 1,
-          text: "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?",
-          sender: "bot"
-        }]);
+        const resHistory = await fetch('/api/chat/history');
+        if (resHistory.ok) {
+          const dataH = await resHistory.json();
+          if (dataH.history && dataH.history.length > 0) {
+            setMessages(dataH.history);
+          } else {
+            setMessages([{
+              id: 1,
+              text: "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?",
+              sender: "bot"
+            }]);
+          }
+        }
 
       } catch (err) {
       } finally {
@@ -68,7 +76,21 @@ export default function ChatCultivAI() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const sendMessageToAPI = async (questionText, currentProp) => {
+  const handleRestartChat = async () => {
+    if (!confirm("Tem certeza que deseja reiniciar o chat? Todo o histórico atual será apagado.")) return;
+    try {
+      await fetch('/api/chat/history', { method: 'DELETE' });
+      setMessages([{
+        id: crypto.randomUUID(),
+        text: "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?",
+        sender: "bot"
+      }]);
+    } catch (err) {
+      console.error("Erro ao reiniciar chat", err);
+    }
+  };
+
+  const sendMessageToAPI = async (questionText, currentProp, submittedData = null) => {
     const loadingId = crypto.randomUUID();
     
     // Get history before adding the new bot message
@@ -87,7 +109,8 @@ export default function ChatCultivAI() {
           question: questionText, 
           user, 
           propriedade: currentProp,
-          history: history // Pass history
+          history: history, // Pass history
+          submittedData: submittedData
         })
       });
 
@@ -137,7 +160,7 @@ export default function ChatCultivAI() {
 
     const contextStr = Object.entries(formData).map(([k,v]) => `${k}: ${v}`).join(', ');
     const apiPrompt = `Usuário forneceu os dados: ${contextStr}. Continue a recomendação.`;
-    await sendMessageToAPI(apiPrompt, newPropState);
+    await sendMessageToAPI(apiPrompt, newPropState, formData);
   };
 
   const handleFormSkip = async (msgId) => {
@@ -156,13 +179,24 @@ export default function ChatCultivAI() {
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
         </div>
-        <button 
-          onClick={copyHistory}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
-        >
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-          {copied ? 'Copiado!' : 'Copiar Log Debug'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button 
+            onClick={handleRestartChat}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'rgb(239,68,68)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            <RefreshCw size={16} />
+            Reiniciar Chat
+          </button>
+          <button 
+            onClick={copyHistory}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? 'Copiado!' : 'Copiar Log Debug'}
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import https from 'https';
 import dbConnect from '@/lib/mongodb';
-import Knowledge from '@/models/Knowledge';
-import { generateEmbedding } from '@/lib/rag/vectors';
+import ChatMessage from '@/models/ChatMessage';
 
 const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || 'fallback_secret'
@@ -22,86 +20,41 @@ async function getUserIdFromToken() {
     }
 }
 
-function callGroq(promptText, apiKey, history = []) {
-    const systemPrompt = `Você é o CultivAI, um agrônomo especialista em agricultura sustentável amigável e prestativo.
-Seu objetivo é ajudar pequenos produtores com recomendações PRÁTICAS, mas mantendo um tom de conversa humano e acolhedor.
+async function fetchWeather(propriedade) {
+    const cidade = propriedade?.cidade;
+    if (!cidade) return null;
 
-Obrigatório: VOCÊ DEVE RESPONDER EXATAMENTE NESTE FORMATO JSON:
-{
-  "tipo": "texto" | "coleta_dados",
-  "resposta": "Sua mensagem para o usuário",
-  "campos_necessarios": [ // Se tipo == "coleta_dados"
-    { "chave": "nomeDaChaveNoBanco", "label": "Pergunta para o usuário", "tipo": "text" | "number" | "select", "opcoes": ["Opção 1", "Opção 2"] }
-  ]
+    const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+    const url = new URL('/api/weather', baseUrl);
+    url.searchParams.set('city', cidade);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) return null;
+    return response.json();
 }
 
-Regras de Comportamento:
-1. Comece sendo educado. Se o usuário estiver apenas te cumprimentando, responda de forma amigável e pergunte como pode ajudar hoje, sem despejar dados técnicos imediatamente.
-2. Analise o perfil da propriedade. Se faltar dados vitais PARA UMA RECOMENDAÇÃO TÉCNICA que foi solicitada, use "tipo": "coleta_dados".
-3. NUNCA peça dados que já aparecem no perfil (pH, Tipo de Solo, etc).
-4. Explique o "porquê" das suas sugestões de forma simples (causa -> efeito).
-5. Se for dar uma recomendação, seja direto e use ações práticas.
-6. Se o contexto incluir dados climáticos, trate-os como fatos. Use temperatura, umidade, chuva, vento e previsões fornecidas pela API para responder, e não invente valores diferentes dos dados climáticos presentes no contexto.
-7. SÓ RESPONDA EM JSON VALIDO.`;
-
-    // Map history to OpenAI format
-    const historyMessages = history.map(m => ({
-        role: m.sender === 'bot' ? 'assistant' : 'user',
-        content: m.text
-    }));
-
+function callAnythingLLM(messageText) {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify({
-            model: "llama-3.1-8b-instant",
-            response_format: { type: "json_object" },
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...historyMessages, // Past context
-                { role: "user", content: promptText }
-            ]
+            message: messageText,
+            mode: "chat"
         });
-        const req = https.request(
-            {
-                hostname: 'api.groq.com',
-                path: '/openai/v1/chat/completions',
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + apiKey,
-                    'Content-Length': Buffer.byteLength(postData)
-                }
+
+        fetch('https://anythingllm-production-1d21.up.railway.app/api/v1/workspace/cultivai/chat', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer N8AA1ZA-0SE42J3-PP0BQT0-BB0QA9C',
+                'Content-Type': 'application/json'
             },
-            (res) => {
-                let data = '';
-                res.on('data', (chunk) => { data += chunk; });
-                res.on('end', () => {
-                    resolve({ statusCode: res.statusCode, data });
-                });
-            }
-        );
-        req.on('error', reject);
-        req.setTimeout(15000, () => {
-            req.destroy(new Error('Timeout na requisicao'));
-        });
-        req.write(postData);
-        req.end();
+            body: postData
+        })
+            .then(res => res.json().then(data => ({ statusCode: res.status, data })))
+            .then(resolve)
+            .catch(reject);
     });
-}
-
-async function fetchWeather(propriedade) {
-  const cidade = propriedade?.cidade;
-  if (!cidade) return null;
-
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-  const url = new URL('/api/weather', baseUrl);
-  url.searchParams.set('city', cidade);
-
-  const response = await fetch(url.toString());
-  if (!response.ok) return null;
-  return response.json();
 }
 
 export async function POST(req) {
@@ -109,7 +62,17 @@ export async function POST(req) {
         const userId = await getUserIdFromToken();
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const { question, user, propriedade, history } = await req.json();
+        const { question, user, propriedade, submittedData } = await req.json();
+
+        await dbConnect();
+
+        // 0. Salvar mensagem do usuário (apenas para histórico local na UI)
+        await ChatMessage.create({
+            userId,
+            text: question,
+            sender: 'user',
+            metadata: { submittedData }
+        });
 
         // 1. Inferência de Clima e Estação
         const dateNow = new Date();
@@ -127,74 +90,68 @@ export async function POST(req) {
         const objs = propriedade?.objetivos?.length > 0 ? propriedade.objetivos.join(', ') : 'Nenhum reportado';
         const culturas = propriedade?.culturasHistorico?.length > 0 ? propriedade.culturasHistorico.join(', ') : (propriedade?.culturas || 'Não informado');
 
-        // 3. RAG - Recuperação de Conhecimento
-        await dbConnect();
-        let ragContext = '';
-        try {
-            const queryEmbedding = await generateEmbedding(question);
-            // Requer que um índice vetorial chamado "vector_index" esteja configurado no MongoDB Atlas
-            const results = await Knowledge.aggregate([
-                {
-                    "$vectorSearch": {
-                        "index": "vector_index",
-                        "path": "embedding",
-                        "queryVector": queryEmbedding,
-                        "numCandidates": 50,
-                        "limit": 3
-                    }
-                }
-            ]);
-            if (results && results.length > 0) {
-                ragContext = results.map(r => r.content).join('\n\n');
-            }
-        } catch (error) {
-            console.error("Erro na busca vetorial (RAG):", error);
-            // Continua sem contexto se falhar (ex: índice não criado ainda)
-        }
-
-        const ragSection = ragContext ? `\n--- MANUAIS TÉCNICOS (BASE DE CONHECIMENTO) ---\nUse estas informações oficias para embasar sua resposta técnica:\n${ragContext}\n` : '';
-
         const weather = await fetchWeather(propriedade);
-        const climaTexto = weather
-            ? `Clima atual: ${weather.weather?.[0]?.description}, ${weather.main?.temp}°C, umidade ${weather.main?.humidity}%`
-            : 'Dados de clima não disponíveis.';
 
+        // O RAG e o histórico agora são gerenciados nativamente pelo AnythingLLM.
+        // O System Prompt deve ser configurado no painel do AnythingLLM.
 
         const contextPrompt = `
 --- DADOS ATUAIS DA PROPRIEDADE (CONTEXTO) ---
 Localização: ${propriedade?.cidade || '-'} / ${estado}
-Dados do clima da API: ${climaTexto}
+Clima Detalhado (JSON): ${weather ? JSON.stringify(weather) : 'Indisponível'}
 Solo Físico: ${propriedade?.tipoSolo || '-'}, pH: ${propriedade?.phSolo || 'Não medido'}, Matéria Org.: ${propriedade?.materiaOrganica || '-'}, Drenagem: ${propriedade?.drenagem || '-'}
 Histórico/Plantio: Plantando ${culturas} (Tempo na área: ${propriedade?.tempoCulturaAtual || '-'} anos). Uso de fertilizantes: ${propriedade?.usoFertilizantes || '-'}
 Problemas Recentes Enfrentados: ${probs}
 Objetivos Principais: ${objs}
 
 Estação atual: ${estacao} ${regiaoClimaticaMsg}
-${ragSection}
+
 --- PERGUNTA ATUAL ---
 ${question}
 `;
 
-        const apiKey = process.env.GROQ_API_KEY || "";
-        const response = await callGroq(contextPrompt, apiKey, history);
+        const response = await callAnythingLLM(contextPrompt);
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
-            const data = JSON.parse(response.data);
+            const responseData = response.data;
+            const textResponse = responseData.textResponse;
 
-            if (data.choices && data.choices.length > 0) {
+            if (textResponse) {
                 try {
-                    const parsedData = JSON.parse(data.choices[0].message.content);
+                    // Extrair apenas o bloco JSON usando regex
+                    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+                    const jsonStr = jsonMatch ? jsonMatch[0] : textResponse;
+
+                    const parsedData = JSON.parse(jsonStr);
+
+                    // Fallback caso a IA não retorne o campo "resposta"
+                    if (!parsedData.resposta) {
+                        if (parsedData.tipo === 'coleta_dados') {
+                            parsedData.resposta = "Por favor, preencha os dados abaixo para que eu possa te ajudar melhor:";
+                        } else {
+                            parsedData.resposta = "Entendido.";
+                        }
+                    }
+
+                    // Salvar resposta do bot (apenas para histórico local na UI)
+                    await ChatMessage.create({
+                        userId,
+                        text: parsedData.resposta,
+                        sender: 'bot',
+                        metadata: { form: parsedData.tipo === 'coleta_dados' ? parsedData : null }
+                    });
+
                     return NextResponse.json({ success: true, parsedData });
                 } catch (e) {
-                    console.error("Groq não retornou JSON valido:", data.choices[0].message.content);
+                    console.error("AnythingLLM não retornou JSON valido ou erro ao salvar:", e, textResponse);
                     return NextResponse.json({ success: false, message: 'Falha no formato da resposta da IA.' }, { status: 500 });
                 }
             } else {
-                console.error("Groq retornou formato invalido:", data);
+                console.error("AnythingLLM retornou formato invalido:", responseData);
                 return NextResponse.json({ success: false, message: 'Nenhuma resposta gerada.' }, { status: 500 });
             }
         } else {
-            console.error("Groq API Error:", response.data);
+            console.error("AnythingLLM API Error:", response.data);
             return NextResponse.json({ success: false, message: 'Erro na chamada ao modelo de linguagem.' }, { status: 500 });
         }
 
