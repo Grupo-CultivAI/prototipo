@@ -14,8 +14,9 @@ export default function RedefinirSenha(){
   const [email,setEmail] = useState("")
   const [novaSenha,setNovaSenha] = useState("")
   const [confirmarSenha,setConfirmarSenha] = useState("")
+  const [carregando,setCarregando] = useState(false)
 
-  function redefinirSenha(){
+  async function redefinirSenha(){
 
      if(!email || !novaSenha || !confirmarSenha){
        alert("Preencha todos os campos")
@@ -27,35 +28,30 @@ export default function RedefinirSenha(){
       return
     }
 
-    const usuarioSalvo = JSON.parse(
-      localStorage.getItem("usuario")
-    )
+    setCarregando(true)
 
-    if(!usuarioSalvo){
-      alert("Nenhum usuário cadastrado")
-      return
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, novaSenha }),
+      })
+
+      const data = await response.json()
+
+      if(!response.ok){
+        alert(data.message || "Não foi possível redefinir a senha")
+        return
+      }
+
+      alert("Senha redefinida com sucesso!")
+
+      router.push("/login")
+    } catch (error) {
+      alert("Erro ao redefinir senha. Tente novamente.")
+    } finally {
+      setCarregando(false)
     }
-
-    if(usuarioSalvo.email !== email){
-      alert("Email não encontrado")
-      return
-    }
-
-    if(novaSenha !== confirmarSenha){
-      alert("As senhas não coincidem")
-      return
-    }
-
-    usuarioSalvo.senha = novaSenha
-
-    localStorage.setItem(
-      "usuario",
-      JSON.stringify(usuarioSalvo)
-    )
-
-    alert("Senha redefinida com sucesso!")
-
-    router.push("/login")
 
   }
 
@@ -93,8 +89,9 @@ export default function RedefinirSenha(){
       />
 
       <Button
-        text="Salvar"
+        text={carregando ? "Salvando..." : "Salvar"}
         onClick={redefinirSenha}
+        disabled={carregando}
       />
 
       <p className="small-text">
