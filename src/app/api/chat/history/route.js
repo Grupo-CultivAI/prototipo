@@ -4,9 +4,10 @@ import { jwtVerify } from 'jose';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'fallback_secret'
-);
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is not set');
+}
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 async function getUserIdFromToken() {
     const cookieStore = await cookies();
