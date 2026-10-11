@@ -1,18 +1,19 @@
 # CultivAI
 
-Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se cadastra, preenche o perfil da sua propriedade (localização, solo, histórico de cultivo, objetivos) e conversa com um chatbot que gera recomendações agronômicas personalizadas, combinando esses dados com o clima em tempo real e a estação do ano.
+Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se cadastra, preenche o perfil da sua propriedade (localização, solo, histórico de cultivo, objetivos) e conversa com um chatbot que gera recomendações agronômicas personalizadas, combinando uma base de conhecimento da Embrapa (RAG) com o perfil cadastrado.
 
 ## Stack tecnológica
 
 - **Framework**: [Next.js 16](https://nextjs.org) (App Router) + React 19
-- **Linguagem**: JavaScript, com TypeScript em alguns módulos (`perfil-propriedade`, schemas de validação)
+- **Linguagem**: JavaScript, com TypeScript em alguns módulos (`llm`, `perfil-propriedade`, schemas de validação)
 - **Estilos**: Tailwind CSS 4, CSS Modules e variáveis globais em `src/styles/variables.css`
 - **Formulários**: `react-hook-form` + `zod`
 - **Autenticação**: `bcryptjs` (hash de senha) + `jose` (JWT em cookie httpOnly)
 - **Banco de dados**: MongoDB via `mongoose`
-- **IA / LLM**:
-  - `@google/generative-ai` (Gemini) — geração de embeddings para a base de conhecimento (RAG)
-  - [AnythingLLM](https://anythingllm.com) (serviço externo hospedado) — processa as perguntas do chat e gera as respostas, usando o workspace `cultivai`
+- **IA / RAG** (chamadas feitas diretamente pela própria rota da API, sem servidor intermediário):
+  - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
+  - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
+  - [Groq](https://groq.com) — gera a resposta final (`openai/gpt-oss-20b`, com fallback automático para `llama-3.1-8b-instant` em caso de limite de cota)
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api)
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
@@ -25,7 +26,7 @@ src/
       page.js                 rota "/", redireciona para /login
       login/
       cadastro/
-      redefinir-senha/
+      redefinir-senha/       ⚠️ ainda não verifica identidade do usuário (ver Status do projeto)
     (authed)/               → páginas autenticadas (usam Sidebar)
       chatbot/                assistente de IA
       perfil-propriedade/     cadastro/edição dos dados da propriedade
@@ -34,19 +35,21 @@ src/
       auth/
         login/                POST → autentica e seta cookie JWT
         register/              POST → cria usuário
-        reset-password/        POST → redefine a senha por email
+        reset-password/        POST → redefine a senha por email ⚠️ sem verificação de identidade (ver Status do projeto)
       chat/history/           GET/DELETE → histórico de mensagens do usuário
-      llm/                    POST → orquestra clima + contexto da propriedade + AnythingLLM
+      llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
       propriedade/            GET/POST → CRUD do perfil da propriedade
       user/                   GET → dados do usuário logado
-      weather/                GET → proxy para a API do OpenWeatherMap
+      weather/                GET → proxy para a API do OpenWeatherMap ⚠️ ainda sem autenticação (ver Status do projeto)
   components/               → Sidebar, Navbar, DynamicForm, Button, Card, Input
   lib/
     mongodb.js                conexão cacheada com o MongoDB
+    auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     schemas/propriedadeSchema.ts
-  models/                   → User, Propriedade, ChatMessage, Knowledge (Mongoose)
+  models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
-  ingest.mjs                → script standalone de ingestão de conhecimento (gera embeddings via Gemini)
+  ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
+docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
 ```
 
 ## Como funciona
@@ -55,20 +58,37 @@ scripts/
 A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder.
 
 ### Perfil da propriedade
-Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico de plantio, problemas enfrentados e objetivos. Esses dados alimentam o contexto enviado à IA no chat.
+Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico de plantio, problemas enfrentados e objetivos.
 
-### Chatbot
+### Chatbot (RAG)
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
-1. Autentica o usuário via JWT.
-2. Salva a mensagem no MongoDB (`ChatMessage`).
-3. Infere a estação do ano atual a partir do mês.
-4. Busca o clima da cidade cadastrada na propriedade (`/api/weather`, proxy do OpenWeatherMap).
-5. Monta um prompt de contexto combinando localização, clima, solo, histórico de cultivo e objetivos.
-6. Envia o prompt para o workspace `cultivai` no AnythingLLM.
-7. Recebe a resposta (que pode incluir um pedido de dados adicionais, exibido como formulário dinâmico na interface) e a salva no histórico.
+
+1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
+2. Aplica um limite de uso por usuário (rate limit), contando as mensagens já salvas no MongoDB (padrão: 4 perguntas/minuto, 30/dia).
+3. Salva a pergunta do usuário no MongoDB (`ChatMessage`).
+4. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões).
+5. Busca os 3 trechos mais relevantes no Pinecone, entre os PDFs da Embrapa já indexados.
+6. Monta um prompt com os trechos encontrados e envia para a Groq, que gera a resposta final (com fallback automático para um segundo modelo em caso de limite de cota).
+7. Salva a resposta no MongoDB e devolve ao chat.
 
 ### Base de conhecimento (RAG)
-`scripts/ingest.mjs` é um script independente que gera embeddings de textos agronômicos via Gemini (`gemini-embedding-001`) e os salva na coleção `Knowledge` do MongoDB, para busca por similaridade (requer um índice vetorial configurado no MongoDB Atlas). Atualmente o RAG e o histórico de conversa em produção são geridos nativamente pelo próprio AnythingLLM.
+`scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings via Gemini e envia os vetores para o Pinecone (namespace configurável por `PINECONE_NAMESPACE`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite diário gratuito da API do Gemini.
+
+```bash
+node scripts/ingest-pdfs.mjs            # ingere os PDFs de ./docs-embrapa
+node scripts/ingest-pdfs.mjs ./outra-pasta
+```
+
+## Status do projeto
+
+A migração da arquitetura antiga (Railway + Render + AnythingLLM) para o modelo atual, 100% serverless e de custo zero, já está em produção para o fluxo principal do chat. Itens ainda pendentes, em divisão de tarefas com o grupo:
+
+- O perfil da propriedade e o clima atual ainda **não** são usados no contexto enviado ao chatbot.
+- O logout ainda não invalida a sessão no servidor (o cookie `httpOnly` continua válido após sair).
+- `/api/weather` ainda não exige autenticação.
+- `/api/auth/reset-password` ainda não verifica a identidade de quem está redefinindo a senha.
+- Não é possível excluir o perfil de propriedade cadastrado.
+- Da base de PDFs da Embrapa, apenas uma amostra foi ingerida até o momento; a ingestão completa (36 PDFs) está em andamento.
 
 ## Variáveis de ambiente
 
@@ -77,12 +97,25 @@ Crie um arquivo `.env.local` na raiz do projeto com:
 ```bash
 MONGODB_URI=            # string de conexão do MongoDB
 JWT_SECRET=             # segredo para assinar/verificar os JWTs de autenticação
-GEMINI_API_KEY=         # chave da API Gemini (usada em scripts/ingest.mjs)
 OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
-NEXT_PUBLIC_BASE_URL=   # opcional; URL base usada em chamadas internas (default: http://localhost:3000)
+
+# IA / RAG
+GEMINI_API_KEY=         # chave da API Gemini (embeddings)
+GROQ_API_KEY=           # chave da API Groq (geração de texto)
+GROQ_MODELS=            # opcional; modelos em ordem de fallback, separados por vírgula
+                         # (padrão: openai/gpt-oss-20b,llama-3.1-8b-instant)
+PINECONE_API_KEY=       # chave da API do Pinecone
+PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
+PINECONE_NAMESPACE=     # opcional (padrão: embrapa)
+
+# Limites de uso
+RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
+RATE_LIMIT_PER_DAY=     # opcional (padrão: 30)
 ```
 
 `JWT_SECRET` é obrigatória — as rotas de API lançam erro na inicialização se ela não estiver definida.
+
+O índice do Pinecone precisa ser criado previamente com **768 dimensões** e **métrica cosine**, antes de rodar a ingestão.
 
 ## Rodando o projeto
 
