@@ -64,13 +64,14 @@ let doPdfEsperado = 0;
 matches.forEach((m, i) => {
     const fonte = m.metadata?.fonte ?? '(sem fonte)';
     const texto = String(m.metadata?.texto ?? '');
+    const pagina = typeof m.metadata?.pagina === 'number' ? `p. ${m.metadata.pagina}` : 'sem página';
     const okScore = m.score >= MIN_SCORE;
     const okFonte = !pdfEsperado || fonte === pdfEsperado;
 
     if (okScore) acimaDoLimiar++;
     if (okFonte) doPdfEsperado++;
 
-    console.log(`${i + 1}. [${okScore && okFonte ? '✅' : '⚠️ '}] score ${m.score.toFixed(4)} — ${fonte}`);
+    console.log(`${i + 1}. [${okScore && okFonte ? '✅' : '⚠️ '}] score ${m.score.toFixed(4)} — ${fonte} (${pagina})`);
     console.log(`   "${texto.slice(0, 160).replace(/\s+/g, ' ')}..."\n`);
 });
 

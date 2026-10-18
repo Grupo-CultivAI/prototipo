@@ -49,11 +49,35 @@ function chunkText(text, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
     let start = 0;
     while (start < text.length) {
         const end = start + size;
-        const chunk = text.slice(start, end).trim();
-        if (chunk) chunks.push(chunk);
+        const bruto = text.slice(start, end);
+        const texto = bruto.trim();
+        // O trim pode descartar a quebra de linha que separa duas páginas; sem somar
+        // esse deslocamento, um chunk que começa exatamente na virada seria atribuído
+        // à página anterior.
+        if (texto) chunks.push({ texto, inicio: start + (bruto.length - bruto.trimStart().length) });
         start += size - overlap;
     }
     return chunks;
+}
+
+// O unpdf devolve uma posição por página; juntamos tudo num texto só (para os chunks
+// poderem atravessar a virada de página) e guardamos onde cada página começa, de modo
+// a traduzir o offset de um chunk de volta para o número da página.
+function offsetsDasPaginas(paginas, separador = '\n') {
+    const offsets = [];
+    let pos = 0;
+    for (const pagina of paginas) {
+        offsets.push(pos);
+        pos += pagina.length + separador.length;
+    }
+    return offsets;
+}
+
+function paginaDoOffset(offsets, offset) {
+    for (let i = offsets.length - 1; i >= 0; i--) {
+        if (offset >= offsets[i]) return i + 1;
+    }
+    return 1;
 }
 
 // Util de retry (backoff simples) para lidar com falhas temporárias (ex: Rate Limit 429)
@@ -132,7 +156,9 @@ async function main() {
             const pdfData = new Uint8Array(buffer);
             const { text } = await extractText(pdfData);
 
-            const fullText = Array.isArray(text) ? text.join('\n') : String(text || '');
+            const paginas = (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
+            const fullText = paginas.join('\n');
+            const offsets = offsetsDasPaginas(paginas);
             if (!fullText.trim()) {
                 console.warn(`⚠️ Nenhum texto extraído de "${fileName}" — provável PDF escaneado sem OCR. Pulando...`);
                 registrarFalha(fileName, 'sem texto extraível (provável PDF escaneado sem OCR)');
@@ -142,12 +168,12 @@ async function main() {
             }
 
             const chunks = chunkText(fullText);
-            console.log(`   └ Extraídos ${chunks.length} trecho(s). Gerando embeddings...`);
+            console.log(`   └ ${paginas.length} página(s), ${chunks.length} trecho(s). Gerando embeddings...`);
 
             const vectors = [];
             for (let j = 0; j < chunks.length; j++) {
                 const chunk = chunks[j];
-                const vector = await getEmbedding(chunk);
+                const vector = await getEmbedding(chunk.texto);
 
                 const id = `${fileName.replace(/[^a-zA-Z0-9]/g, '_')}_chunk_${j}`;
                 vectors.push({
@@ -155,7 +181,8 @@ async function main() {
                     values: vector,
                     metadata: {
                         fonte: fileName,
-                        texto: chunk,
+                        texto: chunk.texto,
+                        pagina: paginaDoOffset(offsets, chunk.inicio),
                     },
                 });
 
