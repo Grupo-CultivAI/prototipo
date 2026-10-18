@@ -24,12 +24,23 @@ if (!host || !pineconeApiKey || !geminiApiKey) {
 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Leitura do estado de progresso para retomada automática
-let state = { processedFiles: [] };
+let state = { processedFiles: [], failedFiles: [] };
 if (fs.existsSync(STATE_FILE)) {
     try {
         state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
     } catch {
-        state = { processedFiles: [] };
+        state = { processedFiles: [], failedFiles: [] };
+    }
+}
+state.failedFiles ??= [];
+
+function saveState() {
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+function registrarFalha(fileName, motivo) {
+    if (!state.failedFiles.some((f) => f.arquivo === fileName)) {
+        state.failedFiles.push({ arquivo: fileName, motivo });
     }
 }
 
@@ -123,9 +134,10 @@ async function main() {
 
             const fullText = Array.isArray(text) ? text.join('\n') : String(text || '');
             if (!fullText.trim()) {
-                console.warn(`⚠️ Aviso: Nenhum texto extraído de "${fileName}". Ppulando...`);
+                console.warn(`⚠️ Nenhum texto extraído de "${fileName}" — provável PDF escaneado sem OCR. Pulando...`);
+                registrarFalha(fileName, 'sem texto extraível (provável PDF escaneado sem OCR)');
                 state.processedFiles.push(fileName);
-                fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+                saveState();
                 continue;
             }
 
@@ -159,15 +171,25 @@ async function main() {
 
             console.log(`   ✅ Enviado(s) ${vectors.length} vetor(es) ao Pinecone!`);
             state.processedFiles.push(fileName);
-            fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+            saveState();
         } catch (err) {
             console.error(`❌ Erro ao processar "${fileName}":`, err.message);
+            registrarFalha(fileName, err.message);
+            saveState();
             console.log('   O progresso até aqui foi salvo. Corrija e execute novamente.');
             break;
         }
     }
 
-    console.log('\n🎉 Processo de ingestão concluído!');
+    const pendentes = files.filter((f) => !state.processedFiles.includes(f));
+    console.log(`\n📊 Concluídos: ${state.processedFiles.length}/${files.length} | Pendentes: ${pendentes.length}`);
+
+    if (state.failedFiles.length > 0) {
+        console.log(`\n⚠️  ${state.failedFiles.length} PDF(s) com problema — reportar ao grupo:`);
+        for (const f of state.failedFiles) {
+            console.log(`   • ${f.arquivo}: ${f.motivo}`);
+        }
+    }
 }
 
 main();
