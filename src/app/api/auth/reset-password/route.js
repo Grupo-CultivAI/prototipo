@@ -6,9 +6,9 @@ import bcrypt from 'bcryptjs';
 export async function POST(req) {
     try {
         await dbConnect();
-        const { email, novaSenha } = await req.json();
+        const { email, senhaAtual, novaSenha } = await req.json();
 
-        if (!email || !novaSenha) {
+        if (!email || !senhaAtual || !novaSenha) {
             return NextResponse.json(
                 { message: 'Preencha todos os campos.' },
                 { status: 400 }
@@ -16,10 +16,14 @@ export async function POST(req) {
         }
 
         const user = await User.findOne({ email });
-        if (!user) {
+        const credenciaisOk = user && (await bcrypt.compare(senhaAtual, user.senha));
+
+        // Mesma resposta para email inexistente e senha errada: distinguir os dois
+        // permitiria descobrir quais emails têm conta no sistema.
+        if (!credenciaisOk) {
             return NextResponse.json(
-                { message: 'Email não encontrado.' },
-                { status: 404 }
+                { message: 'Email ou senha atual incorretos.' },
+                { status: 401 }
             );
         }
 

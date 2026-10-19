@@ -12,13 +12,14 @@ export default function RedefinirSenha(){
   const router = useRouter()
 
   const [email,setEmail] = useState("")
+  const [senhaAtual,setSenhaAtual] = useState("")
   const [novaSenha,setNovaSenha] = useState("")
   const [confirmarSenha,setConfirmarSenha] = useState("")
   const [carregando,setCarregando] = useState(false)
 
   async function redefinirSenha(){
 
-     if(!email || !novaSenha || !confirmarSenha){
+     if(!email || !senhaAtual || !novaSenha || !confirmarSenha){
        alert("Preencha todos os campos")
        return
     }
@@ -34,7 +35,7 @@ export default function RedefinirSenha(){
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, novaSenha }),
+        body: JSON.stringify({ email, senhaAtual, novaSenha }),
       })
 
       const data = await response.json()
@@ -62,7 +63,7 @@ export default function RedefinirSenha(){
       <h2>Redefinir Senha</h2>
 
       <p className="small-text">
-        Insira suas credenciais para redefinir a senha no sistema
+        Informe seu email e a senha atual para definir uma nova senha
       </p>
 
       <p>Email</p>
@@ -70,6 +71,14 @@ export default function RedefinirSenha(){
         placeholder="exemplo@email.com"
         required
         onChange={(e)=>setEmail(e.target.value)}
+      />
+
+      <p>Senha Atual</p>
+      <Input
+        placeholder="********"
+        type="password"
+        required
+        onChange={(e)=>setSenhaAtual(e.target.value)}
       />
 
       <p>Nova Senha</p>
