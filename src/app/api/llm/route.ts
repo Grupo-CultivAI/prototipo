@@ -4,7 +4,7 @@ import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import { getUserIdFromToken } from '@/lib/auth';
 
-const GROQ_MODELS = (process.env.GROQ_MODELS || 'openai/gpt-oss-20b,llama-3.1-8b-instant')
+const GROQ_MODELS = (process.env.GROQ_MODELS || 'openai/gpt-oss-20b,qwen/qwen3.8-27b')
     .split(',').map(s => s.trim()).filter(Boolean);
 
 const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 4);
