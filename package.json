@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verificar-base": "node tests/verificar-base.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

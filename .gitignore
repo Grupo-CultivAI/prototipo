@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 .ingest-state.json
+
+# base de PDFs da Embrapa: copiada manualmente, pesada demais para o repo
+docs-embrapa/

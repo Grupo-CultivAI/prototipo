@@ -49,6 +49,10 @@ src/
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
+  verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
+tests/
+  verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
+  casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
 ```
 
@@ -74,9 +78,27 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 ### Base de conhecimento (RAG)
 `scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings via Gemini e envia os vetores para o Pinecone (namespace configurável por `PINECONE_NAMESPACE`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite diário gratuito da API do Gemini.
 
+Cada vetor enviado ao Pinecone carrega três campos de metadata: `fonte` (nome do arquivo), `texto` (o trecho) e `pagina` (número da página **dentro do PDF**, começando em 1). Atenção: esse número é o índice da página no arquivo, que não necessariamente coincide com o número impresso na publicação original da Embrapa — um capítulo extraído de um livro maior começa na página 1 do PDF mesmo que o rodapé diga "29".
+
+PDFs cujo texto não pôde ser extraído (escaneados sem OCR, por exemplo) são registrados em `failedFiles` no `.ingest-state.json` e listados ao final da execução.
+
 ```bash
 node scripts/ingest-pdfs.mjs            # ingere os PDFs de ./docs-embrapa
 node scripts/ingest-pdfs.mjs ./outra-pasta
+```
+
+### Verificação técnica da indexação
+A suíte em [`tests/`](tests/README.md) confere se a base está indexada corretamente: para cada pergunta de uma amostra fixa, verifica se os melhores resultados vêm do documento esperado com score acima do limiar. O `tests/README.md` registra os resultados da última execução e os problemas em aberto.
+
+```bash
+npm run verificar-base
+```
+
+Para uma consulta avulsa, fora da suíte:
+
+```bash
+node scripts/verify-ingest.mjs "qual a importância da rotação de culturas?" cereais_inverno_rotacao_culturas.pdf
+node scripts/verify-ingest.mjs "pergunta solta"   # sem PDF esperado, só lista os resultados
 ```
 
 ## Status do projeto

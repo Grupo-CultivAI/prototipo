@@ -10,6 +10,24 @@ const STATE_FILE = '.ingest-state.json';
 const CHUNK_SIZE = 800;
 const CHUNK_OVERLAP = 100;
 
+// Documentos cujo sentido depende de um cabeçalho que aparece uma única vez no
+// texto. Numa tabela, os trechos do meio viram linhas soltas ("GNZ 7280PRO2
+// Geneze S R S") sem nada que diga a qual nematoide cada letra se refere, e o
+// modelo pode inverter as colunas. O prefixo repete esse contexto em todos os
+// trechos do arquivo.
+const PREFIXO_TABELA_NEMATOIDES =
+    'Tabela de reação de genótipos (híbridos e cultivares) de milho aos nematoides, ' +
+    'medida pelo fator de reprodução (FR). Em cada linha: nome do genótipo, empresa e, ' +
+    'nesta ordem, a reação a Meloidogyne incognita (nematoide de galha), a Meloidogyne ' +
+    'javanica (nematoide de galha) e a Pratylenchus brachyurus (nematoide das lesões ' +
+    'radiculares). Legenda: R = resistente (FR abaixo de 10%); MR = moderadamente ' +
+    'resistente (FR entre 10% e 30%); S = suscetível (FR igual ou acima de 30%).';
+
+const PREFIXO_POR_ARQUIVO = {
+    'manejo_nematoide_soja.pdf': PREFIXO_TABELA_NEMATOIDES,
+    'milho_nematoides.pdf': PREFIXO_TABELA_NEMATOIDES,
+};
+
 // Validação de variáveis de ambiente
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
@@ -24,12 +42,29 @@ if (!host || !pineconeApiKey || !geminiApiKey) {
 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Leitura do estado de progresso para retomada automática
-let state = { processedFiles: [] };
+let state = { processedFiles: [], failedFiles: [] };
 if (fs.existsSync(STATE_FILE)) {
     try {
-        state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
-    } catch {
-        state = { processedFiles: [] };
+        // O replace remove o BOM que editores e o PowerShell costumam gravar;
+        // JSON.parse rejeita esse caractere.
+        state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8').replace(/^﻿/, ''));
+    } catch (e) {
+        // Recomeçar do zero aqui reprocessaria todos os PDFs e esgotaria a cota
+        // diária do Gemini à toa. É mais seguro parar e deixar a decisão com quem roda.
+        console.error(`❌ "${STATE_FILE}" existe mas não pôde ser lido: ${e.message}`);
+        console.error('   Para ignorar o progresso e reprocessar tudo, apague o arquivo manualmente.');
+        process.exit(1);
+    }
+}
+state.failedFiles ??= [];
+
+function saveState() {
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+function registrarFalha(fileName, motivo) {
+    if (!state.failedFiles.some((f) => f.arquivo === fileName)) {
+        state.failedFiles.push({ arquivo: fileName, motivo });
     }
 }
 
@@ -38,11 +73,35 @@ function chunkText(text, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
     let start = 0;
     while (start < text.length) {
         const end = start + size;
-        const chunk = text.slice(start, end).trim();
-        if (chunk) chunks.push(chunk);
+        const bruto = text.slice(start, end);
+        const texto = bruto.trim();
+        // O trim pode descartar a quebra de linha que separa duas páginas; sem somar
+        // esse deslocamento, um chunk que começa exatamente na virada seria atribuído
+        // à página anterior.
+        if (texto) chunks.push({ texto, inicio: start + (bruto.length - bruto.trimStart().length) });
         start += size - overlap;
     }
     return chunks;
+}
+
+// O unpdf devolve uma posição por página; juntamos tudo num texto só (para os chunks
+// poderem atravessar a virada de página) e guardamos onde cada página começa, de modo
+// a traduzir o offset de um chunk de volta para o número da página.
+function offsetsDasPaginas(paginas, separador = '\n') {
+    const offsets = [];
+    let pos = 0;
+    for (const pagina of paginas) {
+        offsets.push(pos);
+        pos += pagina.length + separador.length;
+    }
+    return offsets;
+}
+
+function paginaDoOffset(offsets, offset) {
+    for (let i = offsets.length - 1; i >= 0; i--) {
+        if (offset >= offsets[i]) return i + 1;
+    }
+    return 1;
 }
 
 // Util de retry (backoff simples) para lidar com falhas temporárias (ex: Rate Limit 429)
@@ -121,21 +180,29 @@ async function main() {
             const pdfData = new Uint8Array(buffer);
             const { text } = await extractText(pdfData);
 
-            const fullText = Array.isArray(text) ? text.join('\n') : String(text || '');
+            const paginas = (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
+            const fullText = paginas.join('\n');
+            const offsets = offsetsDasPaginas(paginas);
             if (!fullText.trim()) {
-                console.warn(`⚠️ Aviso: Nenhum texto extraído de "${fileName}". Ppulando...`);
+                console.warn(`⚠️ Nenhum texto extraído de "${fileName}" — provável PDF escaneado sem OCR. Pulando...`);
+                registrarFalha(fileName, 'sem texto extraível (provável PDF escaneado sem OCR)');
                 state.processedFiles.push(fileName);
-                fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+                saveState();
                 continue;
             }
 
             const chunks = chunkText(fullText);
-            console.log(`   └ Extraídos ${chunks.length} trecho(s). Gerando embeddings...`);
+            console.log(`   └ ${paginas.length} página(s), ${chunks.length} trecho(s). Gerando embeddings...`);
+            if (PREFIXO_POR_ARQUIVO[fileName]) {
+                console.log('   └ prefixo de contexto aplicado a todos os trechos deste arquivo.');
+            }
 
             const vectors = [];
             for (let j = 0; j < chunks.length; j++) {
                 const chunk = chunks[j];
-                const vector = await getEmbedding(chunk);
+                const prefixo = PREFIXO_POR_ARQUIVO[fileName];
+                const texto = prefixo ? `${prefixo}\n\n${chunk.texto}` : chunk.texto;
+                const vector = await getEmbedding(texto);
 
                 const id = `${fileName.replace(/[^a-zA-Z0-9]/g, '_')}_chunk_${j}`;
                 vectors.push({
@@ -143,7 +210,8 @@ async function main() {
                     values: vector,
                     metadata: {
                         fonte: fileName,
-                        texto: chunk,
+                        texto,
+                        pagina: paginaDoOffset(offsets, chunk.inicio),
                     },
                 });
 
@@ -159,15 +227,31 @@ async function main() {
 
             console.log(`   ✅ Enviado(s) ${vectors.length} vetor(es) ao Pinecone!`);
             state.processedFiles.push(fileName);
-            fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+            saveState();
         } catch (err) {
             console.error(`❌ Erro ao processar "${fileName}":`, err.message);
-            console.log('   O progresso até aqui foi salvo. Corrija e execute novamente.');
+            // Cota esgotada não é defeito do arquivo. Registrar aqui faria um PDF
+            // íntegro aparecer no relatório de problemáticos entregue ao grupo.
+            if (/RESOURCE_EXHAUSTED|quota|429/i.test(err.message)) {
+                console.log('   Cota da API esgotada — o PDF não tem defeito. Rode de novo quando a cota renovar.');
+            } else {
+                registrarFalha(fileName, err.message);
+            }
+            saveState();
+            console.log('   O progresso até aqui foi salvo.');
             break;
         }
     }
 
-    console.log('\n🎉 Processo de ingestão concluído!');
+    const pendentes = files.filter((f) => !state.processedFiles.includes(f));
+    console.log(`\n📊 Concluídos: ${state.processedFiles.length}/${files.length} | Pendentes: ${pendentes.length}`);
+
+    if (state.failedFiles.length > 0) {
+        console.log(`\n⚠️  ${state.failedFiles.length} PDF(s) com problema — reportar ao grupo:`);
+        for (const f of state.failedFiles) {
+            console.log(`   • ${f.arquivo}: ${f.motivo}`);
+        }
+    }
 }
 
 main();
