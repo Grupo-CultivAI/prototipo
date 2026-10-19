@@ -48,6 +48,7 @@ src/
     schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
+  check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
 tests/
@@ -81,6 +82,15 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 Cada vetor enviado ao Pinecone carrega três campos de metadata: `fonte` (nome do arquivo), `texto` (o trecho) e `pagina` (número da página **dentro do PDF**, começando em 1). Atenção: esse número é o índice da página no arquivo, que não necessariamente coincide com o número impresso na publicação original da Embrapa — um capítulo extraído de um livro maior começa na página 1 do PDF mesmo que o rodapé diga "29".
 
 PDFs cujo texto não pôde ser extraído (escaneados sem OCR, por exemplo) são registrados em `failedFiles` no `.ingest-state.json` e listados ao final da execução.
+
+Antes de ingerir, vale rodar a checagem local, que lê os PDFs sem consumir cota de API e aponta arquivos defeituosos:
+
+```bash
+node scripts/check-pdfs.mjs             # analisa ./docs-embrapa
+node scripts/check-pdfs.mjs ./outra-pasta
+```
+
+Ela detecta dois tipos de defeito: PDF sem texto extraível (escaneado sem OCR) e PDF cujo texto sai ilegível porque a fonte foi embutida sem o mapa de caracteres. **O segundo tipo abre normalmente na tela** — o defeito só aparece na extração, então não dá para confiar em abrir o arquivo e olhar. A checagem também estima quantos trechos a ingestão vai gerar, que é o número de chamadas de embedding.
 
 ```bash
 node scripts/ingest-pdfs.mjs            # ingere os PDFs de ./docs-embrapa
