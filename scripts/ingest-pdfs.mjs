@@ -230,9 +230,15 @@ async function main() {
             saveState();
         } catch (err) {
             console.error(`❌ Erro ao processar "${fileName}":`, err.message);
-            registrarFalha(fileName, err.message);
+            // Cota esgotada não é defeito do arquivo. Registrar aqui faria um PDF
+            // íntegro aparecer no relatório de problemáticos entregue ao grupo.
+            if (/RESOURCE_EXHAUSTED|quota|429/i.test(err.message)) {
+                console.log('   Cota da API esgotada — o PDF não tem defeito. Rode de novo quando a cota renovar.');
+            } else {
+                registrarFalha(fileName, err.message);
+            }
             saveState();
-            console.log('   O progresso até aqui foi salvo. Corrija e execute novamente.');
+            console.log('   O progresso até aqui foi salvo.');
             break;
         }
     }
