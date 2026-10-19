@@ -106,9 +106,9 @@ export async function searchKnowledge(vector: number[], topK = 3): Promise<Trech
     const minScore = Number(process.env.RAG_MIN_SCORE ?? 0.5);
 
     return (data.matches ?? [])
-        .filter((m) => m.score >= minScore && typeof m.metadata?.text === 'string')
+        .filter((m) => m.score >= minScore && typeof m.metadata?.texto === 'string')
         .map((m) => ({
-            texto: String(m.metadata!.text),
+            texto: String(m.metadata!.texto),
             fonte: String(m.metadata!.fonte ?? 'Embrapa'),
             pagina: typeof m.metadata!.pagina === 'number' ? m.metadata!.pagina : undefined,
             score: m.score,
@@ -122,7 +122,9 @@ export async function searchKnowledge(vector: number[], topK = 3): Promise<Trech
 /* ------------------------------------------------------------------ */
 export type ChatMsg = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const DEFAULT_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+// Modelos verificados na chave do grupo em 2026-10-18, com response_format
+// json_object. Os llama-3.x saíram do catálogo da Groq e davam 404.
+const DEFAULT_MODELS = ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
 
 export async function chatJson(messages: ChatMsg[]): Promise<string> {
     const fromEnv = (process.env.GROQ_MODELS ?? '')

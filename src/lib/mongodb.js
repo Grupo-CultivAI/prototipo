@@ -27,6 +27,12 @@ async function dbConnect() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            // Sem isto, uma URI sem caminho conecta num banco "test": foi assim que os dados se espalharam.
+            dbName: 'cultivai',
+            // O M0 gratuito do Atlas permite 500 conexões, e cada instância serverless abre seu pool (padrão 100).
+            maxPoolSize: 10,
+            // O padrão de 30s excede o limite da função na Vercel, virando timeout genérico em vez de erro legível.
+            serverSelectionTimeoutMS: 5000,
         };
 
         cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

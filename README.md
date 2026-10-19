@@ -13,7 +13,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
 - **IA / RAG** (chamadas feitas diretamente pela própria rota da API, sem servidor intermediário):
   - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
-  - [Groq](https://groq.com) — gera a resposta final (`openai/gpt-oss-20b`, com fallback automático para `llama-3.1-8b-instant` em caso de limite de cota)
+  - [Groq](https://groq.com) — gera a resposta final (`openai/gpt-oss-20b`, com fallback automático para `qwen/qwen3.8-27b` em caso de limite de cota)
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api)
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
@@ -115,7 +115,7 @@ OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 GEMINI_API_KEY=         # chave da API Gemini (embeddings)
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
 GROQ_MODELS=            # opcional; modelos em ordem de fallback, separados por vírgula
-                         # (padrão: openai/gpt-oss-20b,llama-3.1-8b-instant)
+                         # (padrão: openai/gpt-oss-20b,qwen/qwen3.8-27b)
 PINECONE_API_KEY=       # chave da API do Pinecone
 PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
 PINECONE_NAMESPACE=     # opcional (padrão: embrapa)
