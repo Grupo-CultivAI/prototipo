@@ -1,23 +1,15 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import { jwtVerify } from 'jose';
-
-if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET environment variable is not set');
-}
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+import { getUserIdFromToken } from '@/lib/auth';
 
 export async function GET() {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('authToken')?.value;
-        if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const userId = await getUserIdFromToken();
+        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        const { payload } = await jwtVerify(token, JWT_SECRET);
-        const user = await User.findById(payload.id).select('-senha');
+        const user = await User.findById(userId).select('-senha');
 
         if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 });
         return NextResponse.json({ user });
