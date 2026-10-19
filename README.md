@@ -49,6 +49,10 @@ src/
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
+  verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
+tests/
+  verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
+  casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
 ```
 
@@ -84,7 +88,13 @@ node scripts/ingest-pdfs.mjs ./outra-pasta
 ```
 
 ### Verificação técnica da indexação
-`scripts/verify-ingest.mjs` confirma que um PDF foi indexado corretamente: gera o embedding de uma pergunta, consulta o Pinecone e checa se os 3 melhores resultados vêm do PDF esperado com score acima de `RAG_MIN_SCORE` (padrão 0.5). Sai com código de erro quando reprova.
+A suíte em [`tests/`](tests/README.md) confere se a base está indexada corretamente: para cada pergunta de uma amostra fixa, verifica se os melhores resultados vêm do documento esperado com score acima do limiar. O `tests/README.md` registra os resultados da última execução e os problemas em aberto.
+
+```bash
+npm run verificar-base
+```
+
+Para uma consulta avulsa, fora da suíte:
 
 ```bash
 node scripts/verify-ingest.mjs "qual a importância da rotação de culturas?" cereais_inverno_rotacao_culturas.pdf

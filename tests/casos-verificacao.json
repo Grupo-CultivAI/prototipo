@@ -1,0 +1,53 @@
+{
+  "limiarScore": 0.5,
+  "topK": 3,
+  "casos": [
+    {
+      "pergunta": "Qual a importancia da rotacao de culturas para os cereais de inverno?",
+      "fontesAceitas": ["cereais_inverno_rotacao_culturas.pdf"],
+      "formato": "capitulo longo, 16 paginas"
+    },
+    {
+      "pergunta": "Como manejar o nematoide reniforme no algodoeiro usando rotacao de culturas?",
+      "fontesAceitas": ["rotacao_culturas_manejo_nematoide_reniforme_algodoeiro.pdf"],
+      "formato": "publicacao longa, 28 paginas"
+    },
+    {
+      "pergunta": "Crescimento e distribuicao de massa seca do nabo-forrageiro em sucessao a soja",
+      "fontesAceitas": ["16silvasousa.pdf"],
+      "formato": "resumo de 1 pagina"
+    },
+    {
+      "pergunta": "Desempenho agronomico da mandioca em rotacao com plantas de cobertura em faixas rotativas",
+      "fontesAceitas": ["mandioca_rotacao_culturas_cultivo_consorciado.pdf"],
+      "formato": "resumo de 1 pagina"
+    },
+    {
+      "pergunta": "Viabilidade economica de rotacao de culturas com milho e feijao em plantio direto irrigado",
+      "fontesAceitas": ["viabilidade_agroeconomica_rotacao.pdf"],
+      "formato": "artigo com dados economicos"
+    },
+    {
+      "pergunta": "Seletividade dos herbicidas bentazon e nicosulfuron em Crotalaria spectabilis consorciada com milho",
+      "fontesAceitas": ["NubiaSelectivityofbentazon.pdf"],
+      "formato": "artigo em ingles"
+    },
+    {
+      "pergunta": "Emissao de oxido nitroso em sistemas de manejo do solo e rotacao de culturas",
+      "fontesAceitas": ["oxido_nitroso_manejo_solo_rotacao_culturas.pdf"],
+      "formato": "resumo de 1 pagina"
+    },
+    {
+      "pergunta": "Quais genotipos de milho sao resistentes ao nematoide das lesoes radiculares?",
+      "fontesAceitas": ["manejo_nematoide_soja.pdf", "milho_nematoides.pdf"],
+      "formato": "folder com tabela",
+      "observacao": "Os dois arquivos sao as partes 1 e 2 da mesma publicacao da Embrapa Soja. Ambos sao resposta correta, por isso as duas fontes sao aceitas."
+    },
+    {
+      "pergunta": "Desempenho agronomico de sistemas de rotacao de culturas na produtividade de trigo",
+      "fontesAceitas": ["trigo_desempenho_agronomico_rotacao_culturas.pdf"],
+      "formato": "artigo experimental",
+      "falhaConhecida": "O PDF tem a camada de texto corrompida na origem (fonte embutida sem mapa de caracteres). Apenas o titulo e recuperavel, entao o documento so e localizavel pelo nome. Aguarda substituicao por uma copia integra."
+    }
+  ]
+}
