@@ -49,6 +49,7 @@ src/
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
+  ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
 tests/
@@ -91,6 +92,17 @@ node scripts/check-pdfs.mjs ./outra-pasta
 ```
 
 Ela detecta dois tipos de defeito: PDF sem texto extraível (escaneado sem OCR) e PDF cujo texto sai ilegível porque a fonte foi embutida sem o mapa de caracteres. **O segundo tipo abre normalmente na tela** — o defeito só aparece na extração, então não dá para confiar em abrir o arquivo e olhar. A checagem também estima quantos trechos a ingestão vai gerar, que é o número de chamadas de embedding.
+
+#### Arquivo acompanhante para PDFs defeituosos
+Quando um PDF tem a camada de texto corrompida, um arquivo `.txt` de mesmo nome na mesma pasta substitui a extração. As páginas dentro dele são separadas por *form feed* (`\f`), para o número da página continuar correto no metadata. Tanto a ingestão quanto a checagem respeitam o acompanhante.
+
+O `scripts/ocr-pdf.ps1` gera esse arquivo usando o reconhecimento óptico embutido no Windows, sem instalar nada (requer o pacote do idioma):
+
+```powershell
+.\scripts\ocr-pdf.ps1 -Pdf docs-embrapa\arquivo.pdf -Saida docs-embrapa\arquivo.txt
+```
+
+Esse script é o único trecho do projeto que só roda no Windows. Vale usá-lo quando a extração do PDF está totalmente ilegível — não quando está apenas imperfeita, já que o OCR erra sobrescritos e marcadores de rodapé.
 
 ```bash
 node scripts/ingest-pdfs.mjs            # ingere os PDFs de ./docs-embrapa

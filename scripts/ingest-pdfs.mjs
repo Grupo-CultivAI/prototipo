@@ -97,6 +97,25 @@ function offsetsDasPaginas(paginas, separador = '\n') {
     return offsets;
 }
 
+// Alguns PDFs publicados trazem a camada de texto corrompida: a fonte foi
+// embutida sem o mapa que associa cada glifo à sua letra, e a extração devolve
+// caracteres trocados. Para esses, um arquivo ".txt" de mesmo nome ao lado do
+// PDF substitui a extração — normalmente gerado por OCR. As páginas nele são
+// separadas por form feed, para o número da página continuar correto.
+function lerAcompanhante(fileName) {
+    const caminho = path.join(FOLDER_PATH, fileName.replace(/\.pdf$/i, '.txt'));
+    if (!fs.existsSync(caminho)) return null;
+    const conteudo = fs.readFileSync(caminho, 'utf-8').replace(/^﻿/, '');
+    if (!conteudo.trim()) return null;
+    console.log('   └ usando o texto do arquivo acompanhante .txt no lugar da extração do PDF.');
+    return conteudo.split('\f');
+}
+
+async function lerDoPdf(filePath) {
+    const { text } = await extractText(new Uint8Array(fs.readFileSync(filePath)));
+    return (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
+}
+
 function paginaDoOffset(offsets, offset) {
     for (let i = offsets.length - 1; i >= 0; i--) {
         if (offset >= offsets[i]) return i + 1;
@@ -174,13 +193,9 @@ async function main() {
 
         console.log(`\n📄 [${i + 1}/${files.length}] Processando: "${fileName}"...`);
         const filePath = path.join(FOLDER_PATH, fileName);
-        const buffer = fs.readFileSync(filePath);
 
         try {
-            const pdfData = new Uint8Array(buffer);
-            const { text } = await extractText(pdfData);
-
-            const paginas = (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
+            const paginas = lerAcompanhante(fileName) ?? (await lerDoPdf(filePath));
             const fullText = paginas.join('\n');
             const offsets = offsetsDasPaginas(paginas);
             if (!fullText.trim()) {
