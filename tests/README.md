@@ -17,7 +17,9 @@ Códigos de saída: `0` tudo certo, `1` algum caso reprovou, `2` não foi possí
 Para uma consulta avulsa, fora da suíte, existe `scripts/verify-ingest.mjs`:
 
 ```bash
-node scripts/verify-ingest.mjs "sua pergunta" nome-do-arquivo.pdf
+node scripts/verify-ingest.mjs "sua pergunta" arquivo.pdf
+node scripts/verify-ingest.mjs "sua pergunta" parte1.pdf parte2.pdf   # vários aceitos
+node scripts/verify-ingest.mjs "sua pergunta"                          # só lista os resultados
 ```
 
 ## Os casos
@@ -33,7 +35,9 @@ As perguntas foram escritas a partir de um trecho real de cada documento. Pergun
 
 ## Resultados registrados
 
-Execução de **18/10/2026**, sobre 36 PDFs e 850 trechos indexados.
+Execução de **20/10/2026**, sobre 36 PDFs e 850 trechos indexados. Base completa, já com a correção de cabeçalho dos folders com tabela.
+
+**8 passaram, 0 falharam, 1 falha conhecida.**
 
 | Documento | Melhor score | Resultado |
 |---|---|---|
@@ -43,11 +47,23 @@ Execução de **18/10/2026**, sobre 36 PDFs e 850 trechos indexados.
 | `oxido_nitroso_manejo_solo_rotacao_culturas.pdf` | 0,8350 | passou (3/3) |
 | `mandioca_rotacao_culturas_cultivo_consorciado.pdf` | 0,8344 | passou (3/3) |
 | `viabilidade_agroeconomica_rotacao.pdf` | 0,8236 | passou (3/3) |
+| `manejo_nematoide_soja.pdf` ou `milho_nematoides.pdf` | 0,7972 | passou (3/3) |
 | `cereais_inverno_rotacao_culturas.pdf` | 0,7867 | passou (3/3) |
-| `manejo_nematoide_soja.pdf` | 0,7932 | passou (2/3 no arquivo, 3/3 na publicação) |
 | `trigo_desempenho_agronomico_rotacao_culturas.pdf` | 0,8035 | falha conhecida (1/3) |
 
-Os 27 resultados retornados ficaram acima do limiar de 0,5, na faixa de 0,76 a 0,88.
+Os 27 resultados retornados ficaram acima do limiar de 0,5, na faixa de 0,77 a 0,88.
+
+### Efeito da correção de cabeçalho nos folders com tabela
+
+Mesma pergunta, antes e depois de repetir o cabeçalho das colunas em cada trecho:
+
+| Posição | Antes | Depois |
+|---|---|---|
+| 1º resultado | 0,7932 | 0,7972 |
+| 2º resultado | 0,7768 | 0,7883 |
+| 3º resultado | 0,7648 | 0,7859 |
+
+Os três melhoraram. A preocupação de que o prefixo diluísse o embedding, tornando os trechos do arquivo parecidos demais entre si, não se confirmou — a recuperação ficou ligeiramente melhor, e agora cada trecho recuperado chega ao modelo com a explicação das colunas junto.
 
 ### Observação sobre o limiar
 
@@ -65,9 +81,9 @@ Além da recuperação, os 36 PDFs passaram por uma checagem de densidade de pal
 
 Nenhum PDF escaneado sem OCR foi encontrado.
 
-## Problemas em aberto
+## Problema em aberto
 
-**1. `trigo_desempenho_agronomico_rotacao_culturas.pdf` tem a camada de texto corrompida na origem.**
+**`trigo_desempenho_agronomico_rotacao_culturas.pdf` tem a camada de texto corrompida na origem.**
 
 O arquivo abre e lê normalmente na tela — o defeito só aparece na extração, porque a fonte foi embutida sem o mapa que associa cada glifo à sua letra. "Henrique Pereira dos Santos" é extraído como `+HQULTXH3HUHLUDGRV6DQWRV`.
 
@@ -75,8 +91,8 @@ O deslocamento é de exatamente 29 posições na tabela de caracteres e a conver
 
 **Encaminhamento:** obter uma cópia íntegra junto à Embrapa Trigo, ou aplicar OCR. Até lá o documento está indexado mas localizável apenas pelo título.
 
-**2. Os folders com tabela precisam ser reindexados.**
+## Resolvido
 
-A tabela de genótipos se divide em vários trechos, e o cabeçalho que identifica as colunas aparece uma única vez. Uma busca recuperou, com score 0,7768, um trecho de linhas soltas como `GNZ 7280PRO2 Geneze S R S`, sem nada indicando a qual nematoide cada letra se refere — o modelo poderia inverter as colunas e recomendar um híbrido suscetível como resistente.
+**Folders com tabela recuperados sem o cabeçalho.** A tabela de genótipos se divide em vários trechos e o cabeçalho que identifica as colunas aparecia uma única vez. Uma busca recuperava, com score 0,7768, um trecho de linhas soltas como `GNZ 7280PRO2 Geneze S R S`, sem nada indicando a qual nematoide cada letra se refere — o modelo poderia inverter as colunas e recomendar um híbrido suscetível como resistente.
 
-A correção já está no script de ingestão (prefixo de contexto repetido em todos os trechos desses dois arquivos), mas a reindexação ainda não rodou por esgotamento da cota diária do Gemini. **Os resultados da tabela acima são anteriores a essa correção.**
+Corrigido em `scripts/ingest-pdfs.mjs`, que repete o cabeçalho e a legenda em todos os trechos desses dois arquivos, e reindexado em 20/10/2026. Cada trecho recuperado agora chega ao modelo com a explicação das colunas junto.
