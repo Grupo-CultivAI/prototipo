@@ -3,9 +3,10 @@
   "topK": 3,
   "casos": [
     {
-      "pergunta": "Qual a importancia da rotacao de culturas para os cereais de inverno?",
+      "pergunta": "Qual o balanco energetico em Mcal por hectare dos sistemas de rotacao de culturas com aveia branca e ervilhaca?",
       "fontesAceitas": ["cereais_inverno_rotacao_culturas.pdf"],
-      "formato": "capitulo longo, 16 paginas"
+      "formato": "capitulo longo, 16 paginas",
+      "observacao": "A pergunta anterior, sobre a importancia da rotacao para cereais de inverno, era generica demais: passou a trazer tambem o artigo de trigo, que trata do mesmo tema e e resposta legitima. Ancorada agora num dado que so existe neste capitulo."
     },
     {
       "pergunta": "Como manejar o nematoide reniforme no algodoeiro usando rotacao de culturas?",
@@ -47,7 +48,13 @@
       "pergunta": "Desempenho agronomico de sistemas de rotacao de culturas na produtividade de trigo",
       "fontesAceitas": ["trigo_desempenho_agronomico_rotacao_culturas.pdf"],
       "formato": "artigo experimental",
-      "falhaConhecida": "O PDF tem a camada de texto corrompida na origem (fonte embutida sem mapa de caracteres). Apenas o titulo e recuperavel, entao o documento so e localizavel pelo nome. Aguarda substituicao por uma copia integra."
+      "observacao": "O PDF tem a camada de texto corrompida na origem. O conteudo indexado vem do arquivo acompanhante trigo_desempenho_agronomico_rotacao_culturas.txt, gerado por OCR."
+    },
+    {
+      "pergunta": "Qual o rendimento de graos de trigo com dois anos de rotacao de culturas em kg por hectare?",
+      "fontesAceitas": ["trigo_desempenho_agronomico_rotacao_culturas.pdf"],
+      "formato": "artigo experimental",
+      "observacao": "Cobre especificamente os valores numericos, que eram a parte perdida na extracao corrompida."
     }
   ]
 }

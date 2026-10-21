@@ -58,11 +58,22 @@ for (const arquivo of arquivos) {
     let trechos = 0;
     let dens = 0;
     let problema = null;
+    let origem = 'pdf';
 
     try {
-        const { totalPages, text } = await extractText(new Uint8Array(fs.readFileSync(path.join(FOLDER_PATH, arquivo))));
-        const partes = (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
-        paginas = totalPages ?? partes.length;
+        // Um ".txt" de mesmo nome substitui a extração do PDF na ingestão, então
+        // é ele que precisa ser avaliado aqui — ver lerAcompanhante em ingest-pdfs.mjs.
+        const acompanhante = path.join(FOLDER_PATH, arquivo.replace(/\.pdf$/i, '.txt'));
+        let partes;
+        if (fs.existsSync(acompanhante)) {
+            partes = fs.readFileSync(acompanhante, 'utf-8').replace(/^﻿/, '').split('\f');
+            paginas = partes.length;
+            origem = '.txt';
+        } else {
+            const { totalPages, text } = await extractText(new Uint8Array(fs.readFileSync(path.join(FOLDER_PATH, arquivo))));
+            partes = (Array.isArray(text) ? text : [text]).map((p) => String(p ?? ''));
+            paginas = totalPages ?? partes.length;
+        }
         const completo = partes.join('\n');
 
         if (!completo.trim()) {
@@ -87,7 +98,7 @@ for (const arquivo of arquivos) {
         String(paginas).padStart(6) +
         String(trechos).padStart(9) +
         dens.toFixed(1).padStart(11) +
-        (problema ? '  <== PROBLEMA' : '  ok')
+        (problema ? '  <== PROBLEMA' : origem === '.txt' ? '  ok (via .txt)' : '  ok')
     );
 }
 

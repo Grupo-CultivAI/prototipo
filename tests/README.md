@@ -17,7 +17,9 @@ Códigos de saída: `0` tudo certo, `1` algum caso reprovou, `2` não foi possí
 Para uma consulta avulsa, fora da suíte, existe `scripts/verify-ingest.mjs`:
 
 ```bash
-node scripts/verify-ingest.mjs "sua pergunta" nome-do-arquivo.pdf
+node scripts/verify-ingest.mjs "sua pergunta" arquivo.pdf
+node scripts/verify-ingest.mjs "sua pergunta" parte1.pdf parte2.pdf   # vários aceitos
+node scripts/verify-ingest.mjs "sua pergunta"                          # só lista os resultados
 ```
 
 ## Os casos
@@ -33,7 +35,9 @@ As perguntas foram escritas a partir de um trecho real de cada documento. Pergun
 
 ## Resultados registrados
 
-Execução de **18/10/2026**, sobre 36 PDFs e 850 trechos indexados.
+Execução de **20/10/2026**, sobre 36 PDFs e 864 trechos indexados.
+
+**10 casos, 10 aprovados, nenhuma falha.**
 
 | Documento | Melhor score | Resultado |
 |---|---|---|
@@ -43,11 +47,24 @@ Execução de **18/10/2026**, sobre 36 PDFs e 850 trechos indexados.
 | `oxido_nitroso_manejo_solo_rotacao_culturas.pdf` | 0,8350 | passou (3/3) |
 | `mandioca_rotacao_culturas_cultivo_consorciado.pdf` | 0,8344 | passou (3/3) |
 | `viabilidade_agroeconomica_rotacao.pdf` | 0,8236 | passou (3/3) |
-| `cereais_inverno_rotacao_culturas.pdf` | 0,7867 | passou (3/3) |
-| `manejo_nematoide_soja.pdf` | 0,7932 | passou (2/3 no arquivo, 3/3 na publicação) |
-| `trigo_desempenho_agronomico_rotacao_culturas.pdf` | 0,8035 | falha conhecida (1/3) |
+| `trigo_desempenho_agronomico_rotacao_culturas.pdf` (dados numéricos) | 0,8182 | passou (3/3) |
+| `trigo_desempenho_agronomico_rotacao_culturas.pdf` (tema) | 0,8120 | passou (3/3) |
+| `manejo_nematoide_soja.pdf` ou `milho_nematoides.pdf` | 0,7972 | passou (3/3) |
+| `cereais_inverno_rotacao_culturas.pdf` | 0,7740 | passou (3/3) |
 
-Os 27 resultados retornados ficaram acima do limiar de 0,5, na faixa de 0,76 a 0,88.
+Os 30 resultados retornados ficaram acima do limiar de 0,5, na faixa de 0,73 a 0,88.
+
+### Efeito da correção de cabeçalho nos folders com tabela
+
+Mesma pergunta, antes e depois de repetir o cabeçalho das colunas em cada trecho:
+
+| Posição | Antes | Depois |
+|---|---|---|
+| 1º resultado | 0,7932 | 0,7972 |
+| 2º resultado | 0,7768 | 0,7883 |
+| 3º resultado | 0,7648 | 0,7859 |
+
+Os três melhoraram. A preocupação de que o prefixo diluísse o embedding, tornando os trechos do arquivo parecidos demais entre si, não se confirmou — a recuperação ficou ligeiramente melhor, e agora cada trecho recuperado chega ao modelo com a explicação das colunas junto.
 
 ### Observação sobre o limiar
 
@@ -59,24 +76,39 @@ Além da recuperação, os 36 PDFs passaram por uma checagem de densidade de pal
 
 | Grupo | Densidade | Avaliação |
 |---|---|---|
-| 34 arquivos | 21 a 37 | íntegros |
+| 34 arquivos | 21 a 40 | íntegros |
 | `manejo_nematoide_soja.pdf`, `milho_nematoides.pdf` | 15,7 e 14,6 | íntegros — densidade baixa explicada pelo conteúdo tabular |
-| `trigo_desempenho_agronomico_rotacao_culturas.pdf` | 0,6 | **corrompido** |
+| `trigo_desempenho_agronomico_rotacao_culturas.pdf` | 0,6 → 39,7 | corrigido pelo acompanhante `.txt` |
 
-Nenhum PDF escaneado sem OCR foi encontrado.
+Nenhum PDF escaneado sem OCR foi encontrado. A checagem roda com `node scripts/check-pdfs.mjs` e hoje não aponta nenhum problema.
 
-## Problemas em aberto
+A medição é feita por documento, não por página. Medir por página foi testado e gera falso positivo: capas de folder e páginas de tabela têm pouco texto corrido por natureza e caem abaixo do limiar sem estarem defeituosas.
 
-**1. `trigo_desempenho_agronomico_rotacao_culturas.pdf` tem a camada de texto corrompida na origem.**
+## Ressalva conhecida
 
-O arquivo abre e lê normalmente na tela — o defeito só aparece na extração, porque a fonte foi embutida sem o mapa que associa cada glifo à sua letra. "Henrique Pereira dos Santos" é extraído como `+HQULTXH3HUHLUDGRV6DQWRV`.
+**`cereais_inverno_rotacao_culturas.pdf` tem cerca de 6% do texto ilegível**, com trechos corrompidos entremeados no corpo e a página de referências inteira comprometida. É o mesmo defeito de fonte descrito abaixo, mas parcial.
 
-O deslocamento é de exatamente 29 posições na tabela de caracteres e a conversão inversa foi testada, mas descartada: os acentos não voltam, os espaços se perdem e **os números desaparecem por completo**. Como é um artigo experimental cujo valor está nos resultados numéricos (3.571 kg/ha contra 2.495 kg/ha, por exemplo), o texto recuperado viraria afirmação genérica sem o dado que a sustenta.
+Optou-se por deixar como está. Aplicar OCR trocaria 6% de lixo evidente por imprecisão espalhada no documento inteiro, já que o reconhecimento erra sobrescritos e marcadores de rodapé. Os 94% restantes estão corretos e o documento é recuperado normalmente, com 3 de 3 resultados no caso de teste.
 
-**Encaminhamento:** obter uma cópia íntegra junto à Embrapa Trigo, ou aplicar OCR. Até lá o documento está indexado mas localizável apenas pelo título.
+## Resolvido
 
-**2. Os folders com tabela precisam ser reindexados.**
+**`trigo_desempenho_agronomico_rotacao_culturas.pdf` tinha a camada de texto corrompida na origem.**
 
-A tabela de genótipos se divide em vários trechos, e o cabeçalho que identifica as colunas aparece uma única vez. Uma busca recuperou, com score 0,7768, um trecho de linhas soltas como `GNZ 7280PRO2 Geneze S R S`, sem nada indicando a qual nematoide cada letra se refere — o modelo poderia inverter as colunas e recomendar um híbrido suscetível como resistente.
+O arquivo abre e lê normalmente na tela — o defeito só aparecia na extração, porque a fonte foi embutida sem o mapa que associa cada glifo à sua letra. "Henrique Pereira dos Santos" era extraído como `+HQULTXH3HUHLUDGRV6DQWRV`.
 
-A correção já está no script de ingestão (prefixo de contexto repetido em todos os trechos desses dois arquivos), mas a reindexação ainda não rodou por esgotamento da cota diária do Gemini. **Os resultados da tabela acima são anteriores a essa correção.**
+Duas tentativas de recuperação foram feitas antes da que funcionou:
+
+- **Converter o deslocamento.** O desvio é de exatamente 29 posições na tabela de caracteres, e a conversão inversa recupera a prosa. Descartada porque os acentos não voltam, os espaços se perdem e **os números desaparecem por completo** — e o valor do artigo está justamente nos resultados numéricos.
+- **Baixar uma cópia limpa.** O arquivo foi obtido do repositório Alice, da própria Embrapa, e é byte a byte idêntico ao que já tínhamos. O defeito está no PDF publicado, não numa cópia estragada.
+
+**Solução aplicada:** OCR com o reconhecimento embutido no Windows (`scripts/ocr-pdf.ps1`), gravado como arquivo acompanhante `.txt`. A densidade do documento subiu de 0,6 para 39,7, a mais alta da base. Os dados experimentais voltaram inteiros — uma busca por "rendimento de grãos com dois anos de rotação" agora traz os trechos com 3.571 kg/ha e 2.495 kg/ha.
+
+O OCR não é transcrição perfeita: sobrescritos saem errados (`kg hL⁻¹` virou `kg 111--1`) e alguns marcadores de rodapé se perdem. Nenhum defeito afeta os valores ou o sentido.
+
+**Efeito colateral observado:** com o documento legível, ele passou a competir legitimamente com `cereais_inverno_rotacao_culturas.pdf` numa pergunta genérica sobre rotação de culturas para cereais de inverno — os dois tratam do tema. O caso de teste foi reancorado num dado que só existe no capítulo, em vez de aceitar as duas fontes.
+
+
+
+**Folders com tabela recuperados sem o cabeçalho.** A tabela de genótipos se divide em vários trechos e o cabeçalho que identifica as colunas aparecia uma única vez. Uma busca recuperava, com score 0,7768, um trecho de linhas soltas como `GNZ 7280PRO2 Geneze S R S`, sem nada indicando a qual nematoide cada letra se refere — o modelo poderia inverter as colunas e recomendar um híbrido suscetível como resistente.
+
+Corrigido em `scripts/ingest-pdfs.mjs`, que repete o cabeçalho e a legenda em todos os trechos desses dois arquivos, e reindexado em 20/10/2026. Cada trecho recuperado agora chega ao modelo com a explicação das colunas junto.
