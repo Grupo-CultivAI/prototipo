@@ -19,8 +19,7 @@ if (!host || !pineconeApiKey || !geminiApiKey) {
 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 async function buscar(pergunta) {
-    // RETRIEVAL_QUERY, e não RETRIEVAL_DOCUMENT usado na ingestão: o taskType
-    // errado derruba os scores e faz a verificação acusar falha onde não há.
+    // Medido em 25/10/2026: com ou sem taskType os scores saem idênticos; mantido por ser o uso documentado.
     const res = await ai.models.embedContent({
         model: 'gemini-embedding-001',
         contents: pergunta,
