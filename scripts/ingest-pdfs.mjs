@@ -175,6 +175,43 @@ async function upsertPinecone(vectors) {
     }, 'Pinecone upsert');
 }
 
+const prefixoDoArquivo = (fileName) => `${fileName.replace(/[^a-zA-Z0-9]/g, '_')}_chunk_`;
+
+// O upsert sobrescreve por id. Quando um arquivo reprocessado passa a gerar menos
+// trechos, os ids acima da nova contagem não são tocados e ficam órfãos no índice
+// com o conteúdo antigo — foi o que aconteceu com o PDF de trigo após o OCR.
+async function removerTrechosExcedentes(fileName, total) {
+    const prefixo = prefixoDoArquivo(fileName);
+    const excedentes = [];
+    let pagina;
+    do {
+        const url = new URL(`https://${host}/vectors/list`);
+        url.searchParams.set('namespace', namespace);
+        url.searchParams.set('prefix', prefixo);
+        if (pagina) url.searchParams.set('paginationToken', pagina);
+        const lista = await withRetry(async () => {
+            const res = await fetch(url, { headers: { 'Api-Key': pineconeApiKey, 'X-Pinecone-Api-Version': '2025-04' } });
+            if (!res.ok) throw new Error(`Pinecone List Error ${res.status}: ${await res.text()}`);
+            return res.json();
+        }, 'Pinecone list');
+        for (const { id } of lista.vectors ?? []) {
+            if (Number(id.slice(prefixo.length)) >= total) excedentes.push(id);
+        }
+        pagina = lista.pagination?.next;
+    } while (pagina);
+
+    if (excedentes.length === 0) return;
+    await withRetry(async () => {
+        const res = await fetch(`https://${host}/vectors/delete`, {
+            method: 'POST',
+            headers: { 'Api-Key': pineconeApiKey, 'Content-Type': 'application/json', 'X-Pinecone-Api-Version': '2025-04' },
+            body: JSON.stringify({ ids: excedentes, namespace }),
+        });
+        if (!res.ok) throw new Error(`Pinecone Delete Error ${res.status}: ${await res.text()}`);
+    }, 'Pinecone delete');
+    console.log(`   └ removido(s) ${excedentes.length} trecho(s) antigo(s) que sobravam de uma versão anterior do arquivo.`);
+}
+
 async function main() {
     if (!fs.existsSync(FOLDER_PATH)) {
         console.error(`❌ Pasta "${FOLDER_PATH}" não encontrada.`);
@@ -219,7 +256,7 @@ async function main() {
                 const texto = prefixo ? `${prefixo}\n\n${chunk.texto}` : chunk.texto;
                 const vector = await getEmbedding(texto);
 
-                const id = `${fileName.replace(/[^a-zA-Z0-9]/g, '_')}_chunk_${j}`;
+                const id = `${prefixoDoArquivo(fileName)}${j}`;
                 vectors.push({
                     id,
                     values: vector,
@@ -239,6 +276,7 @@ async function main() {
                 const batch = vectors.slice(k, k + 100);
                 await upsertPinecone(batch);
             }
+            await removerTrechosExcedentes(fileName, vectors.length);
 
             console.log(`   ✅ Enviado(s) ${vectors.length} vetor(es) ao Pinecone!`);
             state.processedFiles.push(fileName);
