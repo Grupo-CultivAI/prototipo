@@ -23,7 +23,9 @@ const ChatMessageSchema = new mongoose.Schema({
         form: mongoose.Schema.Types.Mixed,
         submittedData: mongoose.Schema.Types.Mixed,
         fontes: mongoose.Schema.Types.Mixed,
-        falhou: Boolean
+        falhou: Boolean,
+        // Dados que a IA pediu nesta resposta (ver DADOS_PEDIVEIS em api/llm/route.ts)
+        pediu: { type: [String], default: undefined }
     }
 }, { timestamps: true });
 

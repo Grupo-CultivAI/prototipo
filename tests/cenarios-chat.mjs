@@ -1,7 +1,7 @@
 // Cenários de regressão do chat (Frente 1). Roda contra um servidor no ar:
 //   npm run dev            (em outro terminal)
 //   npm run cenarios-chat  (ou: node tests/cenarios-chat.mjs http://localhost:3000)
-// Cria usuários descartáveis e os apaga ao final. Consome ~10 chamadas do Gemini e da Groq.
+// Cria usuários descartáveis e os apaga ao final. Consome ~12 chamadas do Gemini e da Groq.
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local', quiet: true });
@@ -26,7 +26,8 @@ async function perguntar(cookie, pergunta) {
     const r = await fetch(`${BASE}/api/llm`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ question: pergunta }) });
     const d = await r.json().catch(() => ({}));
     const texto = d.parsedData?.resposta || d.message || '';
-    return { status: r.status, texto, fontes: d.fontes || [], citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
+    const campos = (d.parsedData?.campos_necessarios || []).map((c) => c.chave);
+    return { status: r.status, texto, fontes: d.fontes || [], campos, citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
 }
 
 function registrar(cenario, verificacoes, r) {
@@ -49,6 +50,7 @@ try {
         ['cita a Embrapa', r.citaEmbrapa, true],
         ['sem aviso de número sem respaldo', !r.aviso, false],
         ['menciona algo do perfil (arenoso/Dourados/MS)', /arenos|dourados|\bms\b|mato grosso do sul/i.test(r.texto), false],
+        ['não pede dado que o perfil já tem', r.campos.length === 0, true],
     ], r);
 
     // 2. Fora do tema
@@ -72,10 +74,29 @@ try {
     r = await perguntar(b, 'E se o solo for arenoso?');
     registrar('4. Continuação ("e se o solo for arenoso?")', [
         ['responde (HTTP 200)', r.status === 200, true],
-        ['mantém o assunto (menciona milho ou rotação)', /milho|rota[cç][aã]o/i.test(r.texto), true],
+        ['mantém o assunto (menciona milho, rotação ou sucessão)', /milho|rota[cç][aã]o|sucess[aã]o/i.test(r.texto), true],
     ], r);
 
-    // 5. Limite de uso: 5 perguntas seguidas, a 5ª deve ser bloqueada pelo CultivAI.
+    // 5. Pedido de dado que falta no perfil. Pedir ou não é decisão do modelo; o que não pode
+    // acontecer é a marca [PEDIR: ...] chegar ao produtor, pedir o que já está no perfil ou
+    // insistir na pergunta seguinte.
+    const e = await novoUsuario('pedido');
+    await fetch(`${BASE}/api/propriedade`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: e },
+        body: JSON.stringify({ tipoSolo: 'argiloso', culturasHistorico: ['milho'] }),
+    });
+    r = await perguntar(e, 'O que devo plantar depois do milho na minha propriedade?');
+    const pediu = r.campos.length > 0;
+    const seguinte = await perguntar(e, 'E depois da soja?');
+    registrar('5. Pedido de dado que falta (só a localização)', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['a marca [PEDIR] não aparece no texto', !/\[PEDIR/i.test(r.texto + seguinte.texto), true],
+        ['só pede o que falta (estado/cidade)', r.campos.every((c) => c === 'estado' || c === 'cidade'), true],
+        ['não pede de novo na pergunta seguinte', !pediu || seguinte.campos.length === 0, true],
+        ['pediu a localização (decisão do modelo)', pediu, false],
+    ], { ...r, texto: `[campos pedidos: ${r.campos.join(', ') || 'nenhum'}] ${r.texto}` });
+
+    // 6. Limite de uso: 5 perguntas seguidas, a 5ª deve ser bloqueada pelo CultivAI.
     // A espera libera o limite por minuto da Groq, gasto pelos cenários anteriores; mesmo assim
     // as 4 primeiras podem falhar por ele, e isso é observação, não falha do limite do CultivAI.
     console.log('aguardando 60s para o limite por minuto da Groq se recompor...');
@@ -83,7 +104,7 @@ try {
     const c = await novoUsuario('limite');
     const status = [];
     for (let i = 1; i <= 5; i++) status.push((await perguntar(c, `Pergunta rápida ${i}: o que é adubação verde?`)).status);
-    registrar('5. Limite de 4 por minuto', [
+    registrar('6. Limite de 4 por minuto', [
         ['a 5ª é bloqueada pelo CultivAI (HTTP 429)', status[4] === 429, true],
         ['as 4 primeiras respondem (depende da folga da Groq)', status.slice(0, 4).every((s) => s === 200), false],
     ], { status: status.join(', '), texto: '', fontes: [] });
