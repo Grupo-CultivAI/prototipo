@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { MapPin, Sprout, History, Target, ChevronDown, ChevronUp, Droplets, FlaskConical, AlertCircle, Info } from 'lucide-react';
+import styles from '../paginas.module.css';
 
 const estadosBr = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
@@ -149,7 +150,7 @@ export default function PerfilPropriedade() {
 
     return (
         <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto', paddingBottom: '4rem' }}>
-            <h1 style={{ fontSize: '2.6rem', marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>Meu Cultivo</h1>
+            <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>Meu Cultivo</h1>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '3.5rem', fontSize: '1.1rem', maxWidth: '650px', lineHeight: '1.6' }}>
                 Complete os dados da sua área abaixo para que a Inteligência Artificial possa fornecer diagnósticos precisos e planos direcionados à sua realidade.
             </p>
@@ -160,7 +161,7 @@ export default function PerfilPropriedade() {
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <AccordionHeader id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Ajuda a IA a entender seu regime de chuvas e clima." />
                     {openSection === 'localizacao' && (
-                        <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
                                 <div style={{ display: 'flex', padding: '1rem', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '12px', alignItems: 'flex-start', gap: '12px' }}>
                                     <Info size={20} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
@@ -199,7 +200,7 @@ export default function PerfilPropriedade() {
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <AccordionHeader id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
                     {openSection === 'solo' && (
-                        <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div>
                                 <label style={labelStyle} title="Influencia diretamente na retenção de água e nutrientes.">Tipo de Solo * ⓘ</label>
                                 <select {...register('tipoSolo')} style={inputStyle}>
@@ -246,7 +247,7 @@ export default function PerfilPropriedade() {
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <AccordionHeader id="historico" icon={History} title="3. Histórico da Área" description="Culturas anteriores e desafios enfrentados." />
                     {openSection === 'historico' && (
-                        <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
                                 <label style={labelStyle}>Culturas plantadas nos últimos anos <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(separe por vírgula)</span></label>
                                 <input placeholder="Ex: Soja, Milho safrinha, Braquiária" {...register('culturas')} style={inputStyle} />
@@ -267,7 +268,7 @@ export default function PerfilPropriedade() {
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
                                 <label style={labelStyle}>Problemas recentes observados (múltipla escolha)</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.8rem' }}>
+                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }}>
                                     {['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', 'Nenhum'].map(prob => (
                                         <label key={prob} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
                                             <input type="checkbox" value={prob} {...register('problemasRecentes')} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
@@ -287,7 +288,7 @@ export default function PerfilPropriedade() {
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>
                                 <label style={labelStyle}>Metas Principais (múltipla escolha)</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.8rem' }}>
+                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }}>
                                     {['Aumentar produtividade', 'Recuperar solo', 'Reduzir custos', 'Diversificar produção', 'Transição para orgânico'].map(obj => (
                                         <label key={obj} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
                                             <input type="checkbox" value={obj} {...register('objetivos')} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />

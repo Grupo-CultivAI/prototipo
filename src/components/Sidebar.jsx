@@ -3,6 +3,13 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import folha from "@/assets/leaves-of-a-plant.png";
+import styles from './Sidebar.module.css';
+
+const LINKS = [
+    { href: '/chatbot', icone: '🤖', rotulo: 'Assistente AI' },
+    { href: '/perfil-propriedade', icone: '🌾', rotulo: 'Meu Cultivo' },
+    { href: '/conta', icone: '👤', rotulo: 'Minha Conta' },
+];
 
 export default function Sidebar() {
     const router = useRouter();
@@ -15,24 +22,9 @@ export default function Sidebar() {
         router.push("/login");
     };
 
-    const isActive = (path) => pathname === path
-        ? { background: 'var(--primary-dark)', color: 'white', fontWeight: '600', boxShadow: '0 4px 12px rgba(6,64,43,0.15)' }
-        : { color: 'var(--text-secondary)' };
-
     return (
-        <aside style={{
-            width: '280px',
-            height: '100vh',
-            backgroundColor: 'var(--surface)',
-            borderRight: '1px solid var(--border)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '2rem 1.5rem',
-            position: 'sticky',
-            top: 0,
-            zIndex: 40
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '2.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--border)' }}>
+        <aside className={styles.sidebar}>
+            <div className={styles.marca}>
                 <div style={{ background: 'var(--primary-dark)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Image src={folha} alt="Logo CultivAI" width={24} height={24} style={{ filter: 'brightness(0) invert(1)' }} />
                 </div>
@@ -42,31 +34,17 @@ export default function Sidebar() {
                 </div>
             </div>
 
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', flex: 1 }}>
-                <Link href="/chatbot" style={{ padding: '1rem', borderRadius: '12px', textDecoration: 'none', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem', ...isActive('/chatbot') }}
-                    onMouseOver={(e) => { if (pathname !== '/chatbot') e.target.style.background = 'var(--bg)' }}
-                    onMouseOut={(e) => { if (pathname !== '/chatbot') e.target.style.background = 'transparent' }}>
-                    <span style={{ fontSize: '1.2rem' }}>🤖</span> Assistente AI
-                </Link>
-                <Link href="/perfil-propriedade" style={{ padding: '1rem', borderRadius: '12px', textDecoration: 'none', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem', ...isActive('/perfil-propriedade') }}
-                    onMouseOver={(e) => { if (pathname !== '/perfil-propriedade') e.target.style.background = 'var(--bg)' }}
-                    onMouseOut={(e) => { if (pathname !== '/perfil-propriedade') e.target.style.background = 'transparent' }}>
-                    <span style={{ fontSize: '1.2rem' }}>🌾</span> Meu Cultivo
-                </Link>
-                <Link href="/conta" style={{ padding: '1rem', borderRadius: '12px', textDecoration: 'none', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem', ...isActive('/conta') }}
-                    onMouseOver={(e) => { if (pathname !== '/conta') e.target.style.background = 'var(--bg)' }}
-                    onMouseOut={(e) => { if (pathname !== '/conta') e.target.style.background = 'transparent' }}>
-                    <span style={{ fontSize: '1.2rem' }}>👤</span> Minha Conta
-                </Link>
+            <nav className={styles.nav}>
+                {LINKS.map(({ href, icone, rotulo }) => (
+                    <Link key={href} href={href} className={`${styles.link} ${pathname === href ? styles.ativo : ''}`}>
+                        <span className={styles.icone}>{icone}</span> {rotulo}
+                    </Link>
+                ))}
             </nav>
 
-            <div style={{ marginTop: 'auto' }}>
-                <button
-                    onClick={handleLogout}
-                    style={{ width: '100%', padding: '1rem', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    onMouseOver={(e) => { e.target.style.background = '#FEE2E2'; e.target.style.transform = 'translateY(-2px)' }}
-                    onMouseOut={(e) => { e.target.style.background = '#FEF2F2'; e.target.style.transform = 'translateY(0)' }}
-                >
+            <div className={styles.rodape}>
+                <button onClick={handleLogout} className={styles.sair}>
+                    <span className={styles.iconeSair} aria-hidden="true">🚪</span>
                     Sair da Conta
                 </button>
             </div>

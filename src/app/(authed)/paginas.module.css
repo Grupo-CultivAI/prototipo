@@ -1,0 +1,162 @@
+/* Estilos das páginas autenticadas que precisam mudar no celular. O restante
+   continua inline nos componentes; aqui ficam só as propriedades que o media
+   query precisa sobrescrever (estilo inline não pode ser sobrescrito por classe). */
+
+/* --- Estrutura (layout.js) --- */
+.conteudo {
+    padding: 3rem 2rem;
+}
+
+/* --- Títulos e grades --- */
+.tituloPagina {
+    font-size: 2.6rem;
+}
+
+/* minmax(0, 1fr) em vez de 1fr: uma coluna 1fr não encolhe abaixo da maior
+   palavra, e um email longo empurrava a coluna para fora do cartão. */
+.grade2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-wrap: anywhere;
+}
+
+.cartaoConta {
+    padding: 3.5rem;
+}
+
+/* --- Chat --- */
+.chat {
+    height: calc(100vh - 6rem);
+}
+
+.chatCabecalho {
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.chatTitulo {
+    font-size: 1.8rem;
+}
+
+.chatMensagens {
+    padding: 2rem;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.bolha {
+    max-width: 78%;
+}
+
+/* overflow-wrap: palavra longa sem espaço (nome de arquivo, URL) vazava do balão
+   no celular, já que não há onde quebrar a linha. */
+.balao {
+    padding: 1.25rem 1.5rem;
+    overflow-wrap: anywhere;
+}
+
+.chatEntrada {
+    padding: 1rem;
+}
+
+.botaoEnviar {
+    padding: 0 2rem;
+}
+
+/* --- Fontes consultadas, abaixo da resposta --- */
+.fontes {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    white-space: normal;
+}
+
+.fontesTitulo {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.fontes ul {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.fontes li {
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .shell {
+        flex-direction: column;
+    }
+
+    /* O espaço de baixo reserva lugar para a navegação fixa no rodapé. */
+    .conteudo {
+        display: block;
+        padding: 1rem 0.75rem calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .tituloPagina {
+        font-size: 1.8rem;
+    }
+
+    .grade2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cartaoConta {
+        padding: 1.5rem;
+    }
+
+    /* 6.5rem = os paddings de .conteudo acima; dvh desconta a barra do navegador. */
+    .chat {
+        height: calc(100dvh - 6.5rem - env(safe-area-inset-bottom));
+    }
+
+    .chatCabecalho {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chatTitulo {
+        font-size: 1.3rem;
+    }
+
+    .chatSubtitulo,
+    .rotuloBotao {
+        display: none;
+    }
+
+    .chatMensagens {
+        padding: 1rem;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .bolha {
+        max-width: 90%;
+    }
+
+    .balao {
+        padding: 0.9rem 1rem;
+    }
+
+    .chatEntrada {
+        padding: 0.5rem;
+    }
+
+    .botaoEnviar {
+        padding: 0 1.2rem;
+    }
+}
