@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
+import { comTitulos } from '@/lib/documentos';
 
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
@@ -36,7 +37,7 @@ export async function GET() {
             sender: msg.sender,
             form: msg.metadata?.form,
             submittedData: msg.metadata?.submittedData,
-            fontes: msg.metadata?.fontes
+            fontes: comTitulos(msg.metadata?.fontes)
         }));
 
         return NextResponse.json({ success: true, history: formattedHistory });

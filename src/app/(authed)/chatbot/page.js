@@ -10,12 +10,17 @@ import styles from "../paginas.module.css";
 // fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
 const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
 
+// O título vem do catálogo (src/lib/documentos.json); sem ele, o nome do arquivo arrumado.
 const rotuloFonte = (fonte) => {
   const arquivo = typeof fonte === "string" ? fonte : fonte?.fonte;
   if (!arquivo) return null;
-  const nome = String(arquivo).replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
+  const nome = fonte?.titulo || String(arquivo).replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
   const paginas = Array.isArray(fonte?.paginas) && fonte.paginas.length ? ` (p. ${fonte.paginas.join(", ")} do PDF)` : "";
-  return nome.charAt(0).toUpperCase() + nome.slice(1) + paginas;
+  const titulo = nome.charAt(0).toUpperCase() + nome.slice(1);
+  if (/^https:\/\//.test(fonte?.url || "")) {
+    return <><a href={fonte.url} target="_blank" rel="noopener noreferrer">{titulo}</a>{paginas}</>;
+  }
+  return titulo + paginas;
 };
 
 export default function ChatCultivAI() {
