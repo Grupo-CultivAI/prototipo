@@ -229,7 +229,6 @@ export default function ChatCultivAI() {
               border: msg.sender === "user" ? 'none' : '1px solid var(--border)',
               borderRadius: msg.sender === "user" ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
               lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
               fontSize: '1rem',
               fontWeight: msg.sender === "user" ? '400' : '500'
             }}>
@@ -277,8 +276,9 @@ export default function ChatCultivAI() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-          placeholder="Comece digitando sua dúvida..."
-          style={{ flex: 1, minWidth: 0, padding: '0.8rem 1.5rem', borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
+          placeholder="Digite sua dúvida..."
+          className={styles.campoTexto}
+          style={{ flex: 1, minWidth: 0, borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
         <button
           onClick={handleSendMessage}

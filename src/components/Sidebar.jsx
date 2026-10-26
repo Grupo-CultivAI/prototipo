@@ -37,7 +37,7 @@ export default function Sidebar() {
             <nav className={styles.nav}>
                 {LINKS.map(({ href, icone, rotulo }) => (
                     <Link key={href} href={href} className={`${styles.link} ${pathname === href ? styles.ativo : ''}`}>
-                        <span className={styles.icone}>{icone}</span> {rotulo}
+                        <span className={styles.icone}>{icone}</span> <span className={styles.rotulo}>{rotulo}</span>
                     </Link>
                 ))}
             </nav>
@@ -45,7 +45,7 @@ export default function Sidebar() {
             <div className={styles.rodape}>
                 <button onClick={handleLogout} className={styles.sair}>
                     <span className={styles.iconeSair} aria-hidden="true">🚪</span>
-                    Sair da Conta
+                    <span className={styles.rotulo}>Sair da Conta</span>
                 </button>
             </div>
         </aside>

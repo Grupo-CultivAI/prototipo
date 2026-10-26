@@ -86,8 +86,9 @@
 }
 
 /* No celular a barra lateral vira uma navegação fixa no rodapé: com 280px de
-   largura ela ocupava mais de 70% de uma tela de 390px e cortava o conteúdo. */
-@media (max-width: 768px) {
+   largura ela ocupava mais de 70% de uma tela de 390px e cortava o conteúdo.
+   A condição de altura cobre o celular deitado, que pode passar de 768px de largura. */
+@media (max-width: 768px), (max-height: 500px) {
     .sidebar {
         position: fixed;
         top: auto;
@@ -147,5 +148,22 @@
     .iconeSair {
         display: inline;
         font-size: 1.2rem;
+    }
+}
+
+/* Celular deitado: só os ícones, para sobrar altura para o conteúdo. */
+@media (max-height: 500px) {
+    .sidebar {
+        padding-top: 0.2rem;
+        padding-bottom: calc(0.2rem + env(safe-area-inset-bottom));
+    }
+
+    .link,
+    .sair {
+        padding: 0.3rem 0.25rem;
+    }
+
+    .rotulo {
+        display: none;
     }
 }
