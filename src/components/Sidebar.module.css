@@ -1,0 +1,169 @@
+.sidebar {
+    width: 280px;
+    height: 100vh;
+    flex-shrink: 0;
+    background-color: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 2.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    flex: 1;
+}
+
+.link {
+    padding: 1rem;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.link:hover {
+    background: var(--bg);
+}
+
+.ativo,
+.ativo:hover {
+    background: var(--primary-dark);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(6, 64, 43, 0.15);
+}
+
+.icone {
+    font-size: 1.2rem;
+}
+
+.iconeSair {
+    display: none;
+}
+
+.rodape {
+    margin-top: auto;
+}
+
+.sair {
+    width: 100%;
+    padding: 1rem;
+    background: #FEF2F2;
+    color: #EF4444;
+    border: 1px solid #FEE2E2;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.sair:hover {
+    background: #FEE2E2;
+    transform: translateY(-2px);
+}
+
+/* No celular a barra lateral vira uma navegação fixa no rodapé: com 280px de
+   largura ela ocupava mais de 70% de uma tela de 390px e cortava o conteúdo.
+   A condição de altura cobre o celular deitado, que pode passar de 768px de largura. */
+@media (max-width: 768px), (max-height: 500px) {
+    .sidebar {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0.25rem;
+        padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+        border-right: none;
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 16px rgba(6, 64, 43, 0.08);
+        z-index: 50;
+    }
+
+    .marca {
+        display: none;
+    }
+
+    .nav {
+        flex-direction: row;
+        gap: 0.25rem;
+    }
+
+    .link,
+    .sair {
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        padding: 0.45rem 0.25rem;
+        font-size: 0.7rem;
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    .ativo,
+    .ativo:hover {
+        box-shadow: none;
+    }
+
+    .rodape {
+        margin-top: 0;
+        display: flex;
+        flex: 0 0 22%;
+    }
+
+    .sair,
+    .sair:hover {
+        width: 100%;
+        transform: none;
+    }
+
+    .iconeSair {
+        display: inline;
+        font-size: 1.2rem;
+    }
+}
+
+/* Celular deitado: só os ícones, para sobrar altura para o conteúdo. */
+@media (max-height: 500px) {
+    .sidebar {
+        padding-top: 0.2rem;
+        padding-bottom: calc(0.2rem + env(safe-area-inset-bottom));
+    }
+
+    .link,
+    .sair {
+        padding: 0.3rem 0.25rem;
+    }
+
+    .rotulo {
+        display: none;
+    }
+}

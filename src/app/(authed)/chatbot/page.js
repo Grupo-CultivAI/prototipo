@@ -4,6 +4,20 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import DynamicForm from "@/components/DynamicForm";
 import { Copy, Check, RefreshCw } from "lucide-react";
+import styles from "../paginas.module.css";
+
+// A API devolve os documentos consultados sem filtrar por relevância: numa
+// pergunta fora do tema eles não têm relação com a resposta. Por isso as fontes
+// só aparecem quando o próprio texto atribuiu algo à Embrapa.
+const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
+
+const rotuloFonte = (fonte) => {
+  const arquivo = typeof fonte === "string" ? fonte : fonte?.fonte;
+  if (!arquivo) return null;
+  const nome = String(arquivo).replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
+  const pagina = typeof fonte === "object" && fonte?.pagina ? ` (p. ${fonte.pagina} do PDF)` : "";
+  return nome.charAt(0).toUpperCase() + nome.slice(1) + pagina;
+};
 
 export default function ChatCultivAI() {
   const router = useRouter();
@@ -118,6 +132,7 @@ export default function ChatCultivAI() {
 
       let respostaTexto = "Desculpe, ocorreu um erro ao se comunicar com o CultivAI.";
       let formData = null;
+      let fontes = [];
 
       // --- INÍCIO DA ALTERAÇÃO 1 ---
       if (data.success && data.parsedData) {
@@ -125,12 +140,13 @@ export default function ChatCultivAI() {
         if (data.parsedData.tipo === "coleta_dados") {
           formData = data.parsedData;
         }
+        if (Array.isArray(data.fontes)) fontes = data.fontes;
       } else if (data.message) {
         respostaTexto = data.message; // mostra o motivo real (limite, 401, Groq indisponível...)
       }
       // --- FIM DA ALTERAÇÃO 1 ---
 
-      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: respostaTexto, form: formData } : msg));
+      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: respostaTexto, form: formData, fontes } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
     }
@@ -177,11 +193,11 @@ export default function ChatCultivAI() {
   if (loading) return <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Carregando a sua experiência...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 6rem)', backgroundColor: 'transparent' }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem 2rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent' }}>
+      <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
+          <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
+          <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button 
@@ -191,30 +207,28 @@ export default function ChatCultivAI() {
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
             <RefreshCw size={16} />
-            Reiniciar Chat
+            <span className={styles.rotuloBotao}>Reiniciar Chat</span>
           </button>
           <button 
             onClick={copyHistory}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
           >
             {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Copiado!' : 'Copiar Log Debug'}
+            <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar Log Debug'}</span>
           </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
+      <div className={styles.chatMensagens} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
         {messages.map((msg) => (
-          <div key={msg.id} style={{ alignSelf: msg.sender === "user" ? 'flex-end' : 'flex-start', maxWidth: '78%', animation: 'fadeIn 0.3s ease', width: (msg.form || msg.submittedData) ? '100%' : 'auto' }}>
-            <div style={{
+          <div key={msg.id} className={styles.bolha} style={{ alignSelf: msg.sender === "user" ? 'flex-end' : 'flex-start', animation: 'fadeIn 0.3s ease', width: (msg.form || msg.submittedData) ? '100%' : 'auto' }}>
+            <div className={styles.balao} style={{
               background: msg.sender === "user" ? 'var(--primary-dark)' : 'var(--bg)',
               color: msg.sender === "user" ? 'var(--white)' : 'var(--text-primary)',
               boxShadow: msg.sender === "user" ? '0 4px 12px rgba(6,64,43,0.15)' : 'var(--shadow-sm)',
               border: msg.sender === "user" ? 'none' : '1px solid var(--border)',
-              padding: '1.25rem 1.5rem',
               borderRadius: msg.sender === "user" ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
               lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
               fontSize: '1rem',
               fontWeight: msg.sender === "user" ? '400' : '500'
             }}>
@@ -226,6 +240,15 @@ export default function ChatCultivAI() {
                   {msg.text}
                 </ReactMarkdown>
               ) : null}
+
+              {msg.sender === "bot" && msg.fontes?.length > 0 && citouEmbrapa(msg.text) && (
+                <div className={styles.fontes}>
+                  <span className={styles.fontesTitulo}>📚 Documentos da Embrapa consultados</span>
+                  <ul>
+                    {msg.fontes.map(rotuloFonte).filter(Boolean).map((rotulo, i) => <li key={i}>{rotulo}</li>)}
+                  </ul>
+                </div>
+              )}
 
               {msg.form && (
                 <DynamicForm 
@@ -247,18 +270,20 @@ export default function ChatCultivAI() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', background: 'var(--surface)', padding: '1rem', borderRadius: '100px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+      <div className={styles.chatEntrada} style={{ display: 'flex', gap: '12px', background: 'var(--surface)', borderRadius: '100px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-          placeholder="Comece digitando sua dúvida..."
-          style={{ flex: 1, padding: '0.8rem 1.5rem', borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
+          placeholder="Digite sua dúvida..."
+          className={styles.campoTexto}
+          style={{ flex: 1, minWidth: 0, borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
         <button
           onClick={handleSendMessage}
-          style={{ padding: '0 2rem', background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)' }}
+          className={styles.botaoEnviar}
+          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)' }}
           onMouseOver={(e) => { e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
           onMouseOut={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = 'var(--primary)'; }}
         >
