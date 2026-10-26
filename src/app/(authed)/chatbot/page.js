@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
-import { Copy, Check, RefreshCw, Printer, Mic, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -43,6 +43,9 @@ function sugestoesDePergunta(p) {
   ];
 }
 
+const SAUDACAO = "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?";
+const conversaNova = () => [{ id: crypto.randomUUID(), text: SAUDACAO, sender: "bot" }];
+
 const reconhecimentoDeVoz = () => typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
 export default function ChatCultivAI() {
@@ -54,6 +57,8 @@ export default function ChatCultivAI() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [restantes, setRestantes] = useState(null);
+  // Conversa aberta. null até a primeira pergunta de quem nunca usou o chat: a API cria.
+  const [conversaId, setConversaId] = useState(null);
   const [ouvindo, setOuvindo] = useState(false);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
@@ -87,14 +92,11 @@ export default function ChatCultivAI() {
           const dataH = await resHistory.json();
           if (!ativo) return;
           if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
+          setConversaId(dataH.conversaId ?? null);
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
           } else {
-            setMessages([{
-              id: 1,
-              text: "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?",
-              sender: "bot"
-            }]);
+            setMessages(conversaNova());
           }
         }
 
@@ -138,17 +140,28 @@ export default function ChatCultivAI() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRestartChat = async () => {
-    if (!confirm("Tem certeza que deseja reiniciar o chat? Todo o histórico atual será apagado.")) return;
+  // Começa do zero sem apagar nada: a conversa anterior fica guardada no banco.
+  const novaConversa = async () => {
     try {
-      await fetch('/api/chat/history', { method: 'DELETE' });
-      setMessages([{
-        id: crypto.randomUUID(),
-        text: "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?",
-        sender: "bot"
-      }]);
+      const r = await fetch('/api/conversas', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message);
+      setConversaId(d.conversaId);
+      setMessages(conversaNova());
     } catch (err) {
-      console.error("Erro ao reiniciar chat", err);
+      console.error("Erro ao abrir nova conversa", err);
+    }
+  };
+
+  const apagarConversa = async () => {
+    if (!confirm("Apagar esta conversa? As mensagens dela não poderão ser recuperadas.")) return;
+    try {
+      const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' });
+      const d = await r.json();
+      setConversaId(d.conversaId ?? null);
+      setMessages(conversaNova());
+    } catch (err) {
+      console.error("Erro ao apagar conversa", err);
     }
   };
 
@@ -173,7 +186,8 @@ export default function ChatCultivAI() {
           propriedade: currentProp,
           history: history, // Pass history
           submittedData: submittedData,
-          respostaAoPedido
+          respostaAoPedido,
+          conversaId
         })
       });
 
@@ -191,6 +205,7 @@ export default function ChatCultivAI() {
         }
         if (Array.isArray(data.fontes)) fontes = data.fontes;
         if (typeof data.restantesHoje === "number") setRestantes(data.restantesHoje);
+        if (data.conversaId) setConversaId(data.conversaId);
       } else if (data.message) {
         respostaTexto = data.message; // mostra o motivo real (limite, 401, Groq indisponível...)
       }
@@ -295,14 +310,23 @@ export default function ChatCultivAI() {
           )}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button 
-            onClick={handleRestartChat}
+          <button
+            onClick={novaConversa}
+            title="Começar uma conversa nova. Esta fica guardada."
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+          >
+            <MessageSquarePlus size={16} />
+            <span className={styles.rotuloBotao}>Nova conversa</span>
+          </button>
+          <button
+            onClick={apagarConversa}
+            title="Apagar esta conversa"
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
             onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'rgb(239,68,68)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
-            <RefreshCw size={16} />
-            <span className={styles.rotuloBotao}>Reiniciar Chat</span>
+            <Trash2 size={16} />
+            <span className={styles.rotuloBotao}>Apagar conversa</span>
           </button>
           <button
             onClick={() => window.print()}

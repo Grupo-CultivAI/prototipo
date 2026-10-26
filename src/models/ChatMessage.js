@@ -6,6 +6,12 @@ const ChatMessageSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    // Mensagens gravadas antes das conversas existirem são migradas na primeira leitura
+    // (ver lib/conversas.ts), por isso o campo não é obrigatório.
+    conversaId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Conversa'
+    },
     text: {
         type: String,
         required: true
@@ -30,12 +36,31 @@ const ChatMessageSchema = new mongoose.Schema({
         pediu: { type: [String], default: undefined },
         // Pergunta que esta resposta atende, e o resultado da busca na base (relatorio-chat)
         perguntaId: mongoose.Schema.Types.ObjectId,
-        busca: { maiorScore: Number, trechosUsados: Number },
+        busca: {
+            texto: String, // o que foi buscado: a pergunta, ou ela junto com a anterior
+            maiorScore: Number,
+            trechosUsados: Number
+        },
+        // Como a resposta foi gerada, para entender erros e custo
+        geracao: {
+            modelo: String,
+            tokensEntrada: Number,
+            tokensSaida: Number,
+            duracaoMs: Number,
+            revisada: Boolean, // a checagem de números pediu que o modelo reescrevesse
+            comAviso: Boolean // a revisão também falhou e a resposta saiu com aviso
+        },
+        // O que a IA sabia da propriedade quando respondeu (o perfil pode mudar depois)
+        contexto: {
+            perfil: String,
+            clima: String
+        },
         // 👍/👎 do produtor (POST /api/chat/avaliacao)
         avaliacao: { type: String, enum: ['boa', 'ruim'] }
     }
 }, { timestamps: true });
 
 ChatMessageSchema.index({ userId: 1, createdAt: -1 });
+ChatMessageSchema.index({ conversaId: 1, createdAt: -1 });
 
 export default mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema);

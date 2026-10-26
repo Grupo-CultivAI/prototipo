@@ -36,8 +36,9 @@ src/
         login/                POST → autentica e seta cookie JWT
         register/              POST → cria usuário
         reset-password/        POST → redefine a senha por email ⚠️ sem verificação de identidade (ver Status do projeto)
-      chat/history/           GET/DELETE → histórico de mensagens do usuário e perguntas restantes no dia
+      chat/history/           GET → mensagens da conversa atual e perguntas restantes no dia; DELETE → apaga a conversa
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
+      conversas/              POST → "Nova conversa" (a anterior fica guardada)
       llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
       propriedade/            GET/POST → CRUD do perfil da propriedade
       user/                   GET → dados do usuário logado
@@ -48,8 +49,9 @@ src/
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
     limites.ts                limite de perguntas por minuto e por dia (usado pelo chat e pelo contador)
+    conversas.ts              conversa atual de cada pessoa e migração do histórico antigo
     schemas/propriedadeSchema.ts
-  models/                   → User, Propriedade, ChatMessage (Mongoose)
+  models/                   → User, Propriedade, Conversa, ChatMessage (Mongoose)
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
@@ -79,8 +81,8 @@ Formulário multi-seção (`/perfil-propriedade`) com dados de localização (co
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
-2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini. "Reiniciar chat" apaga a conversa, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
-3. Lê do MongoDB o perfil da propriedade e as últimas mensagens da conversa. O perfil vem do banco, nunca do navegador.
+2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini. O limite é por pessoa, não por conversa. "Apagar conversa" apaga as mensagens, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
+3. Lê do MongoDB o perfil da propriedade e as últimas mensagens **da conversa aberta**. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
 5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
 6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil.
@@ -97,6 +99,10 @@ Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em 
 ```bash
 npm run cenarios-chat
 ```
+
+**Conversas:** o botão "Nova conversa" começa do zero sem apagar nada. O contexto da IA (mensagens anteriores e a junção de perguntas curtas com a anterior) fica restrito à conversa aberta, para uma dúvida antiga sobre outro assunto não contaminar a nova. A tela mostra sempre a conversa mais recente; as anteriores ficam guardadas na coleção `conversas`, prontas para uma futura lista. O histórico gravado antes das conversas existirem vira uma conversa na primeira vez que a pessoa abre o chat.
+
+**O que fica registrado de cada resposta** (`ChatMessage`): quem perguntou (`userId`), em que conversa (`conversaId`), a pergunta que ela responde (`metadata.perguntaId`), as fontes usadas, a busca (texto buscado, maior score, trechos usados), a geração (modelo, tokens de entrada e saída, tempo de resposta, se a checagem de números pediu revisão e se a resposta saiu com aviso), o perfil e o clima que a IA considerou naquele momento, o pedido de dado, se houve, e a avaliação 👍/👎.
 
 **Na tela do chat** o produtor também encontra: sugestões de primeira pergunta montadas com o perfil, o contador de perguntas restantes no dia, 👍/👎 em cada resposta, o botão Imprimir (que gera papel ou PDF só com a conversa, pelo próprio navegador) e o microfone para ditar a pergunta. O microfone usa o reconhecimento de fala do navegador, gratuito, e aparece só onde ele existe (Chrome e Edge, inclusive no Android).
 
