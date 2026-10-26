@@ -3,6 +3,7 @@ import path from 'node:path';
 import { extractText } from 'unpdf';
 
 const FOLDER_PATH = process.argv[2] || './docs-embrapa';
+const CATALOGO = JSON.parse(fs.readFileSync(new URL('../src/lib/documentos.json', import.meta.url), 'utf-8'));
 const CHUNK_SIZE = 800;
 const CHUNK_OVERLAP = 100;
 
@@ -104,6 +105,13 @@ for (const arquivo of arquivos) {
 
 console.log('-'.repeat(100));
 console.log(`\nTrechos previstos: ${totalTrechos} (= chamadas de embedding que a ingestão fará)`);
+
+// Sem título no catálogo a ingestão funciona, mas o produtor vê o nome do arquivo na lista de fontes.
+const semTitulo = arquivos.filter((a) => !CATALOGO[a]);
+if (semTitulo.length) {
+    console.log(`\n📝 ${semTitulo.length} PDF(s) sem título em src/lib/documentos.json — acrescente antes de publicar:`);
+    for (const a of semTitulo) console.log(`   • ${a}`);
+}
 
 if (problemas.length === 0) {
     console.log('\n✅ Nenhum problema encontrado. Pode rodar a ingestão.');

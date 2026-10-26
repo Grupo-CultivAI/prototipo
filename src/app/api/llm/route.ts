@@ -5,6 +5,7 @@ import ChatMessage from '@/models/ChatMessage';
 import Propriedade from '@/models/Propriedade';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getWeatherSummary } from '@/lib/weather';
+import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 
 // No plano gratuito cada modelo tem um limite próprio de 8.000 tokens por minuto, somando
 // todos os usuários. Mais modelos na cadeia = mais perguntas por minuto, sem custo.
@@ -218,7 +219,7 @@ export async function POST(req: Request) {
         ]);
 
         const contexto = trechos
-            .map((t) => `[${t.fonte}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
+            .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
         const perfil = resumoDoPerfil(propriedade);
 
@@ -296,7 +297,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             if (t.pagina && !paginas.includes(t.pagina)) paginas.push(t.pagina);
             porArquivo.set(t.fonte, paginas);
         }
-        const fontes = [...porArquivo].map(([fonte, paginas]) => ({ fonte, paginas: paginas.sort((a, b) => a - b) }));
+        const fontes = comTitulos([...porArquivo].map(([fonte, paginas]) => ({ fonte, paginas: paginas.sort((a, b) => a - b) })));
 
         await ChatMessage.create({ userId, text: answer, sender: 'bot', metadata: { fontes } });
 

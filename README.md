@@ -45,6 +45,7 @@ src/
   lib/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
+    documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
     schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
@@ -77,7 +78,7 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil.
 7. Monta o prompt com data de hoje, perfil, clima, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha.
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
-9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat.
+9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`.
 
 **Capacidade no plano gratuito da Groq:** cada modelo aceita 8.000 tokens por minuto, somando todos os usuários, e cada pergunta gasta entre 1.300 e 1.700. Com os dois modelos `gpt-oss` na cadeia, o CultivAI inteiro responde cerca de 10 perguntas por minuto. Numa demonstração com muitas pessoas ao mesmo tempo, vale escalonar o uso. O log da função registra os tokens de cada resposta.
 
@@ -101,7 +102,16 @@ node scripts/check-pdfs.mjs             # analisa ./docs-embrapa
 node scripts/check-pdfs.mjs ./outra-pasta
 ```
 
-Ela detecta dois tipos de defeito: PDF sem texto extraível (escaneado sem OCR) e PDF cujo texto sai ilegível porque a fonte foi embutida sem o mapa de caracteres. **O segundo tipo abre normalmente na tela** — o defeito só aparece na extração, então não dá para confiar em abrir o arquivo e olhar. A checagem também estima quantos trechos a ingestão vai gerar, que é o número de chamadas de embedding.
+Ela detecta dois tipos de defeito: PDF sem texto extraível (escaneado sem OCR) e PDF cujo texto sai ilegível porque a fonte foi embutida sem o mapa de caracteres. **O segundo tipo abre normalmente na tela** — o defeito só aparece na extração, então não dá para confiar em abrir o arquivo e olhar. A checagem também estima quantos trechos a ingestão vai gerar, que é o número de chamadas de embedding, e lista os PDFs que ainda não têm título no catálogo.
+
+#### Título de cada documento
+O Pinecone guarda só o nome do arquivo, que muitas vezes não diz nada ao produtor (`pat.pdf`, `ORAL11.pdf`). O título que aparece em "Documentos da Embrapa consultados" vem de `src/lib/documentos.json`:
+
+```json
+"pat.pdf": { "titulo": "Calcário, gesso e efeito residual de fertilizantes na produção de biomassa e ciclagem de nutrientes de milheto", "url": "https://..." }
+```
+
+Ao acrescentar um PDF à base, acrescente também a linha dele. O `url` é opcional: quando existe, o título vira link para a publicação original. O catálogo é lido na hora de mostrar a resposta, então corrigir um título não exige reingerir nada e vale também para as conversas antigas.
 
 #### Arquivo acompanhante para PDFs defeituosos
 Quando um PDF tem a camada de texto corrompida, um arquivo `.txt` de mesmo nome na mesma pasta substitui a extração. As páginas dentro dele são separadas por *form feed* (`\f`), para o número da página continuar correto no metadata. Tanto a ingestão quanto a checagem respeitam o acompanhante.
