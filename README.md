@@ -70,12 +70,22 @@ Formulário multi-seção (`/perfil-propriedade`) com dados de localização (co
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
-2. Aplica um limite de uso por usuário (rate limit), contando as mensagens já salvas no MongoDB (padrão: 4 perguntas/minuto, 30/dia).
-3. Salva a pergunta do usuário no MongoDB (`ChatMessage`).
-4. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões).
-5. Busca os 3 trechos mais relevantes no Pinecone, entre os PDFs da Embrapa já indexados.
-6. Monta um prompt com os trechos encontrados e envia para a Groq, que gera a resposta final (com fallback automático para um segundo modelo em caso de limite de cota).
-7. Salva a resposta no MongoDB e devolve ao chat.
+2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini.
+3. Lê do MongoDB o perfil da propriedade e as últimas mensagens da conversa. O perfil vem do banco, nunca do navegador.
+4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
+5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
+6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil.
+7. Monta o prompt com data de hoje, perfil, clima, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha.
+8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
+9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat.
+
+**Capacidade no plano gratuito da Groq:** cada modelo aceita 8.000 tokens por minuto, somando todos os usuários, e cada pergunta gasta entre 1.300 e 1.700. Com os dois modelos `gpt-oss` na cadeia, o CultivAI inteiro responde cerca de 10 perguntas por minuto. Numa demonstração com muitas pessoas ao mesmo tempo, vale escalonar o uso. O log da função registra os tokens de cada resposta.
+
+Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em outro terminal):
+
+```bash
+npm run cenarios-chat
+```
 
 ### Base de conhecimento (RAG)
 `scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings via Gemini e envia os vetores para o Pinecone (namespace configurável por `PINECONE_NAMESPACE`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite diário gratuito da API do Gemini.
@@ -147,10 +157,11 @@ OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 GEMINI_API_KEY=         # chave da API Gemini (embeddings)
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
 GROQ_MODELS=            # opcional; modelos em ordem de fallback, separados por vírgula
-                         # (padrão: openai/gpt-oss-20b,qwen/qwen3.8-27b)
+                         # (padrão: openai/gpt-oss-20b,openai/gpt-oss-120b,qwen/qwen3.8-27b)
 PINECONE_API_KEY=       # chave da API do Pinecone
 PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
 PINECONE_NAMESPACE=     # opcional (padrão: embrapa)
+RAG_MIN_SCORE=          # opcional (padrão: 0.65); trechos abaixo disso não entram no prompt
 
 # Limites de uso
 RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
