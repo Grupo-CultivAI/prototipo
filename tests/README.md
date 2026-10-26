@@ -35,7 +35,9 @@ As perguntas foram escritas a partir de um trecho real de cada documento. Pergun
 
 ## Resultados registrados
 
-Execução de **20/10/2026**, sobre 36 PDFs e 864 trechos indexados.
+Execução de **20/10/2026**, sobre 36 PDFs e 849 trechos indexados.
+
+> Correção em 25/10/2026: este registro dizia 864 trechos, número que estava errado. O índice tinha 850 vetores — 849 válidos e um trecho órfão com o texto corrompido antigo do PDF de trigo, que sobrou quando o OCR reduziu o documento de 16 para 15 trechos. O script de ingestão passou a remover esses excedentes, e o órfão foi apagado.
 
 **10 casos, 10 aprovados, nenhuma falha.**
 
