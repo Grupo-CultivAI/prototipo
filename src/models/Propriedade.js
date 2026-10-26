@@ -18,7 +18,7 @@ const PropriedadeSchema = new mongoose.Schema({
         lng: { type: Number, default: null }
     },
     // soil
-    tipoSolo: { type: String, default: "" },
+    tipoSolo: { type: String, default: "" }, // arenoso, argiloso, siltoso, misto ou nao_sei
     phSolo: { type: Number, default: null },
     materiaOrganica: { type: String, enum: ["Baixa", "Média", "Alta", ""], default: "" },
     drenagem: { type: String, enum: ["Boa", "Média", "Ruim", ""], default: "" },
@@ -28,10 +28,13 @@ const PropriedadeSchema = new mongoose.Schema({
     culturasHistorico: { type: [String], default: [] },
     tempoCulturaAtual: { type: Number, default: null },
     usoFertilizantes: { type: String, enum: ["Baixo", "Médio", "Alto", ""], default: "" },
+    sistemaPlantio: { type: String, enum: ["Plantio direto", "Convencional", "Cultivo mínimo", "Não sei", ""], default: "" },
+    irrigacao: { type: String, enum: ["Não irrigo", "Aspersão", "Gotejamento", "Sulco ou inundação", "Outro", ""], default: "" },
     problemasRecentes: { type: [String], default: [] },
     // objectives
     objetivo: { type: String, default: "" }, // keeping for compatibility
     objetivos: { type: [String], default: [] },
+    proximaCultura: { type: String, default: "" }, // "Ainda não decidi" também é resposta
     observacoes: { type: String, default: "" }
 }, { timestamps: true });
 

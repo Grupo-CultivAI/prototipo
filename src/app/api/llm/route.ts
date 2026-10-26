@@ -38,6 +38,7 @@ const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boo
                 { valor: 'argiloso', rotulo: 'Argiloso (segura água e nutrientes)' },
                 { valor: 'siltoso', rotulo: 'Siltoso (muito fino, erode fácil)' },
                 { valor: 'misto', rotulo: 'Misto' },
+                { valor: 'nao_sei', rotulo: 'Não sei' },
             ],
         }],
     },
@@ -99,7 +100,7 @@ function resumoDoPerfil(p: any): string | null {
     if (p.cidade || p.estado) linhas.push(`Localização: ${[p.cidade, p.estado].filter(Boolean).join(' - ')}`);
     if (p.tamanho) linhas.push(`Área: ${p.tamanho} hectares`);
     const solo = [
-        p.tipoSolo && `tipo ${p.tipoSolo}`,
+        p.tipoSolo && (p.tipoSolo === 'nao_sei' ? 'tipo não sabe informar' : `tipo ${p.tipoSolo}`),
         p.phSolo != null && `pH ${p.phSolo}`,
         p.materiaOrganica && `matéria orgânica ${String(p.materiaOrganica).toLowerCase()}`,
         p.drenagem && `drenagem ${String(p.drenagem).toLowerCase()}`,
@@ -109,6 +110,9 @@ function resumoDoPerfil(p: any): string | null {
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
     if (p.tempoCulturaAtual != null) linhas.push(`Tempo com as culturas atuais: ${p.tempoCulturaAtual} anos`);
     if (p.usoFertilizantes) linhas.push(`Uso de fertilizantes: ${String(p.usoFertilizantes).toLowerCase()}`);
+    if (p.sistemaPlantio) linhas.push(`Sistema de plantio: ${p.sistemaPlantio === 'Não sei' ? 'não sabe informar' : String(p.sistemaPlantio).toLowerCase()}`);
+    if (p.irrigacao) linhas.push(`Irrigação: ${String(p.irrigacao).toLowerCase()}`);
+    if (p.proximaCultura) linhas.push(`Pretende plantar na próxima safra: ${String(p.proximaCultura).toLowerCase()}`);
     if (lista(p.problemasRecentes)) linhas.push(`Problemas recentes: ${lista(p.problemasRecentes)}`);
     if (lista(p.objetivos)) linhas.push(`Objetivos: ${lista(p.objetivos)}`);
     if (p.observacoes?.trim()) linhas.push(`Observações do produtor: ${String(p.observacoes).replace(/\s+/g, ' ').slice(0, 300)}`);

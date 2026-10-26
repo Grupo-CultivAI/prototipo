@@ -68,7 +68,12 @@ docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados man
 A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder.
 
 ### Perfil da propriedade
-Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico de plantio, problemas enfrentados e objetivos.
+Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.
+
+- As culturas são opções clicáveis, com campo para acrescentar outra; `src/lib/perfil.js` padroniza a grafia, para "milho" e "Milho" não virarem duas culturas.
+- "Não sei" é resposta válida no tipo de solo e no sistema de plantio, e a IA é avisada de que o produtor não sabe.
+- Um indicador mostra quantos dos itens que mais mudam a recomendação estão preenchidos. A mesma lista (`ITENS_DO_PERFIL`) gera o lembrete no início do chat.
+- "Salvar e pedir análise à IA" abre o chat e já envia a primeira pergunta, que conta no limite diário. "Só salvar" não gasta pergunta.
 
 ### Chatbot (RAG)
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
