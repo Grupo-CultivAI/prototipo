@@ -116,6 +116,11 @@ function problemaDeAtribuicao(resposta: string, contexto: string): string | null
     return `Estes números aparecem depois de "📘 Segundo a Embrapa", mas não constam dos trechos da Embrapa fornecidos: ${semRespaldo.join(', ')}. Reescreva a resposta completa sem esses números. Não invente valores.`;
 }
 
+// Uma resposta longa (plano de ~400 palavras) usa uns 700 tokens. Em 26/10/2026 o gpt-oss-20b
+// entrou em laço repetindo "Milho / Soja / ..." até 2.048 tokens: resposta inútil e metade do
+// limite por minuto da Groq. Cortada no teto, a resposta é descartada e o próximo modelo tenta.
+const TETO_DE_TOKENS_DA_RESPOSTA = 1000;
+
 async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise<{ texto: string; erro: string }> {
     let erro = '';
     for (const model of GROQ_MODELS) {
@@ -126,6 +131,7 @@ async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise
                 model,
                 messages,
                 temperature: 0.3,
+                max_completion_tokens: TETO_DE_TOKENS_DA_RESPOSTA,
                 // Os gpt-oss raciocinam antes de responder, e esse raciocínio conta no limite por minuto.
                 ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
             }),
@@ -133,8 +139,11 @@ async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise
         if (res.ok) {
             const dados = await res.json();
             const texto = dados.choices?.[0]?.message?.content || '';
-            if (texto) {
-                const u = dados.usage ?? {};
+            const u = dados.usage ?? {};
+            if (dados.choices?.[0]?.finish_reason === 'length') {
+                erro = `${model} atingiu o teto de ${TETO_DE_TOKENS_DA_RESPOSTA} tokens`;
+                console.warn(`⚠️ ${erro} (provável repetição em laço); tentando o próximo modelo.`);
+            } else if (texto) {
                 console.log(`🎉 Sucesso com ${model} — tokens: ${u.prompt_tokens} de entrada + ${u.completion_tokens} de saída.`);
                 return { texto, erro: '' };
             }
