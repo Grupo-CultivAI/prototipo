@@ -108,12 +108,30 @@ try {
         ['a 5ª é bloqueada pelo CultivAI (HTTP 429)', status[4] === 429, true],
         ['as 4 primeiras respondem (depende da folga da Groq)', status.slice(0, 4).every((s) => s === 200), false],
     ], { status: status.join(', '), texto: '', fontes: [] });
+
+    // 7. Nova conversa e apagar conversa, com o usuário do cenário 6 (sem chamar a IA).
+    const historico = async (cookie) => (await fetch(`${BASE}/api/chat/history`, { headers: { Cookie: cookie } })).json();
+    const novaConversa = async (cookie) => (await fetch(`${BASE}/api/conversas`, { method: 'POST', headers: { Cookie: cookie } })).json();
+    const antes = await historico(c);
+    const nova = await novaConversa(c);
+    const depois = await historico(c);
+    const outraVez = await novaConversa(c);
+    const apagada = await (await fetch(`${BASE}/api/chat/history?conversa=${antes.conversaId}`, { method: 'DELETE', headers: { Cookie: c } })).json();
+    const final = await historico(c);
+    registrar('7. Nova conversa', [
+        ['a conversa anterior tinha mensagens', antes.history?.length > 0, true],
+        ['a nova conversa começa vazia', depois.history?.length === 0 && depois.conversaId === nova.conversaId, true],
+        ['o saldo de perguntas do dia não muda', depois.restantesHoje === antes.restantesHoje, true],
+        ['clicar de novo sem perguntar não cria outra conversa', outraVez.conversaId === nova.conversaId, true],
+        ['apagar a conversa antiga mantém o saldo de perguntas', apagada.success && final.restantesHoje === antes.restantesHoje, true],
+    ], { status: `${antes.history?.length} mensagens → ${depois.history?.length}`, texto: '', fontes: [] });
 } finally {
     if (emails.length) {
         await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
         const db = mongoose.connection.db;
         const ids = (await db.collection('users').find({ email: { $in: emails } }).project({ _id: 1 }).toArray()).map((u) => u._id);
         await db.collection('chatmessages').deleteMany({ userId: { $in: ids } });
+        await db.collection('conversas').deleteMany({ userId: { $in: ids } });
         await db.collection('propriedades').deleteMany({ userId: { $in: ids } });
         await db.collection('users').deleteMany({ _id: { $in: ids } });
         await mongoose.disconnect();

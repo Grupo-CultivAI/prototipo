@@ -3,6 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import Propriedade from '@/models/Propriedade';
+import Conversa from '@/models/Conversa';
+import { conversaDoUsuario, tituloDe } from '@/lib/conversas';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getWeatherSummary } from '@/lib/weather';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
@@ -193,7 +195,9 @@ function problemaDeAtribuicao(resposta: string, contexto: string): string | null
 // limite por minuto da Groq. Cortada no teto, a resposta é descartada e o próximo modelo tenta.
 const TETO_DE_TOKENS_DA_RESPOSTA = 1000;
 
-async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise<{ texto: string; erro: string }> {
+type Geracao = { texto: string; erro: string; modelo?: string; tokensEntrada?: number; tokensSaida?: number };
+
+async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise<Geracao> {
     let erro = '';
     for (const model of GROQ_MODELS) {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -217,7 +221,7 @@ async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise
                 console.warn(`⚠️ ${erro} (provável repetição em laço); tentando o próximo modelo.`);
             } else if (texto) {
                 console.log(`🎉 Sucesso com ${model} — tokens: ${u.prompt_tokens} de entrada + ${u.completion_tokens} de saída.`);
-                return { texto, erro: '' };
+                return { texto, erro: '', modelo: model, tokensEntrada: u.prompt_tokens, tokensSaida: u.completion_tokens };
             }
         } else {
             erro = await res.text();
@@ -233,6 +237,7 @@ const marcarComoFalha = (id: unknown) =>
     ChatMessage.updateOne({ _id: id }, { $set: { 'metadata.falhou': true } }).catch(() => {});
 
 export async function POST(req: Request) {
+    const inicio = Date.now();
     let perguntaId: unknown = null;
     try {
         const userId = await getUserIdFromToken();
@@ -278,9 +283,12 @@ export async function POST(req: Request) {
         }
 
         // O perfil vem do banco, não do corpo da requisição: o navegador não decide o que entra no prompt.
+        // O contexto (mensagens anteriores, pergunta anterior) vem só desta conversa: com o chat
+        // único, uma dúvida de dias atrás sobre outro assunto entrava no contexto da nova.
+        const conversa = await conversaDoUsuario(userId, body.conversaId);
         const [propriedade, recentes] = await Promise.all([
             Propriedade.findOne({ userId }).lean(),
-            ChatMessage.find({ userId, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } })
+            ChatMessage.find({ userId, conversaId: conversa._id, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } })
                 .sort({ createdAt: -1 }).limit(MENSAGENS_DE_HISTORICO).select('text sender metadata.pediu').lean(),
         ]);
 
@@ -288,7 +296,11 @@ export async function POST(req: Request) {
         // tentativa já gasta um embedding da cota diária do Gemini. Se falhar, é marcada e
         // deixa de aparecer no histórico e no contexto das próximas perguntas.
         const enviado = resumoEnviado(body.submittedData);
-        perguntaId = (await ChatMessage.create({ userId, text: userPrompt, sender: 'user', ...(enviado ? { metadata: { submittedData: enviado } } : {}) }))._id;
+        perguntaId = (await ChatMessage.create({ userId, conversaId: conversa._id, text: userPrompt, sender: 'user', ...(enviado ? { metadata: { submittedData: enviado } } : {}) }))._id;
+        await Conversa.updateOne({ _id: conversa._id }, {
+            $inc: { perguntas: 1 },
+            $set: { ultimaMensagemEm: new Date(), ...(!conversa.titulo && tituloDe(userPrompt) ? { titulo: tituloDe(userPrompt) } : {}) },
+        });
         // Um formulário que ficou sem resposta não deve reaparecer ao recarregar a conversa.
         await ChatMessage.updateMany({ userId, 'metadata.form': { $exists: true } }, { $unset: { 'metadata.form': 1 } });
         const historico = [...recentes].reverse();
@@ -377,15 +389,29 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             }, { status: 502 });
         }
         let answer = primeira.texto;
+        const geracao = {
+            modelo: primeira.modelo,
+            tokensEntrada: primeira.tokensEntrada ?? 0,
+            tokensSaida: primeira.tokensSaida ?? 0,
+            revisada: false,
+            comAviso: false,
+        };
 
         const problema = problemaDeAtribuicao(answer, contexto);
         if (problema) {
             console.warn('⚠️ Atribuição à Embrapa sem respaldo nos trechos; pedindo revisão.', problema);
             const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: problema }], groqKey);
-            if (revisada.texto) answer = revisada.texto;
+            geracao.revisada = true;
+            if (revisada.texto) {
+                answer = revisada.texto;
+                geracao.modelo = revisada.modelo;
+                geracao.tokensEntrada += revisada.tokensEntrada ?? 0;
+                geracao.tokensSaida += revisada.tokensSaida ?? 0;
+            }
             if (problemaDeAtribuicao(answer, contexto)) {
                 console.warn('⚠️ Revisão manteve a atribuição sem respaldo; resposta segue com aviso.');
                 answer += '\n\n> ⚠️ Parte desta resposta não pôde ser conferida nos documentos da Embrapa consultados. Confirme com a assistência técnica antes de aplicar.';
+                geracao.comAviso = true;
             }
         }
 
@@ -402,11 +428,13 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         answer = pedido.texto;
 
         const resposta = await ChatMessage.create({
-            userId, text: answer, sender: 'bot',
+            userId, conversaId: conversa._id, text: answer, sender: 'bot',
             metadata: {
                 fontes,
                 perguntaId,
-                busca: { maiorScore, trechosUsados: trechos.length },
+                busca: { texto: busca, maiorScore, trechosUsados: trechos.length },
+                geracao: { ...geracao, duracaoMs: Date.now() - inicio },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
             },
         });
@@ -416,6 +444,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             parsedData: pedido.form ? { tipo: 'coleta_dados', resposta: answer, ...pedido.form } : { tipo: 'resposta', resposta: answer },
             fontes,
             mensagemId: resposta._id,
+            conversaId: conversa._id,
             // ultimas24h foi contado antes de gravar esta pergunta
             restantesHoje: Math.max(0, LIMITE_POR_DIA - ultimas24h - 1),
         });
