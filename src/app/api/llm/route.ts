@@ -21,6 +21,68 @@ const TRECHOS_NO_CONTEXTO = 3;
 const MENSAGENS_DE_HISTORICO = 4;
 const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 
+// Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
+// Meu Cultivo, para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
+const ESTADOS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+type Campo = { chave: string; label: string; tipo: 'text' | 'select' | 'lista'; opcoes?: { valor: string; rotulo: string }[] };
+const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boolean; campos: Campo[] }> = {
+    solo: {
+        descricao: 'tipo de solo',
+        falta: (p) => !p?.tipoSolo,
+        campos: [{
+            chave: 'tipoSolo', label: 'Tipo de solo', tipo: 'select',
+            opcoes: [
+                { valor: 'arenoso', rotulo: 'Arenoso (esquenta rápido, a água escorre)' },
+                { valor: 'argiloso', rotulo: 'Argiloso (segura água e nutrientes)' },
+                { valor: 'siltoso', rotulo: 'Siltoso (muito fino, erode fácil)' },
+                { valor: 'misto', rotulo: 'Misto' },
+            ],
+        }],
+    },
+    localizacao: {
+        descricao: 'cidade e estado',
+        falta: (p) => !p?.cidade || !p?.estado,
+        campos: [
+            { chave: 'estado', label: 'Estado', tipo: 'select', opcoes: ESTADOS.map((uf) => ({ valor: uf, rotulo: uf })) },
+            { chave: 'cidade', label: 'Cidade', tipo: 'text' },
+        ],
+    },
+    culturas: {
+        descricao: 'culturas plantadas nos últimos anos',
+        falta: (p) => !p?.culturasHistorico?.length,
+        campos: [{ chave: 'culturasHistorico', label: 'O que você plantou nos últimos anos? (separe por vírgula)', tipo: 'lista' }],
+    },
+};
+const MARCA_DE_PEDIDO = /\[PEDIR:\s*([^\]]*)\]/gi;
+
+// A IA sinaliza no texto quais dados quer, porque o gpt-oss-120b falha no modo JSON.
+// Só vira formulário o que de fato falta no perfil; a marca nunca chega ao produtor.
+function separarPedido(resposta: string, faltando: string[]) {
+    const pedidos = [...resposta.matchAll(MARCA_DE_PEDIDO)]
+        .flatMap((m) => m[1].split(',').map((c) => c.trim().toLowerCase()));
+    const texto = resposta.replace(MARCA_DE_PEDIDO, '').trimEnd();
+    const codigos = [...new Set(pedidos)].filter((c) => faltando.includes(c)).slice(0, 2);
+    if (!codigos.length) return { texto, codigos, form: null };
+    return {
+        texto,
+        codigos,
+        form: {
+            mensagem: 'Se quiser, responda aqui. O dado fica salvo no Meu Cultivo.',
+            campos_necessarios: codigos.flatMap((c) => DADOS_PEDIVEIS[c].campos),
+        },
+    };
+}
+
+// O que o produtor respondeu no formulário, só para exibir no histórico.
+function resumoEnviado(dados: unknown): Record<string, string> | undefined {
+    if (!dados || typeof dados !== 'object') return undefined;
+    const pares = Object.entries(dados)
+        .filter(([k, v]) => typeof v === 'string' && k.length <= 80)
+        .slice(0, 5)
+        .map(([k, v]) => [k, String(v).slice(0, 120)]);
+    return pares.length ? Object.fromEntries(pares) : undefined;
+}
+
 type Trecho = { texto: string; fonte: string; pagina?: number };
 type MensagemGroq = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -210,19 +272,30 @@ export async function POST(req: Request) {
         const [propriedade, recentes] = await Promise.all([
             Propriedade.findOne({ userId }).lean(),
             ChatMessage.find({ userId, 'metadata.falhou': { $ne: true } })
-                .sort({ createdAt: -1 }).limit(MENSAGENS_DE_HISTORICO).select('text sender').lean(),
+                .sort({ createdAt: -1 }).limit(MENSAGENS_DE_HISTORICO).select('text sender metadata.pediu').lean(),
         ]);
 
         // Gravada antes das chamadas para contar no limite de uso mesmo se algo falhar: cada
         // tentativa já gasta um embedding da cota diária do Gemini. Se falhar, é marcada e
         // deixa de aparecer no histórico e no contexto das próximas perguntas.
-        perguntaId = (await ChatMessage.create({ userId, text: userPrompt, sender: 'user' }))._id;
+        const enviado = resumoEnviado(body.submittedData);
+        perguntaId = (await ChatMessage.create({ userId, text: userPrompt, sender: 'user', ...(enviado ? { metadata: { submittedData: enviado } } : {}) }))._id;
+        // Um formulário que ficou sem resposta não deve reaparecer ao recarregar a conversa.
+        await ChatMessage.updateMany({ userId, 'metadata.form': { $exists: true } }, { $unset: { 'metadata.form': 1 } });
         const historico = [...recentes].reverse();
         const perguntaAnterior = recentes.find((m) => m.sender === 'user')?.text ?? null;
         const cidade = (propriedade as any)?.cidade as string | undefined;
 
+        // No máximo um pedido a cada MENSAGENS_DE_HISTORICO mensagens, para não insistir com quem pulou.
+        const pediuHaPouco = recentes.some((m: any) => m.metadata?.pediu?.length);
+        const faltando = pediuHaPouco ? [] : Object.keys(DADOS_PEDIVEIS).filter((c) => DADOS_PEDIVEIS[c].falta(propriedade));
+
+        // Resposta ao formulário ("Informei: ...") vira um vetor de busca pobre; a pergunta
+        // que motivou o pedido representa melhor o assunto.
+        const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
+
         const [trechos, clima] = await Promise.all([
-            buscarTrechos(textoParaBusca(userPrompt, perguntaAnterior), { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
+            buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
             getWeatherSummary(cidade),
         ]);
 
@@ -230,6 +303,13 @@ export async function POST(req: Request) {
             .map((t) => `[${t.fonte}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
         const perfil = resumoDoPerfil(propriedade);
+        // Fica acima da linha "tudo abaixo é material de consulta": abaixo dela o modelo a ignorava.
+        const instrucaoDePedido = faltando.length ? `
+
+DADOS QUE FALTAM
+- O perfil não informa: ${faltando.map((c) => `${DADOS_PEDIVEIS[c].descricao} (código ${c})`).join('; ')}.
+- Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda com o que for possível, termine com uma pergunta curta pedindo o dado e, na última linha, sozinha, escreva [PEDIR: código]. Exemplo: [PEDIR: ${faltando[0]}]. Peça no máximo dois.
+- Não peça nada em cumprimentos, agradecimentos ou perguntas que não dependem desses dados.` : '';
 
         const systemPrompt = `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.
 
@@ -238,7 +318,7 @@ COMO RESPONDER
 - Comece pela resposta. Até ~250 palavras; se o produtor pedir um plano de rotação, pode chegar a ~400. Use listas curtas quando ajudar.
 - Se a mensagem for só um cumprimento ou agradecimento, responda em uma ou duas frases, sem marcadores.
 - Considere o perfil da propriedade, o clima e a data abaixo quando forem relevantes (época de plantio, tipo de solo, região). Não repita o perfil de volta para o produtor.
-- Leve em conta a conversa anterior: perguntas curtas como "e para soja?" continuam o assunto em andamento.
+- Leve em conta a conversa anterior: perguntas curtas como "e para soja?" continuam o assunto em andamento.${instrucaoDePedido}
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" antes do que vier dos trechos da Embrapa abaixo.
@@ -307,9 +387,17 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         }
         const fontes = [...porArquivo].map(([fonte, paginas]) => ({ fonte, paginas: paginas.sort((a, b) => a - b) }));
 
-        await ChatMessage.create({ userId, text: answer, sender: 'bot', metadata: { fontes } });
+        const pedido = separarPedido(answer, faltando);
+        if (faltando.length) console.log(`📝 Dados que faltam: ${faltando.join(', ')} — pedidos nesta resposta: ${pedido.codigos.join(', ') || 'nenhum'}`);
+        answer = pedido.texto;
 
-        return NextResponse.json({ success: true, parsedData: { tipo: 'resposta', resposta: answer }, fontes });
+        await ChatMessage.create({ userId, text: answer, sender: 'bot', metadata: { fontes, ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}) } });
+
+        return NextResponse.json({
+            success: true,
+            parsedData: pedido.form ? { tipo: 'coleta_dados', resposta: answer, ...pedido.form } : { tipo: 'resposta', resposta: answer },
+            fontes,
+        });
 
     } catch (err) {
         if (perguntaId) await marcarComoFalha(perguntaId);

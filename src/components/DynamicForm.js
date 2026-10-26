@@ -12,11 +12,18 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        // Campos "lista" (ex.: culturas) são gravados no perfil como lista, igual ao Meu Cultivo
+        const paraSalvar = { ...formData };
+        for (const campo of data?.campos_necessarios || []) {
+            if (campo.tipo === 'lista' && typeof paraSalvar[campo.chave] === 'string') {
+                paraSalvar[campo.chave] = paraSalvar[campo.chave].split(',').map(c => c.trim()).filter(Boolean);
+            }
+        }
         try {
             const response = await fetch('/api/propriedade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(paraSalvar)
             });
             if (response.ok) {
                 onSubmit(formData);
@@ -67,7 +74,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData }) {
                             >
                                 <option value="" disabled>Selecione uma opção</option>
                                 {campo.opcoes?.map((op, i) => (
-                                    <option key={i} value={op}>{op}</option>
+                                    <option key={i} value={op.valor ?? op}>{op.rotulo ?? op}</option>
                                 ))}
                             </select>
                         ) : (

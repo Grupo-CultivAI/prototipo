@@ -103,7 +103,7 @@ export default function ChatCultivAI() {
     }
   };
 
-  const sendMessageToAPI = async (questionText, currentProp, submittedData = null) => {
+  const sendMessageToAPI = async (questionText, currentProp, submittedData = null, respostaAoPedido = false) => {
     const loadingId = crypto.randomUUID();
     
     // Get history before adding the new bot message
@@ -123,7 +123,8 @@ export default function ChatCultivAI() {
           user, 
           propriedade: currentProp,
           history: history, // Pass history
-          submittedData: submittedData
+          submittedData: submittedData,
+          respostaAoPedido
         })
       });
 
@@ -161,32 +162,38 @@ export default function ChatCultivAI() {
     await sendMessageToAPI(question, propriedade);
   };
 
-  const handleFormSubmit = async (formData, msgId) => {
+  const handleFormSubmit = async (formData, msgId, form) => {
     // Remove form from the bot message
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
-    
+
     const newPropState = { ...propriedade, ...formData };
     setPropriedade(newPropState);
 
-    // Add a specialized USER message that contains the static form summary
-    const followUpText = `Forneci os dados solicitados.`; // Hidden text or short label
-    setMessages((prev) => [...prev, { 
-      id: crypto.randomUUID(), 
-      text: followUpText, 
+    // Resumo com os rótulos do formulário ("Tipo de solo: Arenoso"), não as chaves do banco
+    const resumo = {};
+    for (const campo of form?.campos_necessarios || []) {
+      const valor = formData[campo.chave];
+      if (!valor) continue;
+      const opcao = campo.opcoes?.find((op) => (op.valor ?? op) === valor);
+      resumo[campo.label.replace(/\s*\(.*\)$/, "")] = String(opcao?.rotulo ?? valor).replace(/\s*\(.*\)$/, "");
+    }
+
+    setMessages((prev) => [...prev, {
+      id: crypto.randomUUID(),
+      text: "",
       sender: "user",
-      submittedData: formData // Pass the data for static rendering
+      submittedData: resumo // Pass the data for static rendering
     }]);
 
-    const contextStr = Object.entries(formData).map(([k,v]) => `${k}: ${v}`).join(', ');
-    const apiPrompt = `Usuário forneceu os dados: ${contextStr}. Continue a recomendação.`;
-    await sendMessageToAPI(apiPrompt, newPropState, formData);
+    const apiPrompt = `Informei: ${Object.entries(resumo).map(([k, v]) => `${k}: ${v}`).join("; ")}.`;
+    await sendMessageToAPI(apiPrompt, newPropState, resumo, true);
   };
 
   const handleFormSkip = async (msgId) => {
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
-    const followUp = `Pulei o preenchimento por enquanto.`;
+    const followUp = "Prefiro não informar agora. Responda com o que já sabe.";
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: followUp, sender: "user" }]);
-    await sendMessageToAPI("Usuário decidiu pular o preenchimento. Prossiga sem esses dados.", propriedade);
+    await sendMessageToAPI(followUp, propriedade, null, true);
   };
 
   if (loading) return <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Carregando a sua experiência...</div>;
@@ -252,7 +259,7 @@ export default function ChatCultivAI() {
               {msg.form && (
                 <DynamicForm 
                   data={msg.form} 
-                  onSubmit={(data) => handleFormSubmit(data, msg.id)} 
+                  onSubmit={(data) => handleFormSubmit(data, msg.id, msg.form)}
                   onSkip={() => handleFormSkip(msg.id)} 
                 />
               )}
