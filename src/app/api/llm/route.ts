@@ -25,10 +25,12 @@ const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 // Meu Cultivo, para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
 const ESTADOS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 type Campo = { chave: string; label: string; tipo: 'text' | 'select' | 'lista'; opcoes?: { valor: string; rotulo: string }[] };
-const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boolean; campos: Campo[] }> = {
+// mencionado: a pergunta atual já traz o dado ("e se o solo for arenoso?"), então não se pede.
+const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boolean; mencionado?: RegExp; campos: Campo[] }> = {
     solo: {
-        descricao: 'tipo de solo',
+        descricao: 'o tipo de solo',
         falta: (p) => !p?.tipoSolo,
+        mencionado: /arenos|argilos|siltos|\bmisto\b/i,
         campos: [{
             chave: 'tipoSolo', label: 'Tipo de solo', tipo: 'select',
             opcoes: [
@@ -40,7 +42,7 @@ const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boo
         }],
     },
     localizacao: {
-        descricao: 'cidade e estado',
+        descricao: 'a cidade e o estado',
         falta: (p) => !p?.cidade || !p?.estado,
         campos: [
             { chave: 'estado', label: 'Estado', tipo: 'select', opcoes: ESTADOS.map((uf) => ({ valor: uf, rotulo: uf })) },
@@ -48,7 +50,7 @@ const DADOS_PEDIVEIS: Record<string, { descricao: string; falta: (p: any) => boo
         ],
     },
     culturas: {
-        descricao: 'culturas plantadas nos últimos anos',
+        descricao: 'as culturas plantadas nos últimos anos',
         falta: (p) => !p?.culturasHistorico?.length,
         campos: [{ chave: 'culturasHistorico', label: 'O que você plantou nos últimos anos? (separe por vírgula)', tipo: 'lista' }],
     },
@@ -67,7 +69,8 @@ function separarPedido(resposta: string, faltando: string[]) {
         texto,
         codigos,
         form: {
-            mensagem: 'Se quiser, responda aqui. O dado fica salvo no Meu Cultivo.',
+            // Diz o que está sendo pedido: o modelo às vezes termina o texto com outra pergunta.
+            mensagem: `Para ajustar a recomendação, me conte ${codigos.map((c) => DADOS_PEDIVEIS[c].descricao).join(' e ')}. O dado fica salvo no Meu Cultivo.`,
             campos_necessarios: codigos.flatMap((c) => DADOS_PEDIVEIS[c].campos),
         },
     };
@@ -288,7 +291,8 @@ export async function POST(req: Request) {
 
         // No máximo um pedido a cada MENSAGENS_DE_HISTORICO mensagens, para não insistir com quem pulou.
         const pediuHaPouco = recentes.some((m: any) => m.metadata?.pediu?.length);
-        const faltando = pediuHaPouco ? [] : Object.keys(DADOS_PEDIVEIS).filter((c) => DADOS_PEDIVEIS[c].falta(propriedade));
+        const faltando = pediuHaPouco ? [] : Object.keys(DADOS_PEDIVEIS)
+            .filter((c) => DADOS_PEDIVEIS[c].falta(propriedade) && !DADOS_PEDIVEIS[c].mencionado?.test(userPrompt));
 
         // Resposta ao formulário ("Informei: ...") vira um vetor de busca pobre; a pergunta
         // que motivou o pedido representa melhor o assunto.
@@ -308,8 +312,8 @@ export async function POST(req: Request) {
 
 DADOS QUE FALTAM
 - O perfil não informa: ${faltando.map((c) => `${DADOS_PEDIVEIS[c].descricao} (código ${c})`).join('; ')}.
-- Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda com o que for possível, termine com uma pergunta curta pedindo o dado e, na última linha, sozinha, escreva [PEDIR: código]. Exemplo: [PEDIR: ${faltando[0]}]. Peça no máximo dois.
-- Não peça nada em cumprimentos, agradecimentos ou perguntas que não dependem desses dados.` : '';
+- Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda com o que for possível, termine com uma pergunta curta sobre esse dado (por exemplo, "Qual é o tipo de solo da sua propriedade?"), sem outras perguntas, e, na última linha, sozinha, escreva [PEDIR: código]. Exemplo: [PEDIR: ${faltando[0]}]. Peça no máximo dois.
+- Não peça nada em cumprimentos, agradecimentos, perguntas que não dependem desses dados ou quando o produtor já disse o dado na conversa (nesse caso, use o que ele disse).` : '';
 
         const systemPrompt = `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.
 

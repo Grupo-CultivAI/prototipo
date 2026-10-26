@@ -74,7 +74,7 @@ try {
     r = await perguntar(b, 'E se o solo for arenoso?');
     registrar('4. Continuação ("e se o solo for arenoso?")', [
         ['responde (HTTP 200)', r.status === 200, true],
-        ['mantém o assunto (menciona milho ou rotação)', /milho|rota[cç][aã]o/i.test(r.texto), true],
+        ['mantém o assunto (menciona milho, rotação ou sucessão)', /milho|rota[cç][aã]o|sucess[aã]o/i.test(r.texto), true],
     ], r);
 
     // 5. Pedido de dado que falta no perfil. Pedir ou não é decisão do modelo; o que não pode
