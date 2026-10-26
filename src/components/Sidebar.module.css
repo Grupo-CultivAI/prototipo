@@ -167,3 +167,10 @@
         display: none;
     }
 }
+
+/* Impressão (botão "Imprimir" do chat): a navegação não vai para o papel. */
+@media print {
+    .sidebar {
+        display: none !important;
+    }
+}

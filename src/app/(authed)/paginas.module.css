@@ -117,6 +117,89 @@
     text-decoration: underline;
 }
 
+/* --- Perguntas restantes no dia, abaixo do título --- */
+.contador {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* --- 👍/👎 ao lado de "CultivAI" --- */
+.avaliacao {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.avaliacao button {
+    display: inline-flex;
+    padding: 0.3rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.avaliacao button:hover {
+    opacity: 1;
+    border-color: var(--border);
+}
+
+.avaliacao .avaliada {
+    opacity: 1;
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+}
+
+/* --- Sugestões de primeira pergunta --- */
+.sugestoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sugestoes button {
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--primary-dark);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sugestoes button:hover {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+/* --- Microfone --- */
+.botaoVoz {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    border: none;
+    border-radius: 100px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.botaoVoz.ouvindo {
+    background: rgb(220, 38, 38);
+    color: white;
+    animation: pulsar 1.2s ease-in-out infinite;
+}
+
+@keyframes pulsar {
+    50% { opacity: 0.6; }
+}
+
 /* Celular em pé (largura) ou deitado (altura): navegação no rodapé. */
 @media (max-width: 768px), (max-height: 500px) {
     /* dvh, e não vh: vh conta a tela como se as barras do navegador estivessem
@@ -229,5 +312,59 @@
 
     .campoTexto {
         padding: 0.5rem 1rem;
+    }
+
+    .contador {
+        display: none;
+    }
+}
+
+/* Impressão: só a conversa, em preto no branco. O navegador não imprime fundos por
+   padrão, e o texto branco dos balões do produtor sumiria do papel; por isso o
+   !important, já que as cores vêm de estilo inline. */
+@media print {
+    .shell,
+    .conteudo,
+    .chat {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        padding: 0 !important;
+    }
+
+    .chatCabecalho {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0 1rem;
+    }
+
+    .chatCabecalho button,
+    .chatSubtitulo,
+    .contador,
+    .chatEntrada,
+    .sugestoes,
+    .avaliacao,
+    .balao form {
+        display: none !important;
+    }
+
+    .chatMensagens {
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0;
+    }
+
+    .bolha {
+        max-width: 100%;
+        break-inside: avoid;
+    }
+
+    .balao {
+        background: none !important;
+        color: #000 !important;
+        border: 1px solid #bbb !important;
+        box-shadow: none !important;
     }
 }
