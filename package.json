@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "verificar-base": "node tests/verificar-base.mjs",
-    "cenarios-chat": "node tests/cenarios-chat.mjs"
+    "cenarios-chat": "node tests/cenarios-chat.mjs",
+    "relatorio-chat": "node scripts/relatorio-chat.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

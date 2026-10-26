@@ -36,7 +36,8 @@ src/
         login/                POST → autentica e seta cookie JWT
         register/              POST → cria usuário
         reset-password/        POST → redefine a senha por email ⚠️ sem verificação de identidade (ver Status do projeto)
-      chat/history/           GET/DELETE → histórico de mensagens do usuário
+      chat/history/           GET/DELETE → histórico de mensagens do usuário e perguntas restantes no dia
+      chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
       llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
       propriedade/            GET/POST → CRUD do perfil da propriedade
       user/                   GET → dados do usuário logado
@@ -46,6 +47,7 @@ src/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
+    limites.ts                limite de perguntas por minuto e por dia (usado pelo chat e pelo contador)
     schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, ChatMessage (Mongoose)
 scripts/
@@ -53,6 +55,7 @@ scripts/
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
+  relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
   casos-verificacao.json    → amostra de perguntas e fontes esperadas
@@ -71,14 +74,14 @@ Formulário multi-seção (`/perfil-propriedade`) com dados de localização (co
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
-2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini.
+2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini. "Reiniciar chat" apaga a conversa, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
 3. Lê do MongoDB o perfil da propriedade e as últimas mensagens da conversa. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
 5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
 6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil.
 7. Monta o prompt com data de hoje, perfil, clima, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
-9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`.
+9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia.
 
 **Capacidade no plano gratuito da Groq:** cada modelo aceita 8.000 tokens por minuto, somando todos os usuários, e cada pergunta gasta entre 1.300 e 1.700. Com os dois modelos `gpt-oss` na cadeia, o CultivAI inteiro responde cerca de 10 perguntas por minuto. Numa demonstração com muitas pessoas ao mesmo tempo, vale escalonar o uso. O log da função registra os tokens de cada resposta.
 
@@ -89,6 +92,21 @@ Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em 
 ```bash
 npm run cenarios-chat
 ```
+
+**Na tela do chat** o produtor também encontra: sugestões de primeira pergunta montadas com o perfil, o contador de perguntas restantes no dia, 👍/👎 em cada resposta, o botão Imprimir (que gera papel ou PDF só com a conversa, pelo próprio navegador) e o microfone para ditar a pergunta. O microfone usa o reconhecimento de fala do navegador, gratuito, e aparece só onde ele existe (Chrome e Edge, inclusive no Android).
+
+#### Relatório do chat
+Lê o MongoDB, sem consumir cota de API, e não mostra quem perguntou:
+
+```bash
+npm run relatorio-chat                          # últimos 30 dias
+npm run relatorio-chat -- --dias 7 --limite 0.70
+```
+
+- **Respostas com 👎:** pergunta, resposta e score da busca, para a Frente 3 investigar.
+- **Pouca cobertura na base:** perguntas cuja busca não passou de 0,72 (ajustável com `--limite`). São candidatas a assuntos que faltam na base, mas as faixas de score se sobrepõem, então cada uma precisa ser lida. Abaixo de 0,62, em geral, a pergunta está fora do tema.
+
+Quem reinicia o chat apaga também as próprias avaliações, que deixam de aparecer no relatório.
 
 ### Base de conhecimento (RAG)
 `scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings via Gemini e envia os vetores para o Pinecone (namespace configurável por `PINECONE_NAMESPACE`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite diário gratuito da API do Gemini.

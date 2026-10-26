@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import DynamicForm from "@/components/DynamicForm";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { Copy, Check, RefreshCw, Printer, Mic, ThumbsUp, ThumbsDown } from "lucide-react";
 import styles from "../paginas.module.css";
 
 // Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
@@ -23,6 +23,24 @@ const rotuloFonte = (fonte) => {
   return titulo + paginas;
 };
 
+// Só respostas gravadas no banco (id do MongoDB) podem ser avaliadas; a saudação inicial e
+// as mensagens de erro não têm id.
+const respostaGravada = (msg) => msg.sender === "bot" && /^[a-f0-9]{24}$/.test(String(msg.id));
+
+// Atalhos para a primeira pergunta, montados com o que o produtor contou no Meu Cultivo.
+function sugestoesDePergunta(p) {
+  const cultura = (p?.culturasHistorico || []).find((c) => c && c !== "Nenhum");
+  const lugar = p?.cidade ? ` em ${p.cidade}` : "";
+  const praga = (p?.problemasRecentes || []).some((x) => /praga|nemat|doen/i.test(x));
+  return [
+    cultura ? `O que plantar depois de ${cultura.toLowerCase()}${lugar}?` : "Como começar a rotação de culturas numa área pequena?",
+    p?.tipoSolo ? `Que adubo verde ajuda a recuperar solo ${p.tipoSolo}?` : "Que adubo verde ajuda a recuperar o solo?",
+    praga ? "Como a rotação ajuda a controlar pragas e doenças?" : "Como a rotação ajuda a controlar nematoides?",
+  ];
+}
+
+const reconhecimentoDeVoz = () => typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
 export default function ChatCultivAI() {
   const router = useRouter();
   const [messages, setMessages] = useState([]);
@@ -31,6 +49,12 @@ export default function ChatCultivAI() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [restantes, setRestantes] = useState(null);
+  const [ouvindo, setOuvindo] = useState(false);
+  // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
+  // sem custo. Onde não existe, o botão do microfone não aparece.
+  const [temVoz] = useState(() => !!reconhecimentoDeVoz());
+  const reconhecimentoRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -54,6 +78,7 @@ export default function ChatCultivAI() {
         const resHistory = await fetch('/api/chat/history');
         if (resHistory.ok) {
           const dataH = await resHistory.json();
+          if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
           } else {
@@ -146,21 +171,24 @@ export default function ChatCultivAI() {
           formData = data.parsedData;
         }
         if (Array.isArray(data.fontes)) fontes = data.fontes;
+        if (typeof data.restantesHoje === "number") setRestantes(data.restantesHoje);
       } else if (data.message) {
         respostaTexto = data.message; // mostra o motivo real (limite, 401, Groq indisponível...)
       }
       // --- FIM DA ALTERAÇÃO 1 ---
 
-      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: respostaTexto, form: formData, fontes } : msg));
+      // O id do banco substitui o provisório, para a resposta poder ser avaliada.
+      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
     }
   };
 
-  const handleSendMessage = async () => {
-    if (inputValue.trim() === "") return;
+  const handleSendMessage = async (texto = inputValue) => {
+    if (texto.trim() === "") return;
 
-    const question = inputValue;
+    reconhecimentoRef.current?.stop();
+    const question = texto;
     setInputValue("");
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: question, sender: "user" }]);
     
@@ -201,6 +229,37 @@ export default function ChatCultivAI() {
     await sendMessageToAPI(followUp, propriedade, null, true);
   };
 
+  const avaliar = async (msg, valor) => {
+    const avaliacao = msg.avaliacao === valor ? null : valor; // clicar de novo desfaz
+    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, avaliacao } : m)));
+    try {
+      const r = await fetch("/api/chat/avaliacao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: msg.id, avaliacao }) });
+      if (!r.ok) throw new Error();
+    } catch {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, avaliacao: msg.avaliacao } : m)));
+    }
+  };
+
+  // O texto ditado vai para o campo, sem enviar: o produtor confere antes.
+  const alternarVoz = () => {
+    if (ouvindo) { reconhecimentoRef.current?.stop(); return; }
+    const Reconhecimento = reconhecimentoDeVoz();
+    const r = new Reconhecimento();
+    r.lang = "pt-BR";
+    r.interimResults = true;
+    const inicio = inputValue.trim() ? `${inputValue.trim()} ` : "";
+    r.onresult = (e) => setInputValue(inicio + Array.from(e.results).map((x) => x[0].transcript).join(""));
+    r.onerror = (e) => {
+      if (e.error === "not-allowed") alert("Para falar sua pergunta, permita o uso do microfone para este site.");
+    };
+    r.onend = () => setOuvindo(false);
+    reconhecimentoRef.current = r;
+    r.start();
+    setOuvindo(true);
+  };
+
+  const conversaVazia = !messages.some((m) => m.sender === "user");
+
   if (loading) return <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Carregando a sua experiência...</div>;
 
   return (
@@ -209,6 +268,11 @@ export default function ChatCultivAI() {
         <div>
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
+          {restantes !== null && (
+            <span className={styles.contador} style={{ color: restantes <= 5 ? 'rgb(185,28,28)' : 'var(--text-secondary)' }}>
+              {restantes === 0 ? 'Limite de perguntas de hoje atingido' : `${restantes} ${restantes === 1 ? 'pergunta restante' : 'perguntas restantes'} hoje`}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button 
@@ -220,7 +284,15 @@ export default function ChatCultivAI() {
             <RefreshCw size={16} />
             <span className={styles.rotuloBotao}>Reiniciar Chat</span>
           </button>
-          <button 
+          <button
+            onClick={() => window.print()}
+            title="Imprimir ou salvar a conversa em PDF"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+          >
+            <Printer size={16} />
+            <span className={styles.rotuloBotao}>Imprimir</span>
+          </button>
+          <button
             onClick={copyHistory}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
           >
@@ -273,11 +345,28 @@ export default function ChatCultivAI() {
                 <DynamicForm submittedData={msg.submittedData} />
               )}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px', textAlign: msg.sender === "user" ? 'right' : 'left', padding: '0 8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: msg.sender === "user" ? 'flex-end' : 'flex-start', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px', padding: '0 8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {msg.sender === "user" ? 'Você' : 'CultivAI'}
+              {respostaGravada(msg) && (
+                <span className={styles.avaliacao}>
+                  <button type="button" onClick={() => avaliar(msg, "boa")} aria-pressed={msg.avaliacao === "boa"} title="Resposta útil" className={msg.avaliacao === "boa" ? styles.avaliada : undefined}>
+                    <ThumbsUp size={15} />
+                  </button>
+                  <button type="button" onClick={() => avaliar(msg, "ruim")} aria-pressed={msg.avaliacao === "ruim"} title="Resposta ruim ou errada" className={msg.avaliacao === "ruim" ? styles.avaliada : undefined}>
+                    <ThumbsDown size={15} />
+                  </button>
+                </span>
+              )}
             </div>
           </div>
         ))}
+        {conversaVazia && (
+          <div className={styles.sugestoes}>
+            {sugestoesDePergunta(propriedade).map((s) => (
+              <button key={s} type="button" onClick={() => handleSendMessage(s)}>{s}</button>
+            ))}
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -287,12 +376,23 @@ export default function ChatCultivAI() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-          placeholder="Digite sua dúvida..."
+          placeholder={ouvindo ? "Pode falar..." : "Digite sua dúvida..."}
           className={styles.campoTexto}
           style={{ flex: 1, minWidth: 0, borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
+        {temVoz && (
+          <button
+            type="button"
+            onClick={alternarVoz}
+            title={ouvindo ? "Parar de ouvir" : "Falar a pergunta"}
+            aria-pressed={ouvindo}
+            className={`${styles.botaoVoz} ${ouvindo ? styles.ouvindo : ""}`}
+          >
+            <Mic size={20} />
+          </button>
+        )}
         <button
-          onClick={handleSendMessage}
+          onClick={() => handleSendMessage()}
           className={styles.botaoEnviar}
           style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)' }}
           onMouseOver={(e) => { e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}

@@ -6,14 +6,13 @@ import Propriedade from '@/models/Propriedade';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getWeatherSummary } from '@/lib/weather';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
+import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
 
 // No plano gratuito cada modelo tem um limite próprio de 8.000 tokens por minuto, somando
 // todos os usuários. Mais modelos na cadeia = mais perguntas por minuto, sem custo.
 const GROQ_MODELS = (process.env.GROQ_MODELS || 'openai/gpt-oss-20b,openai/gpt-oss-120b,qwen/qwen3.8-27b')
     .split(',').map(s => s.trim()).filter(Boolean);
 
-const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 4);
-const LIMITE_POR_DIA = Number(process.env.RATE_LIMIT_PER_DAY ?? 30);
 
 // Calibrado em 25/10/2026: perguntas fora do tema pontuam 0,54–0,59 e as do tema, 0,71–0,83.
 // Não separa assunto agrícola ausente da base (0,68–0,76); para esse caso há a checagem de números.
@@ -126,7 +125,9 @@ function textoParaBusca(pergunta: string, perguntaAnterior: string | null): stri
     return pergunta;
 }
 
-async function buscarTrechos(texto: string, cfg: { gemini: string; pinecone: string; host: string; namespace: string }): Promise<Trecho[]> {
+// maiorScore fica gravado com a resposta: perguntas com score baixo apontam assuntos que
+// faltam na base (npm run relatorio-chat). null = a busca não aconteceu.
+async function buscarTrechos(texto: string, cfg: { gemini: string; pinecone: string; host: string; namespace: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null }> {
     try {
         const ai = new GoogleGenAI({ apiKey: cfg.gemini });
         const embedRes = await ai.models.embedContent({
@@ -146,7 +147,7 @@ async function buscarTrechos(texto: string, cfg: { gemini: string; pinecone: str
         const matches: { score: number; metadata?: Record<string, unknown> }[] = (await res.json()).matches || [];
         console.log(`🔍 Pinecone: ${matches.map((m) => m.score.toFixed(3)).join(', ')} (limiar ${LIMIAR_RELEVANCIA})`);
 
-        return matches
+        const trechos = matches
             .filter((m) => m.score >= LIMIAR_RELEVANCIA && typeof m.metadata?.texto === 'string')
             .slice(0, TRECHOS_NO_CONTEXTO)
             .map((m) => ({
@@ -154,10 +155,11 @@ async function buscarTrechos(texto: string, cfg: { gemini: string; pinecone: str
                 fonte: String(m.metadata!.fonte ?? 'Embrapa'),
                 pagina: typeof m.metadata!.pagina === 'number' ? m.metadata!.pagina : undefined,
             }));
+        return { trechos, maiorScore: matches.length ? Math.max(...matches.map((m) => m.score)) : null };
     } catch (err) {
         // Sem a base, o chat ainda responde com prática geral: o prompt proíbe usar "📘" sem trechos.
         console.warn('⚠️ Busca na base indisponível:', err instanceof Error ? err.message : err);
-        return [];
+        return { trechos: [], maiorScore: null };
     }
 }
 
@@ -244,10 +246,9 @@ export async function POST(req: Request) {
 
         await dbConnect();
 
-        const agora = Date.now();
         const [ultimoMinuto, ultimas24h] = await Promise.all([
-            ChatMessage.countDocuments({ userId, sender: 'user', createdAt: { $gte: new Date(agora - 60_000) } }),
-            ChatMessage.countDocuments({ userId, sender: 'user', createdAt: { $gte: new Date(agora - 86_400_000) } }),
+            perguntasDesde(userId, 60_000),
+            perguntasDesde(userId, 86_400_000),
         ]);
         if (ultimoMinuto >= LIMITE_POR_MINUTO || ultimas24h >= LIMITE_POR_DIA) {
             const diario = ultimas24h >= LIMITE_POR_DIA;
@@ -275,7 +276,7 @@ export async function POST(req: Request) {
         // O perfil vem do banco, não do corpo da requisição: o navegador não decide o que entra no prompt.
         const [propriedade, recentes] = await Promise.all([
             Propriedade.findOne({ userId }).lean(),
-            ChatMessage.find({ userId, 'metadata.falhou': { $ne: true } })
+            ChatMessage.find({ userId, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } })
                 .sort({ createdAt: -1 }).limit(MENSAGENS_DE_HISTORICO).select('text sender metadata.pediu').lean(),
         ]);
 
@@ -299,7 +300,7 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [trechos, clima] = await Promise.all([
+        const [{ trechos, maiorScore }, clima] = await Promise.all([
             buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
             getWeatherSummary(cidade),
         ]);
@@ -396,12 +397,23 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         if (faltando.length) console.log(`📝 Dados que faltam: ${faltando.join(', ')} — pedidos nesta resposta: ${pedido.codigos.join(', ') || 'nenhum'}`);
         answer = pedido.texto;
 
-        await ChatMessage.create({ userId, text: answer, sender: 'bot', metadata: { fontes, ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}) } });
+        const resposta = await ChatMessage.create({
+            userId, text: answer, sender: 'bot',
+            metadata: {
+                fontes,
+                perguntaId,
+                busca: { maiorScore, trechosUsados: trechos.length },
+                ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
+            },
+        });
 
         return NextResponse.json({
             success: true,
             parsedData: pedido.form ? { tipo: 'coleta_dados', resposta: answer, ...pedido.form } : { tipo: 'resposta', resposta: answer },
             fontes,
+            mensagemId: resposta._id,
+            // ultimas24h foi contado antes de gravar esta pergunta
+            restantesHoje: Math.max(0, LIMITE_POR_DIA - ultimas24h - 1),
         });
 
     } catch (err) {

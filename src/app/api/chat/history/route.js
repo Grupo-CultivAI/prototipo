@@ -4,6 +4,7 @@ import { jwtVerify } from 'jose';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import { comTitulos } from '@/lib/documentos';
+import { perguntasRestantesHoje } from '@/lib/limites';
 
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
@@ -28,8 +29,11 @@ export async function GET() {
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        // Perguntas que falharam ficam gravadas só para contar no limite de uso.
-        const history = await ChatMessage.find({ userId, 'metadata.falhou': { $ne: true } }).sort({ timestamp: 1 });
+        // Perguntas que falharam ou foram apagadas ficam gravadas só para contar no limite de uso.
+        const [history, restantesHoje] = await Promise.all([
+            ChatMessage.find({ userId, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } }).sort({ timestamp: 1 }),
+            perguntasRestantesHoje(userId),
+        ]);
 
         const formattedHistory = history.map(msg => ({
             id: msg._id,
@@ -37,10 +41,11 @@ export async function GET() {
             sender: msg.sender,
             form: msg.metadata?.form,
             submittedData: msg.metadata?.submittedData,
-            fontes: comTitulos(msg.metadata?.fontes)
+            fontes: comTitulos(msg.metadata?.fontes),
+            avaliacao: msg.metadata?.avaliacao
         }));
 
-        return NextResponse.json({ success: true, history: formattedHistory });
+        return NextResponse.json({ success: true, history: formattedHistory, restantesHoje });
     } catch (error) {
         console.error("Erro ao buscar histórico:", error);
         return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
@@ -53,7 +58,15 @@ export async function DELETE() {
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        await ChatMessage.deleteMany({ userId });
+        // Apagar tudo zerava o limite diário, que conta as perguntas gravadas: bastava reiniciar
+        // o chat para fazer mais 30. As perguntas das últimas 24h ficam só como registro, sem o
+        // texto, e o resto é apagado de fato.
+        const desde = new Date(Date.now() - 86_400_000);
+        await ChatMessage.updateMany(
+            { userId, sender: 'user', createdAt: { $gte: desde } },
+            { $set: { text: '[apagada]', 'metadata.apagada': true }, $unset: { 'metadata.submittedData': 1 } },
+        );
+        await ChatMessage.deleteMany({ userId, $or: [{ sender: 'bot' }, { createdAt: { $lt: desde } }] });
 
         return NextResponse.json({ success: true, message: 'Histórico apagado com sucesso' });
     } catch (error) {
