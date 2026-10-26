@@ -2,9 +2,11 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import { Copy, Check, RefreshCw, Printer, Mic, ThumbsUp, ThumbsDown } from "lucide-react";
 import styles from "../paginas.module.css";
+import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
 // Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
 // fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
@@ -31,10 +33,12 @@ const respostaGravada = (msg) => msg.sender === "bot" && /^[a-f0-9]{24}$/.test(S
 function sugestoesDePergunta(p) {
   const cultura = (p?.culturasHistorico || []).find((c) => c && c !== "Nenhum");
   const lugar = p?.cidade ? ` em ${p.cidade}` : "";
+  const proxima = p?.proximaCultura && p.proximaCultura !== "Ainda não decidi" ? p.proximaCultura : null;
   const praga = (p?.problemasRecentes || []).some((x) => /praga|nemat|doen/i.test(x));
   return [
-    cultura ? `O que plantar depois de ${cultura.toLowerCase()}${lugar}?` : "Como começar a rotação de culturas numa área pequena?",
-    p?.tipoSolo ? `Que adubo verde ajuda a recuperar solo ${p.tipoSolo}?` : "Que adubo verde ajuda a recuperar o solo?",
+    proxima && cultura ? `Plantar ${proxima.toLowerCase()} depois de ${cultura.toLowerCase()} é uma boa rotação${lugar}?`
+      : cultura ? `O que plantar depois de ${cultura.toLowerCase()}${lugar}?` : "Como começar a rotação de culturas numa área pequena?",
+    p?.tipoSolo && p.tipoSolo !== "nao_sei" ? `Que adubo verde ajuda a recuperar solo ${p.tipoSolo}?` : "Que adubo verde ajuda a recuperar o solo?",
     praga ? "Como a rotação ajuda a controlar pragas e doenças?" : "Como a rotação ajuda a controlar nematoides?",
   ];
 }
@@ -76,8 +80,12 @@ export default function ChatCultivAI() {
         }
 
         const resHistory = await fetch('/api/chat/history');
+        // Uma carga que ficou para trás (a página foi montada de novo, o que o React faz em
+        // desenvolvimento) não pode sobrescrever a conversa nem consumir a marca de análise.
+        if (!ativo) return;
         if (resHistory.ok) {
           const dataH = await resHistory.json();
+          if (!ativo) return;
           if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
@@ -90,12 +98,23 @@ export default function ChatCultivAI() {
           }
         }
 
+        // "Salvar e pedir análise" no Meu Cultivo: a primeira pergunta sai sozinha. A marca é
+        // removida antes de enviar, para não repetir ao recarregar.
+        let pedirAnalise = false;
+        try {
+          pedirAnalise = sessionStorage.getItem(CHAVE_PEDIR_ANALISE) === "1";
+          sessionStorage.removeItem(CHAVE_PEDIR_ANALISE);
+        } catch { }
+        if (pedirAnalise) handleSendMessage(PERGUNTA_DE_ANALISE);
+
       } catch (err) {
       } finally {
-        setLoading(false);
+        if (ativo) setLoading(false);
       }
     }
+    let ativo = true;
     loadData();
+    return () => { ativo = false; };
   }, []);
 
   useEffect(() => {
@@ -259,6 +278,7 @@ export default function ChatCultivAI() {
   };
 
   const conversaVazia = !messages.some((m) => m.sender === "user");
+  const faltando = itensFaltando(propriedade);
 
   if (loading) return <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Carregando a sua experiência...</div>;
 
@@ -360,6 +380,14 @@ export default function ChatCultivAI() {
             </div>
           </div>
         ))}
+        {conversaVazia && faltando.length > 0 && (
+          <div className={styles.lembretePerfil}>
+            💡 {propriedade
+              ? `Para respostas mais certeiras, complete no Meu Cultivo: ${faltando.slice(0, 3).map((i) => i.rotulo).join(", ")}${faltando.length > 3 ? ` e mais ${faltando.length - 3}` : ""}.`
+              : "Preencha o Meu Cultivo para receber respostas pensadas para a sua área."}{" "}
+            <Link href="/perfil-propriedade">{propriedade ? "Completar perfil" : "Preencher agora"}</Link>
+          </div>
+        )}
         {conversaVazia && (
           <div className={styles.sugestoes}>
             {sugestoesDePergunta(propriedade).map((s) => (

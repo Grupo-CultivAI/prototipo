@@ -13,7 +13,7 @@ export const propriedadeSchema = z.object({
     }).optional(),
 
     // 2. Solo
-    tipoSolo: z.enum(["arenoso", "argiloso", "siltoso", "misto"]),
+    tipoSolo: z.enum(["arenoso", "argiloso", "siltoso", "misto", "nao_sei", ""]),
     phSolo: z.number().min(3.5, "pH muito baixo").max(9, "pH muito alto").nullable().optional(),
     materiaOrganica: z.enum(["Baixa", "Média", "Alta", ""]).optional().nullable(),
     drenagem: z.enum(["Boa", "Média", "Ruim", ""]).optional().nullable(),
@@ -23,10 +23,13 @@ export const propriedadeSchema = z.object({
     culturasHistorico: z.array(z.string()).default([]),
     tempoCulturaAtual: z.number().min(0, "Tempo não pode ser negativo").nullable().optional(),
     usoFertilizantes: z.enum(["Baixo", "Médio", "Alto", ""]).optional().nullable(),
+    sistemaPlantio: z.enum(["Plantio direto", "Convencional", "Cultivo mínimo", "Não sei", ""]).optional().nullable(),
+    irrigacao: z.enum(["Não irrigo", "Aspersão", "Gotejamento", "Sulco ou inundação", "Outro", ""]).optional().nullable(),
     problemasRecentes: z.array(z.string()).default([]),
 
     // 4. Objetivos
     objetivos: z.array(z.string()).default([]),
+    proximaCultura: z.string().optional().nullable(),
     observacoes: z.string().optional().nullable()
 });
 
