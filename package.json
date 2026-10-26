@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verificar-base": "node tests/verificar-base.mjs"
+    "verificar-base": "node tests/verificar-base.mjs",
+    "cenarios-chat": "node tests/cenarios-chat.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

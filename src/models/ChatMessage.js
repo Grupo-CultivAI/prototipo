@@ -21,7 +21,9 @@ const ChatMessageSchema = new mongoose.Schema({
     },
     metadata: {
         form: mongoose.Schema.Types.Mixed,
-        submittedData: mongoose.Schema.Types.Mixed
+        submittedData: mongoose.Schema.Types.Mixed,
+        fontes: mongoose.Schema.Types.Mixed,
+        falhou: Boolean
     }
 }, { timestamps: true });
 

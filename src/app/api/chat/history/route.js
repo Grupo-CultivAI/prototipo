@@ -27,14 +27,16 @@ export async function GET() {
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        const history = await ChatMessage.find({ userId }).sort({ timestamp: 1 });
+        // Perguntas que falharam ficam gravadas só para contar no limite de uso.
+        const history = await ChatMessage.find({ userId, 'metadata.falhou': { $ne: true } }).sort({ timestamp: 1 });
 
         const formattedHistory = history.map(msg => ({
             id: msg._id,
             text: msg.text,
             sender: msg.sender,
             form: msg.metadata?.form,
-            submittedData: msg.metadata?.submittedData
+            submittedData: msg.metadata?.submittedData,
+            fontes: msg.metadata?.fontes
         }));
 
         return NextResponse.json({ success: true, history: formattedHistory });

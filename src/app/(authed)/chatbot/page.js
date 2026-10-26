@@ -6,17 +6,16 @@ import DynamicForm from "@/components/DynamicForm";
 import { Copy, Check, RefreshCw } from "lucide-react";
 import styles from "../paginas.module.css";
 
-// A API devolve os documentos consultados sem filtrar por relevância: numa
-// pergunta fora do tema eles não têm relação com a resposta. Por isso as fontes
-// só aparecem quando o próprio texto atribuiu algo à Embrapa.
+// Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
+// fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
 const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
 
 const rotuloFonte = (fonte) => {
   const arquivo = typeof fonte === "string" ? fonte : fonte?.fonte;
   if (!arquivo) return null;
   const nome = String(arquivo).replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
-  const pagina = typeof fonte === "object" && fonte?.pagina ? ` (p. ${fonte.pagina} do PDF)` : "";
-  return nome.charAt(0).toUpperCase() + nome.slice(1) + pagina;
+  const paginas = Array.isArray(fonte?.paginas) && fonte.paginas.length ? ` (p. ${fonte.paginas.join(", ")} do PDF)` : "";
+  return nome.charAt(0).toUpperCase() + nome.slice(1) + paginas;
 };
 
 export default function ChatCultivAI() {

@@ -1,0 +1,113 @@
+// Cenários de regressão do chat (Frente 1). Roda contra um servidor no ar:
+//   npm run dev            (em outro terminal)
+//   npm run cenarios-chat  (ou: node tests/cenarios-chat.mjs http://localhost:3000)
+// Cria usuários descartáveis e os apaga ao final. Consome ~10 chamadas do Gemini e da Groq.
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local', quiet: true });
+
+const BASE = process.argv[2] || 'http://localhost:3000';
+const SENHA = 'senhaDeTeste123';
+const sufixo = Date.now();
+const emails = [];
+const resultados = [];
+
+async function novoUsuario(rotulo) {
+    const email = `cenario-${rotulo}-${sufixo}@exemplo.invalido`;
+    emails.push(email);
+    await fetch(`${BASE}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: `Cenário ${rotulo}`, email, senha: SENHA }) });
+    const r = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha: SENHA }) });
+    const m = (r.headers.get('set-cookie') || '').match(/authToken=([^;]+)/);
+    if (!m) throw new Error(`login do usuário de teste falhou (HTTP ${r.status})`);
+    return `authToken=${m[1]}`;
+}
+
+async function perguntar(cookie, pergunta) {
+    const r = await fetch(`${BASE}/api/llm`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ question: pergunta }) });
+    const d = await r.json().catch(() => ({}));
+    const texto = d.parsedData?.resposta || d.message || '';
+    return { status: r.status, texto, fontes: d.fontes || [], citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
+}
+
+function registrar(cenario, verificacoes, r) {
+    const falhas = verificacoes.filter(([, ok, obrigatoria]) => !ok && obrigatoria).map(([nome]) => nome);
+    const observacoes = verificacoes.filter(([, ok, obrigatoria]) => !ok && !obrigatoria).map(([nome]) => nome);
+    resultados.push({ cenario, falhas, observacoes, r });
+}
+
+try {
+    // 1. Pergunta do tema, com perfil preenchido
+    const a = await novoUsuario('tema');
+    await fetch(`${BASE}/api/propriedade`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: a },
+        body: JSON.stringify({ estado: 'MS', cidade: 'Dourados', tipoSolo: 'arenoso', culturasHistorico: ['soja', 'milho'], problemasRecentes: ['Pragas'], objetivos: ['Recuperar solo'] }),
+    });
+    let r = await perguntar(a, 'O que plantar depois do milho na minha área?');
+    registrar('1. Pergunta do tema', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['lista fontes', r.fontes.length > 0, true],
+        ['cita a Embrapa', r.citaEmbrapa, true],
+        ['sem aviso de número sem respaldo', !r.aviso, false],
+        ['menciona algo do perfil (arenoso/Dourados/MS)', /arenos|dourados|\bms\b|mato grosso do sul/i.test(r.texto), false],
+    ], r);
+
+    // 2. Fora do tema
+    r = await perguntar(a, 'Me passa uma receita de bolo de chocolate?');
+    registrar('2. Fora do tema', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['nenhuma fonte', r.fontes.length === 0, true],
+        ['não cita a Embrapa', !r.citaEmbrapa, true],
+    ], r);
+
+    // 3. Agricultura fora da base
+    r = await perguntar(a, 'Como criar galinhas caipiras no quintal?');
+    registrar('3. Agricultura não coberta pela base', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['não cita a Embrapa sem fonte', !(r.citaEmbrapa && r.fontes.length === 0), true],
+    ], r);
+
+    // 4. Continuação de conversa
+    const b = await novoUsuario('historico');
+    await perguntar(b, 'O que plantar depois de milho?');
+    r = await perguntar(b, 'E se o solo for arenoso?');
+    registrar('4. Continuação ("e se o solo for arenoso?")', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['mantém o assunto (menciona milho ou rotação)', /milho|rota[cç][aã]o/i.test(r.texto), true],
+    ], r);
+
+    // 5. Limite de uso: 5 perguntas seguidas, a 5ª deve ser bloqueada pelo CultivAI.
+    // A espera libera o limite por minuto da Groq, gasto pelos cenários anteriores; mesmo assim
+    // as 4 primeiras podem falhar por ele, e isso é observação, não falha do limite do CultivAI.
+    console.log('aguardando 60s para o limite por minuto da Groq se recompor...');
+    await new Promise((r) => setTimeout(r, 60_000));
+    const c = await novoUsuario('limite');
+    const status = [];
+    for (let i = 1; i <= 5; i++) status.push((await perguntar(c, `Pergunta rápida ${i}: o que é adubação verde?`)).status);
+    registrar('5. Limite de 4 por minuto', [
+        ['a 5ª é bloqueada pelo CultivAI (HTTP 429)', status[4] === 429, true],
+        ['as 4 primeiras respondem (depende da folga da Groq)', status.slice(0, 4).every((s) => s === 200), false],
+    ], { status: status.join(', '), texto: '', fontes: [] });
+} finally {
+    if (emails.length) {
+        await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
+        const db = mongoose.connection.db;
+        const ids = (await db.collection('users').find({ email: { $in: emails } }).project({ _id: 1 }).toArray()).map((u) => u._id);
+        await db.collection('chatmessages').deleteMany({ userId: { $in: ids } });
+        await db.collection('propriedades').deleteMany({ userId: { $in: ids } });
+        await db.collection('users').deleteMany({ _id: { $in: ids } });
+        await mongoose.disconnect();
+        console.log(`(${ids.length} usuário(s) de teste removido(s))`);
+    }
+}
+
+let falhou = false;
+for (const { cenario, falhas, observacoes, r } of resultados) {
+    console.log(`\n${falhas.length ? '❌' : '✅'} ${cenario}`);
+    falhas.forEach((f) => console.log(`   falhou: ${f}`));
+    observacoes.forEach((o) => console.log(`   observação: ${o}`));
+    if (r.fontes?.length) console.log(`   fontes: ${r.fontes.map((f) => f.fonte ?? f).join('; ')}`);
+    if (r.texto) console.log(`   resposta: ${r.texto.replace(/\s+/g, ' ').slice(0, 220)}...`);
+    if (typeof r.status === 'string') console.log(`   status: ${r.status}`);
+    if (falhas.length) falhou = true;
+}
+process.exit(falhou ? 1 : 0);
