@@ -6,6 +6,8 @@ export const metadata = { title: "Aviso de privacidade | CultivAI" }
 // Linguagem simples, para o produtor rural. Ao mudar o que o app coleta ou com quem
 // compartilha, atualize este texto e a data abaixo.
 const ATUALIZADO_EM = "26 de outubro de 2026"
+// Mesma conta que envia os emails de recuperação de senha (SMTP_USER na Vercel).
+const CONTATO = "pex.ifsp@gmail.com"
 
 const secoes = [
   {
@@ -48,7 +50,7 @@ const secoes = [
     lista: [
       "Corrigir seus dados: edite o Meu Cultivo a qualquer momento.",
       "Apagar conversas: use o botão \"Apagar conversa\" no chat. As perguntas das últimas 24 horas ficam registradas por um dia, sem o texto, só para controlar o limite diário de perguntas.",
-      "Pedir uma cópia dos seus dados ou a exclusão da conta: fale com a equipe do projeto CultivAI no IFSP.",
+      `Pedir uma cópia dos seus dados ou a exclusão da conta: escreva para ${CONTATO}, o email do projeto.`,
     ],
   },
 ]
@@ -71,6 +73,13 @@ export default function Privacidade() {
             )}
           </section>
         ))}
+
+        <section style={{ marginBottom: "1.75rem" }}>
+          <h2 style={{ fontSize: "1.2rem", color: "var(--primary-dark)", marginBottom: "0.5rem" }}>Contato</h2>
+          <p style={{ color: "var(--text-primary)" }}>
+            Dúvidas sobre os seus dados: <a href={`mailto:${CONTATO}`} style={{ color: "var(--primary-dark)", fontWeight: 600 }}>{CONTATO}</a>
+          </p>
+        </section>
 
         <p className={styles.rodape}>
           <Link href="/cadastro">Voltar para o cadastro</Link>
