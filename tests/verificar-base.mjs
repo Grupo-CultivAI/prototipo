@@ -9,7 +9,8 @@ const { limiarScore, topK, casos } = JSON.parse(fs.readFileSync(ARQUIVO_CASOS, '
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
 const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
-const geminiApiKey = process.env.GEMINI_API_KEY;
+// Usa a chave dos scripts, se houver, para não gastar a cota do chat (ver ingest-pdfs.mjs).
+const geminiApiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
 
 if (!host || !pineconeApiKey || !geminiApiKey) {
     console.error('❌ PINECONE_INDEX_HOST, PINECONE_API_KEY e GEMINI_API_KEY são obrigatórios no .env.local');

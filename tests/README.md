@@ -37,6 +37,8 @@ As perguntas foram escritas a partir de um trecho real de cada documento. Pergun
 
 Execução de **20/10/2026**, sobre 36 PDFs e 849 trechos indexados.
 
+> Atualização em 27/10/2026: `pratylenchus_brachyurus_soja_produtividade.pdf` saiu da base. Era o mesmo estudo de `cultivo_soja_pratylenchus_brachyurus_graos.pdf` (mesmos números), com uma página de capa a mais, e os dois ocupavam juntos as vagas de trechos de uma mesma resposta. A base passou a ter 35 PDFs e 835 trechos. Nenhum caso de verificação usava esse arquivo.
+
 > Correção em 25/10/2026: este registro dizia 864 trechos, número que estava errado. O índice tinha 850 vetores — 849 válidos e um trecho órfão com o texto corrompido antigo do PDF de trigo, que sobrou quando o OCR reduziu o documento de 16 para 15 trechos. O script de ingestão passou a remover esses excedentes, e o órfão foi apagado.
 
 **10 casos, 10 aprovados, nenhuma falha.**

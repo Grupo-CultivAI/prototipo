@@ -32,7 +32,10 @@ const PREFIXO_POR_ARQUIVO = {
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
 const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
-const geminiApiKey = process.env.GEMINI_API_KEY;
+// GEMINI_API_KEY_INGESTAO (opcional): chave de outro projeto do Google só para os scripts.
+// A cota gratuita de embeddings (1.000 por dia) é por projeto; com a chave do chat, um lote
+// grande de ingestão deixava o chat publicado sem busca na base até o dia seguinte.
+const geminiApiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
 
 if (!host || !pineconeApiKey || !geminiApiKey) {
     console.error('❌ Erro: PINECONE_INDEX_HOST, PINECONE_API_KEY e GEMINI_API_KEY são obrigatórios no .env.local');
