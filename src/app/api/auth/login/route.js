@@ -5,6 +5,9 @@ import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 
+// O detalhe técnico fica no log da Vercel; para a pessoa, o que fazer.
+const SERVIDOR_FORA = 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.';
+
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
 }
@@ -13,7 +16,8 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 export async function POST(req) {
     try {
         await dbConnect();
-        const { email, senha } = await req.json();
+        const { email: emailDigitado, senha } = await req.json();
+        const email = String(emailDigitado ?? '').trim();
 
         if (!email || !senha) {
             return NextResponse.json(
@@ -22,7 +26,8 @@ export async function POST(req) {
             );
         }
 
-        const user = await User.findOne({ email });
+        // O cadastro grava o email em minúsculas; contas antigas podem ter maiúsculas.
+        const user = await User.findOne({ email: email.toLowerCase() }) ?? await User.findOne({ email });
         if (!user) {
             return NextResponse.json(
                 { message: 'Email ou senha incorretos' },
@@ -68,7 +73,7 @@ export async function POST(req) {
     } catch (error) {
         console.error('Login Error:', error);
         return NextResponse.json(
-            { message: 'Erro interno ao realizar login' },
+            { message: SERVIDOR_FORA },
             { status: 500 }
         );
     }

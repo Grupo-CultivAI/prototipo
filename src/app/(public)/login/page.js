@@ -1,38 +1,57 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import AvisoFormulario from "@/components/AvisoFormulario"
+import { CHAVE_EMAIL_CADASTRADO, emailCadastrado } from "@/lib/cadastro"
+
+const semInscricao = () => () => {}
 
 export default function Login() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
+  // Depois do cadastro, o email já vem preenchido e só falta a senha. No servidor não há
+  // sessionStorage: a primeira renderização vem sem email e o navegador completa em seguida.
+  const cadastrado = useSyncExternalStore(semInscricao, emailCadastrado, () => null)
+  const [emailDigitado, setEmail] = useState(null)
+  const email = emailDigitado ?? cadastrado ?? ""
+  const vindoDoCadastro = Boolean(cadastrado) && emailDigitado === null
   const [senha, setSenha] = useState("")
   const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState("")
+  const senhaRef = useRef(null)
+
+  useEffect(() => {
+    if (vindoDoCadastro) senhaRef.current?.focus()
+  }, [vindoDoCadastro])
+
+  const alterar = (setter) => (e) => { setter(e.target.value); setErro("") }
 
   async function entrar(e) {
     e.preventDefault()
     if (!email || !senha) {
-      alert("Preencha todos os campos")
+      setErro("Preencha o email e a senha.")
       return
     }
     setLoading(true)
+    setErro("")
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data.message || "Email ou senha incorretos");
+        setErro(data.message || "Não foi possível entrar. Tente de novo.");
         setLoading(false);
         return;
       }
+      try { sessionStorage.removeItem(CHAVE_EMAIL_CADASTRADO) } catch { }
       localStorage.setItem("usuarioLogado", "true");
       router.push("/chatbot");
     } catch (err) {
       console.error(err);
-      alert("Erro de conexão");
+      setErro("Não foi possível conectar. Confira sua internet e tente de novo.");
       setLoading(false);
     }
   }
@@ -51,9 +70,10 @@ export default function Login() {
           </div>
 
           <form onSubmit={entrar} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {vindoDoCadastro && !erro && <AvisoFormulario tipo="sucesso">Conta criada. Agora é só digitar sua senha para entrar.</AvisoFormulario>}
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Email Corporativo</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="contato@fazenda.com"
+              <input type="email" value={email} onChange={alterar(setEmail)} required placeholder="contato@fazenda.com"
                 style={{ width: '100%', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', outline: 'none', transition: 'border 0.2s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
                 onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
                 onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
@@ -63,13 +83,15 @@ export default function Login() {
                 <label style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Senha de Acesso</label>
                 <Link href="/redefinir-senha" style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>Esqueceu?</Link>
               </div>
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="••••••••"
+              <input type="password" value={senha} ref={senhaRef} onChange={alterar(setSenha)} required placeholder="••••••••"
                 style={{ width: '100%', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', outline: 'none', transition: 'border 0.2s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
                 onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
                 onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
             </div>
 
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '1.2rem', marginTop: '1rem', background: 'var(--primary-dark)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '600', fontSize: '1.05rem', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 12px rgba(6,64,43,0.15)', opacity: loading ? 0.7 : 1 }}>
+            {erro && <AvisoFormulario>{erro}</AvisoFormulario>}
+
+            <button type="submit" disabled={loading} style={{ width: '100%', padding: '1.2rem', marginTop: '0.25rem', background: 'var(--primary-dark)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: '600', fontSize: '1.05rem', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 12px rgba(6,64,43,0.15)', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Acessando plataforma...' : 'Entrar na Plataforma'}
             </button>
           </form>

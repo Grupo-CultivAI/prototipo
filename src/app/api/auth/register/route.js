@@ -3,10 +3,15 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 
+// O detalhe técnico fica no log da Vercel; para a pessoa, o que fazer.
+const SERVIDOR_FORA = 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.';
+
 export async function POST(req) {
     try {
         await dbConnect();
-        const { nome, email, senha } = await req.json();
+        const { nome, email: emailDigitado, senha } = await req.json();
+        // "Eduarda@gmail.com" e "eduarda@gmail.com " viravam duas contas diferentes.
+        const email = String(emailDigitado ?? '').trim().toLowerCase();
 
         if (!nome || !email || !senha) {
             return NextResponse.json(
@@ -18,8 +23,8 @@ export async function POST(req) {
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return NextResponse.json(
-                { message: 'Email já cadastrado.' },
-                { status: 400 }
+                { message: 'Esse email já tem conta. Quer entrar?', emailJaCadastrado: true },
+                { status: 409 }
             );
         }
 
@@ -39,7 +44,7 @@ export async function POST(req) {
     } catch (error) {
         console.error('Registration Error:', error);
         return NextResponse.json(
-            { message: 'Erro interno ao cadastrar usuário' },
+            { message: SERVIDOR_FORA },
             { status: 500 }
         );
     }
