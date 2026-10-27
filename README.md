@@ -58,6 +58,7 @@ src/
     tentativas.ts             limite de tentativas de login e de pedidos de recuperação
     email.ts                  envio de email por SMTP (recuperação de senha)
     sessao.ts                 "já está logado?" para as telas de login e cadastro
+    schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, Conversa, ChatMessage, TentativaAcesso (Mongoose)
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
