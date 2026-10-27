@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MapPin, Sprout, History, Target, ChevronDown, ChevronUp, Droplets, FlaskConical, AlertCircle, Info } from 'lucide-react';
 import styles from '../paginas.module.css';
@@ -32,6 +32,36 @@ const Opcoes = ({ opcoes, marcadas, alternar }: any) => (
 
 
 
+// Cabeçalho de cada bloco do formulário. Fica fora da página: definido dentro dela, o React
+// o recriava a cada tecla digitada. É um botão dentro do título (padrão de bloco sanfonado),
+// e não uma div clicável, para abrir também pelo teclado e pelo leitor de tela.
+function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description }: {
+    id: string; aberta: boolean; aoAlternar: (id: string) => void; icon: React.ElementType; title: string; description: string;
+}) {
+    return (
+        <h3 style={{ margin: 0 }}>
+            <button type="button" onClick={() => aoAlternar(id)} aria-expanded={aberta} style={{
+                width: '100%', border: 'none', font: 'inherit', textAlign: 'left',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
+                background: aberta ? 'var(--primary-light)' : '#FDFDFD',
+                borderBottom: aberta ? '1px solid var(--border)' : 'none',
+                transition: 'all 0.3s', borderRadius: aberta ? '16px 16px 0 0' : '16px', color: aberta ? 'white' : 'var(--text-primary)'
+            }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ display: 'inline-flex', padding: '10px', background: aberta ? 'rgba(255,255,255,0.2)' : 'var(--surface)', borderRadius: '12px', color: aberta ? 'white' : 'var(--primary)' }}>
+                        <Icon size={24} aria-hidden="true" />
+                    </span>
+                    <span>
+                        <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700 }}>{title}</span>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>{description}</span>
+                    </span>
+                </span>
+                {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
+            </button>
+        </h3>
+    );
+}
+
 export default function PerfilPropriedade() {
     const router = useRouter();
     const [openSection, setOpenSection] = useState<string>('localizacao');
@@ -61,8 +91,9 @@ export default function PerfilPropriedade() {
         }
     };
 
-    const cepValue = watch('cep');
-    const valores = watch();
+    // useWatch, e não watch(): o watch() não é compatível com o otimizador do React.
+    const cepValue = useWatch({ control, name: 'cep' });
+    const valores = useWatch({ control });
     const faltando = itensFaltando(valores);
 
     useEffect(() => {
@@ -132,29 +163,6 @@ export default function PerfilPropriedade() {
         setOpenSection(openSection === section ? '' : section);
     };
 
-    const AccordionHeader = ({ id, icon: Icon, title, description }: any) => {
-        const isOpen = openSection === id;
-        return (
-            <div onClick={() => toggleSection(id)} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
-                background: isOpen ? 'var(--primary-light)' : '#FDFDFD',
-                borderBottom: isOpen ? '1px solid var(--border)' : 'none',
-                transition: 'all 0.3s', borderRadius: isOpen ? '16px 16px 0 0' : '16px', color: isOpen ? 'white' : 'var(--text-primary)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '10px', background: isOpen ? 'rgba(255,255,255,0.2)' : 'var(--surface)', borderRadius: '12px', color: isOpen ? 'white' : 'var(--primary)' }}>
-                        <Icon size={24} />
-                    </div>
-                    <div>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700' }}>{title}</h3>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: isOpen ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>{description}</p>
-                    </div>
-                </div>
-                {isOpen ? <ChevronUp size={24} /> : <ChevronDown size={24} color="var(--text-secondary)" />}
-            </div>
-        );
-    };
-
     const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', outline: 'none', transition: 'border 0.2s' };
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
     const errorStyle = { color: '#EF4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
@@ -182,7 +190,7 @@ export default function PerfilPropriedade() {
 
                 {/* --- 1. LOCALIZAÇÃO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <AccordionHeader id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
+                    <CabecalhoSecao aberta={openSection === 'localizacao'} aoAlternar={toggleSection} id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
                     {openSection === 'localizacao' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -221,7 +229,7 @@ export default function PerfilPropriedade() {
 
                 {/* --- 2. SOLO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <AccordionHeader id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
+                    <CabecalhoSecao aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
                     {openSection === 'solo' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div>
@@ -272,7 +280,7 @@ export default function PerfilPropriedade() {
 
                 {/* --- 3. HISTÓRICO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <AccordionHeader id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
+                    <CabecalhoSecao aberta={openSection === 'historico'} aoAlternar={toggleSection} id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
                     {openSection === 'historico' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -358,7 +366,7 @@ export default function PerfilPropriedade() {
 
                 {/* --- 4. OBJETIVOS --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <AccordionHeader id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
+                    <CabecalhoSecao aberta={openSection === 'objetivo'} aoAlternar={toggleSection} id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
                     {openSection === 'objetivo' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>

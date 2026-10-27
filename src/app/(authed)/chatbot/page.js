@@ -64,6 +64,7 @@ export default function ChatCultivAI() {
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
   const reconhecimentoRef = useRef(null);
+  const enviarRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -107,7 +108,8 @@ export default function ChatCultivAI() {
           pedirAnalise = sessionStorage.getItem(CHAVE_PEDIR_ANALISE) === "1";
           sessionStorage.removeItem(CHAVE_PEDIR_ANALISE);
         } catch { }
-        if (pedirAnalise) handleSendMessage(PERGUNTA_DE_ANALISE);
+        // Pela ref: este efeito é declarado antes de handleSendMessage (ver o efeito abaixo dela).
+        if (pedirAnalise) enviarRef.current?.(PERGUNTA_DE_ANALISE);
 
       } catch (err) {
       } finally {
@@ -117,7 +119,7 @@ export default function ChatCultivAI() {
     let ativo = true;
     loadData();
     return () => { ativo = false; };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -228,6 +230,9 @@ export default function ChatCultivAI() {
     
     await sendMessageToAPI(question, propriedade);
   };
+
+  // A carga inicial roda antes desta linha existir; ela chama o envio por esta ref.
+  useEffect(() => { enviarRef.current = handleSendMessage; });
 
   const handleFormSubmit = async (formData, msgId, form) => {
     // Remove form from the bot message
