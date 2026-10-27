@@ -3,8 +3,10 @@ import { GoogleGenAI } from '@google/genai';
 async function testIntegrations() {
     console.log('\n--- 1. Testando Gemini Embeddings ---');
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Testa a chave dos scripts de ingestão, se houver; senão, a do chat.
+        const apiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
         if (!apiKey) throw new Error('GEMINI_API_KEY ausente no .env.local');
+        console.log(`(chave testada: ${process.env.GEMINI_API_KEY_INGESTAO ? 'GEMINI_API_KEY_INGESTAO' : 'GEMINI_API_KEY'})`);
 
         const ai = new GoogleGenAI({ apiKey });
         const res = await ai.models.embedContent({

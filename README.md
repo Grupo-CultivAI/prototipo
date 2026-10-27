@@ -64,6 +64,7 @@ scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
+  remover-documento.mjs     → tira um documento da base (Pinecone, estado da ingestão e pasta); simula antes, apaga com --confirmar
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
   relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
@@ -206,7 +207,10 @@ JWT_SECRET=             # segredo para assinar/verificar os JWTs de autenticaç�
 OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 
 # IA / RAG
-GEMINI_API_KEY=         # chave da API Gemini (embeddings)
+GEMINI_API_KEY=         # chave da API Gemini (embeddings do chat)
+GEMINI_API_KEY_INGESTAO= # opcional, só no .env.local; chave de OUTRO projeto do Google para os scripts
+                         # (ingestão, verificação). Sem ela, os scripts usam a GEMINI_API_KEY e gastam
+                         # a mesma cota diária do chat publicado
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
 GROQ_MODELS=            # opcional; modelos em ordem de fallback, separados por vírgula
                          # (padrão: openai/gpt-oss-20b,openai/gpt-oss-120b,qwen/qwen3.8-27b)
