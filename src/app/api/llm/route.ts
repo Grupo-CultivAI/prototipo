@@ -10,10 +10,25 @@ import { getWeatherSummary } from '@/lib/weather';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
 
-// No plano gratuito cada modelo tem um limite próprio de 8.000 tokens por minuto, somando
-// todos os usuários. Mais modelos na cadeia = mais perguntas por minuto, sem custo.
-const GROQ_MODELS = (process.env.GROQ_MODELS || 'openai/gpt-oss-20b,openai/gpt-oss-120b,qwen/qwen3.8-27b')
-    .split(',').map(s => s.trim()).filter(Boolean);
+// Fila de modelos, tentados em ordem: se um falha (limite, fora do ar, demora, resposta
+// cortada), o próximo responde. No plano gratuito cada modelo tem a própria cota, somando
+// todos os usuários, então mais modelos = mais perguntas por minuto, sem custo.
+// Formato "provedor:modelo". Em 27/10/2026 a Groq não tinha outros modelos de conversa
+// úteis; o Gemini 3.5 Flash-Lite (mesma chave dos embeddings, cota separada) foi o único
+// estável nos testes: gemini-3.5-flash e gemini-3.8-flash davam "high demand" ou demoravam
+// mais de 25 s, e o gemma-4 escrevia o próprio raciocínio na resposta.
+const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+
+// Os dois provedores aceitam o formato de chat da OpenAI.
+const PROVEDORES: Record<string, { url: string; chave: () => string | undefined }> = {
+    groq: { url: 'https://api.groq.com/openai/v1/chat/completions', chave: () => process.env.GROQ_API_KEY },
+    gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', chave: () => process.env.GEMINI_API_KEY },
+};
+
+// Um modelo que trava não pode prender a pergunta: em 27/10/2026 o gemini-flash-latest ficou
+// mais de 5 minutos sem responder. Passado o prazo, o próximo modelo tenta.
+const PRAZO_POR_MODELO_MS = 20_000;
 
 
 // Calibrado em 25/10/2026: perguntas fora do tema pontuam 0,54–0,59 e as do tema, 0,71–0,83.
@@ -197,35 +212,50 @@ const TETO_DE_TOKENS_DA_RESPOSTA = 1000;
 
 type Geracao = { texto: string; erro: string; modelo?: string; tokensEntrada?: number; tokensSaida?: number };
 
-async function gerarResposta(messages: MensagemGroq[], groqKey: string): Promise<Geracao> {
+async function gerarResposta(messages: MensagemGroq[]): Promise<Geracao> {
     let erro = '';
-    for (const model of GROQ_MODELS) {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.3,
-                max_completion_tokens: TETO_DE_TOKENS_DA_RESPOSTA,
-                // Os gpt-oss raciocinam antes de responder, e esse raciocínio conta no limite por minuto.
-                ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
-            }),
-        });
+    for (const entrada of MODELOS_IA) {
+        const [nomeProvedor, model] = entrada.includes(':') ? [entrada.slice(0, entrada.indexOf(':')), entrada.slice(entrada.indexOf(':') + 1)] : ['groq', entrada];
+        const provedor = PROVEDORES[nomeProvedor];
+        const chave = provedor?.chave();
+        if (!provedor || !chave) {
+            console.warn(`⚠️ ${entrada}: provedor desconhecido ou sem chave; pulando.`);
+            continue;
+        }
+        let res: Response;
+        try {
+            res = await fetch(provedor.url, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(PRAZO_POR_MODELO_MS),
+                body: JSON.stringify({
+                    model,
+                    messages,
+                    temperature: 0.3,
+                    max_completion_tokens: TETO_DE_TOKENS_DA_RESPOSTA,
+                    // Os gpt-oss raciocinam antes de responder, e esse raciocínio conta no limite por minuto.
+                    ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+                }),
+            });
+        } catch (e) {
+            erro = `${entrada}: ${e instanceof Error ? e.message : e}`;
+            console.warn(`⚠️ ${entrada} não respondeu (${erro}); tentando o próximo modelo.`);
+            continue;
+        }
         if (res.ok) {
             const dados = await res.json();
             const texto = dados.choices?.[0]?.message?.content || '';
             const u = dados.usage ?? {};
             if (dados.choices?.[0]?.finish_reason === 'length') {
-                erro = `${model} atingiu o teto de ${TETO_DE_TOKENS_DA_RESPOSTA} tokens`;
+                erro = `${entrada} atingiu o teto de ${TETO_DE_TOKENS_DA_RESPOSTA} tokens`;
                 console.warn(`⚠️ ${erro} (provável repetição em laço); tentando o próximo modelo.`);
             } else if (texto) {
-                console.log(`🎉 Sucesso com ${model} — tokens: ${u.prompt_tokens} de entrada + ${u.completion_tokens} de saída.`);
-                return { texto, erro: '', modelo: model, tokensEntrada: u.prompt_tokens, tokensSaida: u.completion_tokens };
+                console.log(`🎉 Sucesso com ${entrada} — tokens: ${u.prompt_tokens} de entrada + ${u.completion_tokens} de saída.`);
+                return { texto, erro: '', modelo: entrada, tokensEntrada: u.prompt_tokens, tokensSaida: u.completion_tokens };
             }
         } else {
             erro = await res.text();
-            console.warn(`⚠️ ${model} falhou (${res.status}):`, erro);
+            console.warn(`⚠️ ${entrada} falhou (${res.status}):`, erro.slice(0, 300));
         }
     }
     return { texto: '', erro };
@@ -377,15 +407,15 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             { role: 'user', content: userPrompt },
         ];
 
-        const primeira = await gerarResposta(messages, groqKey);
+        const primeira = await gerarResposta(messages);
         if (!primeira.texto) {
             await marcarComoFalha(perguntaId);
-            const limite = /rate_limit|429/.test(primeira.erro);
+            const limite = /rate_limit|429|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand|timeout|aborted/i.test(primeira.erro);
             return NextResponse.json({
                 success: false,
                 message: limite
                     ? 'O CultivAI está recebendo muitas perguntas agora. Aguarde um minuto e tente de novo.'
-                    : `Erro na API Groq: ${primeira.erro || 'sem resposta'}`,
+                    : 'O CultivAI não conseguiu responder agora. Tente de novo em instantes.',
             }, { status: 502 });
         }
         let answer = primeira.texto;
@@ -400,7 +430,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         const problema = problemaDeAtribuicao(answer, contexto);
         if (problema) {
             console.warn('⚠️ Atribuição à Embrapa sem respaldo nos trechos; pedindo revisão.', problema);
-            const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: problema }], groqKey);
+            const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: problema }]);
             geracao.revisada = true;
             if (revisada.texto) {
                 answer = revisada.texto;

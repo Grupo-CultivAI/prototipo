@@ -15,7 +15,7 @@ const resultados = [];
 async function novoUsuario(rotulo) {
     const email = `cenario-${rotulo}-${sufixo}@exemplo.invalido`;
     emails.push(email);
-    await fetch(`${BASE}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: `Cenário ${rotulo}`, email, senha: SENHA }) });
+    await fetch(`${BASE}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: `Cenário ${rotulo}`, email, senha: SENHA, aceitouPrivacidade: true }) });
     const r = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha: SENHA }) });
     const m = (r.headers.get('set-cookie') || '').match(/authToken=([^;]+)/);
     if (!m) throw new Error(`login do usuário de teste falhou (HTTP ${r.status})`);
@@ -27,7 +27,14 @@ async function perguntar(cookie, pergunta) {
     const d = await r.json().catch(() => ({}));
     const texto = d.parsedData?.resposta || d.message || '';
     const campos = (d.parsedData?.campos_necessarios || []).map((c) => c.chave);
-    return { status: r.status, texto, fontes: d.fontes || [], campos, citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
+    return { status: r.status, texto, fontes: d.fontes || [], campos, mensagemId: d.mensagemId, citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
+}
+
+// O texto que a rota buscou na base para responder (gravado em metadata.busca.texto).
+async function textoBuscado(mensagemId) {
+    if (mongoose.connection.readyState !== 1) await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
+    const msg = await mongoose.connection.db.collection('chatmessages').findOne({ _id: new mongoose.Types.ObjectId(String(mensagemId)) });
+    return msg?.metadata?.busca?.texto ?? '';
 }
 
 function registrar(cenario, verificacoes, r) {
@@ -72,9 +79,14 @@ try {
     const b = await novoUsuario('historico');
     await perguntar(b, 'O que plantar depois de milho?');
     r = await perguntar(b, 'E se o solo for arenoso?');
+    // O que se testa é a busca: a pergunta curta precisa ser buscada junto com a anterior.
+    // Conferir palavras na resposta falhava de vez em quando com respostas no assunto que
+    // não repetiam "milho" (ex.: "cultura de sucessão"); isso virou só observação.
+    const buscado = r.mensagemId ? await textoBuscado(r.mensagemId) : '';
     registrar('4. Continuação ("e se o solo for arenoso?")', [
         ['responde (HTTP 200)', r.status === 200, true],
-        ['mantém o assunto (menciona milho, rotação ou sucessão)', /milho|rota[cç][aã]o|sucess[aã]o/i.test(r.texto), true],
+        ['busca na base junto com a pergunta anterior', /milho/i.test(buscado) && /arenoso/i.test(buscado), true],
+        ['a resposta menciona milho, rotação ou sucessão', /milho|rota[cç][aã]o|sucess[aã]o/i.test(r.texto), false],
     ], r);
 
     // 5. Pedido de dado que falta no perfil. Pedir ou não é decisão do modelo; o que não pode
@@ -127,7 +139,7 @@ try {
     ], { status: `${antes.history?.length} mensagens → ${depois.history?.length}`, texto: '', fontes: [] });
 } finally {
     if (emails.length) {
-        await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
+        if (mongoose.connection.readyState !== 1) await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
         const db = mongoose.connection.db;
         const ids = (await db.collection('users').find({ email: { $in: emails } }).project({ _id: 1 }).toArray()).map((u) => u._id);
         await db.collection('chatmessages').deleteMany({ userId: { $in: ids } });

@@ -108,7 +108,7 @@ async function testIntegrations() {
         if (gRes.ok) {
             const data = await gRes.json();
             console.log(`✅ Groq OK com o modelo "${modelToTest}"! Resposta:`, data.choices[0]?.message?.content);
-            console.log(`\n👉 Dica: Atualize a variável GROQ_MODELS no seu .env.local com: ${availableModels.join(',')}`);
+            console.log(`\n👉 Modelos disponíveis na Groq: ${availableModels.join(', ')}. A fila usada pelo chat fica na variável MODELOS_IA (formato "groq:modelo"; ver README).`);
         } else {
             const errText = await gRes.text();
             console.error(`❌ Groq erro HTTP ${gRes.status}:`, errText);
