@@ -13,7 +13,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
 - **IA / RAG** (chamadas feitas diretamente pela própria rota da API, sem servidor intermediário):
   - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
-  - [Groq](https://groq.com) — gera a resposta final (`openai/gpt-oss-20b`, com fallback automático para `qwen/qwen3.8-27b` em caso de limite de cota)
+  - [Groq](https://groq.com) e Gemini — geram a resposta final, numa fila de modelos: `gpt-oss-20b` → `gpt-oss-120b` (Groq) → `gemini-3.5-flash-lite` (Google) → `qwen3.8-27b` (Groq). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api)
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
@@ -47,7 +47,7 @@ src/
       propriedade/            GET/POST → CRUD do perfil da propriedade
       user/                   GET → dados do usuário logado
       weather/                GET → proxy para a API do OpenWeatherMap ⚠️ ainda sem autenticação (ver Status do projeto)
-  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario, Button, Card
+  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario
   lib/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
@@ -58,13 +58,13 @@ src/
     tentativas.ts             limite de tentativas de login e de pedidos de recuperação
     email.ts                  envio de email por SMTP (recuperação de senha)
     sessao.ts                 "já está logado?" para as telas de login e cadastro
-    schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, Conversa, ChatMessage, TentativaAcesso (Mongoose)
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
+  test-integrations.mjs     → testa se as chaves do Gemini, do Pinecone e da Groq funcionam (node scripts/test-integrations.mjs)
   relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
@@ -103,7 +103,9 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
 9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia.
 
-**Capacidade no plano gratuito da Groq:** cada modelo aceita 8.000 tokens por minuto, somando todos os usuários, e cada pergunta gasta entre 1.300 e 1.700. Com os dois modelos `gpt-oss` na cadeia, o CultivAI inteiro responde cerca de 10 perguntas por minuto. Numa demonstração com muitas pessoas ao mesmo tempo, vale escalonar o uso. O log da função registra os tokens de cada resposta.
+**Capacidade no plano gratuito:** cada modelo tem a própria cota, somando todos os usuários. Na Groq, 8.000 tokens por minuto por modelo, e cada pergunta gasta entre 1.300 e 1.700: os dois `gpt-oss` dão cerca de 10 perguntas por minuto. O `gemini-3.5-flash-lite` entra quando eles se esgotam, com cota própria por minuto e por dia definida pelo Google, separada da cota dos embeddings. Por ser de outro provedor, ele também cobre o caso de a Groq inteira ficar fora do ar. A fila é configurável pela variável `MODELOS_IA`. O log da função registra qual modelo respondeu e os tokens de cada resposta.
+
+Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do projeto, e entre os modelos do Gemini só o `gemini-3.5-flash-lite` respondeu de forma estável nos testes: `gemini-3.5-flash` e `gemini-3.8-flash` davam "high demand" ou passavam de 25 s, e o `gemma-4` escrevia o próprio raciocínio na resposta.
 
 **Pedido de dados que faltam:** se o perfil não tem tipo de solo, localização ou culturas e a resposta depende disso, o modelo termina pedindo o dado com a marca `[PEDIR: código]` na última linha. A rota tira a marca do texto e devolve `tipo: 'coleta_dados'` com os campos do formulário, usando as mesmas opções do Meu Cultivo; o que o produtor responde é salvo no perfil. Só se pede o que falta, no máximo dois dados, e no máximo uma vez a cada 4 mensagens.
 
@@ -208,8 +210,9 @@ OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 # IA / RAG
 GEMINI_API_KEY=         # chave da API Gemini (embeddings)
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
-GROQ_MODELS=            # opcional; modelos em ordem de fallback, separados por vírgula
-                         # (padrão: openai/gpt-oss-20b,openai/gpt-oss-120b,qwen/qwen3.8-27b)
+MODELOS_IA=             # opcional; fila de modelos "provedor:modelo", separados por vírgula (provedores: groq, gemini)
+                         # (padrão: groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b)
+                         # a antiga GROQ_MODELS não é mais lida
 PINECONE_API_KEY=       # chave da API do Pinecone
 PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
 PINECONE_NAMESPACE=     # opcional (padrão: embrapa)

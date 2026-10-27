@@ -336,13 +336,16 @@ export default function ChatCultivAI() {
             <Printer size={16} />
             <span className={styles.rotuloBotao}>Imprimir</span>
           </button>
-          <button
-            onClick={copyHistory}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar Log Debug'}</span>
-          </button>
+          {/* Ferramenta da equipe: só no npm run dev. Na Vercel, NODE_ENV é "production". */}
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={copyHistory}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar Log Debug'}</span>
+            </button>
+          )}
         </div>
       </div>
 
