@@ -131,13 +131,13 @@
     font-weight: 500;
 }
 
-/* --- 👍/👎 ao lado de "CultivAI" --- */
-.avaliacao {
+/* --- 🔊 e 👍/👎 ao lado de "CultivAI" --- */
+.acoesMensagem {
     display: inline-flex;
     gap: 0.25rem;
 }
 
-.avaliacao button {
+.acoesMensagem button {
     display: inline-flex;
     padding: 0.3rem;
     border: 1px solid transparent;
@@ -148,12 +148,12 @@
     opacity: 0.7;
 }
 
-.avaliacao button:hover {
+.acoesMensagem button:hover {
     opacity: 1;
     border-color: var(--border);
 }
 
-.avaliacao .avaliada {
+.acoesMensagem .avaliada {
     opacity: 1;
     color: var(--primary);
     border-color: var(--primary);
@@ -503,7 +503,7 @@
     .chatEntrada,
     .listaConversas,
     .sugestoes,
-    .avaliacao,
+    .acoesMensagem,
     .balao form {
         display: none !important;
     }

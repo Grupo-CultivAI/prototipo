@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -63,6 +63,45 @@ const lerConversaAberta = () => {
 };
 
 const reconhecimentoDeVoz = () => typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+const sinteseDeFala = () => typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+
+// A resposta vem em markdown: a leitura em voz alta pula os símbolos e emojis, e vira
+// frases curtas. O Chrome interrompe falas longas (cerca de 15 segundos) sem avisar;
+// em pedaços, cada fala termina antes disso.
+function frasesParaFala(markdown) {
+  return String(markdown || "")
+    .split("\n")
+    .map((linha) => linha
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "")
+      .replace(/[*_`#>|]+/g, "")
+      .replace(/\p{Extended_Pictographic}|️/gu, "")
+      .replace(/\s*→\s*/g, ", depois ")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter((linha) => /[\p{L}\d]/u.test(linha))
+    .flatMap((linha) => (/[.!?:;]$/.test(linha) ? linha : `${linha}.`).match(/[^.!?]+(?:[.!?]+|$)/g) || [])
+    .flatMap(quebrarFraseLonga)
+    .map((frase) => frase.trim())
+    .filter(Boolean);
+}
+
+// Frase com mais de ~10 segundos de fala é dividida nas vírgulas.
+const MAXIMO_POR_FALA = 160;
+function quebrarFraseLonga(frase) {
+  if (frase.length <= MAXIMO_POR_FALA) return [frase];
+  const pedacos = [];
+  let atual = "";
+  for (const parte of frase.split(/(?<=[,;])\s+/)) {
+    if (atual && (atual + " " + parte).length > MAXIMO_POR_FALA) {
+      pedacos.push(atual);
+      atual = parte;
+    } else {
+      atual = atual ? `${atual} ${parte}` : parte;
+    }
+  }
+  return atual ? [...pedacos, atual] : pedacos;
+}
 
 export default function ChatCultivAI() {
   const router = useRouter();
@@ -82,6 +121,10 @@ export default function ChatCultivAI() {
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
+  // Leitura das respostas em voz alta, pela voz do próprio aparelho (sem custo e sem internet).
+  const [temFala] = useState(() => !!sinteseDeFala());
+  const [falandoId, setFalandoId] = useState(null);
+  const falaRef = useRef(0);
   const reconhecimentoRef = useRef(null);
   const enviarRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -145,6 +188,9 @@ export default function ChatCultivAI() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Sair da página não deixa a leitura continuando.
+  useEffect(() => () => { if (sinteseDeFala()) window.speechSynthesis.cancel(); }, []);
+
   useEffect(() => {
     if (!conversaId) return;
     try { localStorage.setItem(CHAVE_CONVERSA_ABERTA, conversaId); } catch { }
@@ -167,6 +213,35 @@ export default function ChatCultivAI() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const pararFala = () => {
+    falaRef.current += 1;
+    if (sinteseDeFala()) window.speechSynthesis.cancel();
+    setFalandoId(null);
+  };
+
+  const ouvir = (msg) => {
+    const estava = falandoId === msg.id;
+    pararFala();
+    if (estava) return; // o mesmo botão para a leitura
+    const frases = frasesParaFala(msg.text);
+    if (!frases.length) return;
+    // Um número por leitura: o cancel() acima dispara o onerror da leitura anterior, que não
+    // pode apagar o estado desta.
+    const leitura = falaRef.current;
+    const vozes = window.speechSynthesis.getVoices();
+    const voz = vozes.find((v) => v.lang.replace("_", "-") === "pt-BR") || vozes.find((v) => v.lang.startsWith("pt"));
+    const terminar = () => { if (falaRef.current === leitura) setFalandoId(null); };
+    frases.forEach((frase, i) => {
+      const fala = new SpeechSynthesisUtterance(frase);
+      fala.lang = "pt-BR";
+      if (voz) fala.voice = voz;
+      fala.onerror = terminar;
+      if (i === frases.length - 1) fala.onend = terminar;
+      window.speechSynthesis.speak(fala);
+    });
+    setFalandoId(msg.id);
+  };
+
   // A lista é buscada a cada abertura: muda a cada pergunta feita.
   const alternarLista = async () => {
     if (listaAberta) { setListaAberta(false); return; }
@@ -184,6 +259,7 @@ export default function ChatCultivAI() {
 
   const abrirConversa = async (id) => {
     setListaAberta(false);
+    pararFala();
     if (id === conversaId) return;
     try {
       const r = await fetch(`/api/chat/history?conversa=${id}`);
@@ -203,6 +279,7 @@ export default function ChatCultivAI() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.message);
       setListaAberta(false);
+      pararFala();
       setConversaId(d.conversaId);
       setMessages(conversaNova());
     } catch (err) {
@@ -216,6 +293,7 @@ export default function ChatCultivAI() {
       const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' });
       const d = await r.json();
       setListaAberta(false);
+      pararFala();
       setConversaId(d.conversaId ?? null);
       setMessages(conversaNova());
     } catch (err) {
@@ -488,14 +566,21 @@ export default function ChatCultivAI() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: msg.sender === "user" ? 'flex-end' : 'flex-start', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px', padding: '0 8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {msg.sender === "user" ? 'Você' : 'CultivAI'}
-              {respostaGravada(msg) && (
-                <span className={styles.avaliacao}>
+              {msg.sender === "bot" && (
+                <span className={styles.acoesMensagem}>
+                  {temFala && msg.text !== "Pensando..." && (
+                    <button type="button" onClick={() => ouvir(msg)} aria-pressed={falandoId === msg.id} title={falandoId === msg.id ? "Parar a leitura" : "Ouvir a resposta"} className={falandoId === msg.id ? styles.avaliada : undefined}>
+                      {falandoId === msg.id ? <Square size={15} /> : <Volume2 size={15} />}
+                    </button>
+                  )}
+                  {respostaGravada(msg) && <>
                   <button type="button" onClick={() => avaliar(msg, "boa")} aria-pressed={msg.avaliacao === "boa"} title="Resposta útil" className={msg.avaliacao === "boa" ? styles.avaliada : undefined}>
                     <ThumbsUp size={15} />
                   </button>
                   <button type="button" onClick={() => avaliar(msg, "ruim")} aria-pressed={msg.avaliacao === "ruim"} title="Resposta ruim ou errada" className={msg.avaliacao === "ruim" ? styles.avaliada : undefined}>
                     <ThumbsDown size={15} />
                   </button>
+                  </>}
                 </span>
               )}
             </div>
