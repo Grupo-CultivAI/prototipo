@@ -1,21 +1,64 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Trash2 } from 'lucide-react';
+import Input from '@/components/Input';
+import AvisoFormulario from '@/components/AvisoFormulario';
 import styles from '../paginas.module.css';
 
 export default function Conta() {
+    const router = useRouter();
     const [user, setUser] = useState(null);
+    const [excluindo, setExcluindo] = useState(false); // painel de confirmação aberto
+    const [senha, setSenha] = useState('');
+    const [erro, setErro] = useState('');
+    const [aguardando, setAguardando] = useState(false);
+    const senhaRef = useRef(null);
 
     useEffect(() => {
         async function loadUser() {
             try {
                 const res = await fetch('/api/user');
+                // Conta inexistente (excluída, ou de antes da troca do banco): antes a tela
+                // ficava parada em "Lendo dados da conta...".
+                if (res.status === 401 || res.status === 404) { router.replace('/login'); return; }
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data.user) setUser(data.user);
             } catch (err) { }
         }
         loadUser();
-    }, []);
+    }, [router]);
+
+    useEffect(() => {
+        if (excluindo) senhaRef.current?.focus();
+    }, [excluindo]);
+
+    async function excluirConta(e) {
+        e.preventDefault();
+        if (!senha) { setErro('Digite a sua senha para confirmar.'); senhaRef.current?.focus(); return; }
+        setAguardando(true);
+        setErro('');
+        try {
+            const res = await fetch('/api/user', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senha }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setErro(data.message || 'Não foi possível excluir a conta. Tente de novo.');
+                senhaRef.current?.focus();
+                return;
+            }
+            router.replace('/login?conta=excluida');
+            router.refresh();
+        } catch {
+            setErro('Não foi possível conectar. Confira sua internet e tente de novo.');
+        } finally {
+            setAguardando(false);
+        }
+    }
 
     if (!user) return (
         <div style={{ display: 'flex', height: '60vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
@@ -27,7 +70,7 @@ export default function Conta() {
         <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
             <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>Minha Conta</h1>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '3.5rem', fontSize: '1.1rem', maxWidth: '600px', lineHeight: '1.6' }}>
-                Detalhes de segurança e identificação da sua conta Premium no CultivAI.
+                Os dados da sua conta no CultivAI.
             </p>
 
             <div className={styles.cartaoConta} style={{ background: 'var(--surface)', borderRadius: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
@@ -37,8 +80,8 @@ export default function Conta() {
                     </div>
                     <div>
                         <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>{user.nome}</div>
-                        <div style={{ display: 'inline-flex', background: 'rgba(22, 163, 74, 0.1)', color: 'var(--primary-dark)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600' }}>
-                            Membro Premium
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                            Conta criada em {new Date(user.createdAt).toLocaleDateString('pt-BR')}
                         </div>
                     </div>
                 </div>
@@ -65,6 +108,36 @@ export default function Conta() {
                     </p>
                 </div>
             </div>
+
+            {/* Exclusão da conta: direito previsto na LGPD, sem precisar pedir à equipe. */}
+            <section className={styles.cartaoConta} style={{ marginTop: '2rem', background: 'var(--surface)', borderRadius: '24px', border: '1px solid rgba(220, 38, 38, 0.3)' }}>
+                <h2 style={{ fontSize: '1.2rem', color: '#B91C1C', marginBottom: '0.5rem' }}>Excluir minha conta</h2>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                    Apaga a sua conta e tudo o que está guardado nela: os dados do Meu Cultivo, as conversas e as avaliações. Não dá para desfazer.
+                </p>
+                {!excluindo ? (
+                    <button type="button" onClick={() => setExcluindo(true)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: '10px', border: '1px solid #DC2626', background: 'transparent', color: '#B91C1C', fontWeight: 600, cursor: 'pointer' }}>
+                        <Trash2 size={18} aria-hidden="true" /> Excluir minha conta
+                    </button>
+                ) : (
+                    <form onSubmit={excluirConta} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '420px' }}>
+                        <Input ref={senhaRef} label="Para confirmar, digite a sua senha" type="password" value={senha}
+                            onChange={(e) => { setSenha(e.target.value); setErro(''); }} autoComplete="current-password" invalido={Boolean(erro)} />
+                        {erro && <AvisoFormulario>{erro}</AvisoFormulario>}
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <button type="submit" disabled={aguardando}
+                                style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', border: 'none', background: '#DC2626', color: 'white', fontWeight: 600, cursor: aguardando ? 'wait' : 'pointer', opacity: aguardando ? 0.7 : 1 }}>
+                                {aguardando ? 'Excluindo...' : 'Excluir definitivamente'}
+                            </button>
+                            <button type="button" onClick={() => { setExcluindo(false); setSenha(''); setErro(''); }}
+                                style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </section>
         </div>
     );
 }

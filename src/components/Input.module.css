@@ -53,6 +53,12 @@
     padding-right: 3.25rem;
 }
 
+/* O Edge desenha o próprio olho em campos de senha, ao lado do nosso botão: ficavam dois. */
+.entrada::-ms-reveal,
+.entrada::-ms-clear {
+    display: none;
+}
+
 /* Área de toque de 44px, o mínimo recomendado para o dedo. */
 .olho {
     position: absolute;
