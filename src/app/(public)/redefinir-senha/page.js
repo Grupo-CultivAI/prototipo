@@ -1,120 +1,127 @@
 "use client"
+import { Suspense, useState, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { CheckCircle2 } from "lucide-react"
+import Input from "@/components/Input"
+import AvisoFormulario from "@/components/AvisoFormulario"
+import { REGRA_SENHA, problemaNaSenha } from "@/lib/senha"
+import styles from "../conta.module.css"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Card from "@/components/Card";
-import Input from "@/components/Input";
-import Button from "@/components/Button";
-import Link from "next/link";
-
-export default function RedefinirSenha(){
-
+// Dois usos:
+// - /redefinir-senha?codigo=...: veio do link do email "Esqueci a senha"; pede só a senha nova;
+// - /redefinir-senha: quem lembra a senha e quer trocá-la (email + senha atual + senha nova).
+function Formulario() {
   const router = useRouter()
+  const codigo = useSearchParams().get("codigo")
+  const [email, setEmail] = useState("")
+  const [senhaAtual, setSenhaAtual] = useState("")
+  const [novaSenha, setNovaSenha] = useState("")
+  const [confirmar, setConfirmar] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState(null) // { texto, campo, linkInvalido }
+  const [pronto, setPronto] = useState(false)
+  const emailRef = useRef(null)
+  const senhaAtualRef = useRef(null)
+  const novaSenhaRef = useRef(null)
+  const confirmarRef = useRef(null)
 
-  const [email,setEmail] = useState("")
-  const [senhaAtual,setSenhaAtual] = useState("")
-  const [novaSenha,setNovaSenha] = useState("")
-  const [confirmarSenha,setConfirmarSenha] = useState("")
-  const [carregando,setCarregando] = useState(false)
-
-  async function redefinirSenha(){
-
-     if(!email || !senhaAtual || !novaSenha || !confirmarSenha){
-       alert("Preencha todos os campos")
-       return
-    }
-
-    if(novaSenha !== confirmarSenha){
-      alert("As senhas não coincidem")
-      return
-    }
-
-    setCarregando(true)
-
-    try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senhaAtual, novaSenha }),
-      })
-
-      const data = await response.json()
-
-      if(!response.ok){
-        alert(data.message || "Não foi possível redefinir a senha")
-        return
-      }
-
-      alert("Senha redefinida com sucesso!")
-
-      router.push("/login")
-    } catch (error) {
-      alert("Erro ao redefinir senha. Tente novamente.")
-    } finally {
-      setCarregando(false)
-    }
-
+  const alterar = (setter) => (e) => { setter(e.target.value); setErro(null) }
+  const falhar = (texto, campo, extra = {}) => {
+    setErro({ texto, campo, ...extra })
+    const refs = { email: emailRef, senhaAtual: senhaAtualRef, novaSenha: novaSenhaRef, confirmar: confirmarRef }
+    refs[campo]?.current?.focus()
   }
 
-  return(
+  async function salvar(e) {
+    e.preventDefault()
+    if (!codigo && !email.trim()) return falhar("Digite o seu email.", "email")
+    if (!codigo && !senhaAtual) return falhar("Digite a sua senha atual.", "senhaAtual")
+    const fraca = problemaNaSenha(novaSenha)
+    if (fraca) return falhar(fraca, "novaSenha")
+    if (novaSenha !== confirmar) return falhar("As senhas não conferem. Digite a mesma senha nos dois campos.", "confirmar")
 
-    <Card>
+    setLoading(true)
+    setErro(null)
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(codigo ? { codigo, novaSenha } : { email, senhaAtual, novaSenha }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        falhar(data.message || "Não foi possível alterar a senha. Tente de novo.", data.campo || (res.status === 401 ? "senhaAtual" : undefined), { linkInvalido: data.linkInvalido })
+        return
+      }
+      setPronto(true)
+      setTimeout(() => router.push("/login"), 1800)
+    } catch {
+      falhar("Não foi possível conectar. Confira sua internet e tente de novo.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
-      <h2>Redefinir Senha</h2>
+  const invalido = (campo) => erro?.campo === campo
 
-      <p className="small-text">
-        Informe seu email e a senha atual para definir uma nova senha
+  if (pronto) {
+    return (
+      <div role="status" className={styles.confirmacao}>
+        <CheckCircle2 size={72} color="var(--primary)" strokeWidth={1.75} style={{ marginBottom: "1rem" }} aria-hidden="true" />
+        <h1 className={styles.titulo}>Senha alterada!</h1>
+        <p className={styles.subtitulo}>Levando você para o login...</p>
+      </div>
+    )
+  }
+
+  return (<>
+    <div className={styles.cabecalho}>
+      <h1 className={styles.titulo}>{codigo ? "Criar nova senha" : "Trocar senha"}</h1>
+      <p className={styles.subtitulo}>
+        {codigo ? "Escolha uma senha nova para a sua conta." : "Informe seu email e a senha atual para definir uma senha nova."}
       </p>
+    </div>
 
-      <p>Email</p>
-      <Input
-        placeholder="exemplo@email.com"
-        required
-        onChange={(e)=>setEmail(e.target.value)}
-      />
+    <form onSubmit={salvar} noValidate className={styles.formulario}>
+      {!codigo && (<>
+        <Input ref={emailRef} label="Email" type="email" value={email} onChange={alterar(setEmail)} placeholder="seuemail@exemplo.com"
+          autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required invalido={invalido("email")} />
+        <Input ref={senhaAtualRef} label="Senha atual" type="password" value={senhaAtual} onChange={alterar(setSenhaAtual)}
+          autoComplete="current-password" required invalido={invalido("senhaAtual")} />
+      </>)}
+      <Input ref={novaSenhaRef} label="Senha nova" type="password" value={novaSenha} onChange={alterar(setNovaSenha)}
+        autoComplete="new-password" required minLength={8} dica={REGRA_SENHA} invalido={invalido("novaSenha")} />
+      <Input ref={confirmarRef} label="Confirmar senha nova" type="password" value={confirmar} onChange={alterar(setConfirmar)}
+        autoComplete="new-password" required invalido={invalido("confirmar")} />
 
-      <p>Senha Atual</p>
-      <Input
-        placeholder="********"
-        type="password"
-        required
-        onChange={(e)=>setSenhaAtual(e.target.value)}
-      />
+      {erro && (
+        <AvisoFormulario>
+          {erro.texto}
+          {erro.linkInvalido && <> <Link href="/esqueci-senha" style={{ color: "inherit", fontWeight: 700 }}>Pedir novo link</Link></>}
+        </AvisoFormulario>
+      )}
 
-      <p>Nova Senha</p>
-      <Input
-        placeholder="********"
-        type="password"
-        required
-        onChange={(e)=>setNovaSenha(e.target.value)}
-      />
+      <button type="submit" disabled={loading} className={styles.botao}>
+        {loading ? "Salvando..." : "Salvar senha nova"}
+      </button>
+    </form>
 
-      <p>Confirmar Nova Senha</p>
-      <Input
-        placeholder="********"
-        type="password"
-        required
-        onChange={(e)=>setConfirmarSenha(e.target.value)}
-      />
+    <p className={styles.rodape}>
+      {codigo ? <>Lembrou a senha? <Link href="/login">Entrar</Link></> : <>Esqueceu a senha atual? <Link href="/esqueci-senha">Receber link por email</Link></>}
+    </p>
+  </>)
+}
 
-      <Button
-        text={carregando ? "Salvando..." : "Salvar"}
-        onClick={redefinirSenha}
-        disabled={carregando}
-      />
-
-      <p className="small-text">
-
-        Não tem uma conta?{" "}
-
-        <Link href="/cadastro">
-          <strong>Crie uma!</strong>
-        </Link>
-
-      </p>
-
-    </Card>
-
+// useSearchParams precisa de Suspense para a página poder ser gerada no servidor.
+export default function RedefinirSenha() {
+  return (
+    <div className={styles.fundo}>
+      <div className={styles.cartao}>
+        <Suspense fallback={null}>
+          <Formulario />
+        </Suspense>
+      </div>
+    </div>
   )
-
 }

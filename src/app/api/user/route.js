@@ -9,7 +9,8 @@ export async function GET() {
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        const user = await User.findById(userId).select('-senha');
+        // Nunca devolver ao navegador a senha nem o código de recuperação, mesmo em hash.
+        const user = await User.findById(userId).select('-senha -resetSenhaHash -resetSenhaExpira');
 
         if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 });
         return NextResponse.json({ user });

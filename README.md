@@ -24,18 +24,22 @@ src/
   app/
     (public)/              → páginas públicas (usam Navbar)
       page.js                 rota "/", redireciona para /login
-      login/
-      cadastro/
-      redefinir-senha/       ⚠️ ainda não verifica identidade do usuário (ver Status do projeto)
+      login/                  entrar (quem já está logado vai direto ao chat)
+      cadastro/               criar conta, com aceite do aviso de privacidade
+      esqueci-senha/          pede o link de recuperação por email
+      redefinir-senha/        senha nova pelo link do email (?codigo=...) ou troca com a senha atual
+      privacidade/            aviso de privacidade (LGPD)
     (authed)/               → páginas autenticadas (usam Sidebar)
       chatbot/                assistente de IA
       perfil-propriedade/     cadastro/edição dos dados da propriedade
       conta/                  dados da conta do usuário
     api/
       auth/
-        login/                POST → autentica e seta cookie JWT
-        register/              POST → cria usuário
-        reset-password/        POST → redefine a senha por email ⚠️ sem verificação de identidade (ver Status do projeto)
+        login/                POST → autentica e seta cookie JWT (5 erros por email em 15 min bloqueiam)
+        logout/               POST → apaga o cookie de sessão (httpOnly: só o servidor apaga)
+        register/             POST → cria usuário (senha de 8+ caracteres e aceite do aviso de privacidade)
+        esqueci-senha/        POST → envia por email um link de recuperação válido por 30 min
+        reset-password/       POST → senha nova pelo código do link, ou troca com a senha atual
       chat/history/           GET → mensagens da conversa atual e perguntas restantes no dia; DELETE → apaga a conversa
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
       conversas/              POST → "Nova conversa" (a anterior fica guardada)
@@ -43,15 +47,19 @@ src/
       propriedade/            GET/POST → CRUD do perfil da propriedade
       user/                   GET → dados do usuário logado
       weather/                GET → proxy para a API do OpenWeatherMap ⚠️ ainda sem autenticação (ver Status do projeto)
-  components/               → Sidebar, Navbar, DynamicForm, Button, Card, Input
+  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario, Button, Card
   lib/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
     limites.ts                limite de perguntas por minuto e por dia (usado pelo chat e pelo contador)
     conversas.ts              conversa atual de cada pessoa e migração do histórico antigo
+    senha.js                  regra de senha (mínimo de 8) e padronização do email
+    tentativas.ts             limite de tentativas de login e de pedidos de recuperação
+    email.ts                  envio de email por SMTP (recuperação de senha)
+    sessao.ts                 "já está logado?" para as telas de login e cadastro
     schemas/propriedadeSchema.ts
-  models/                   → User, Propriedade, Conversa, ChatMessage (Mongoose)
+  models/                   → User, Propriedade, Conversa, ChatMessage, TentativaAcesso (Mongoose)
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
@@ -67,7 +75,12 @@ docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados man
 ## Como funciona
 
 ### Autenticação
-A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder.
+A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder. "Sair da Conta" chama `/api/auth/logout`, que apaga o cookie pelo servidor.
+
+- **Cadastro:** senha de no mínimo 8 caracteres e aceite do aviso de privacidade (`/privacidade`), cuja data fica gravada. O email é gravado sem espaços e em minúsculas.
+- **Tentativas:** 5 logins errados para o mesmo email, ou 20 para o mesmo IP, em 15 minutos, bloqueiam novas tentativas até o fim da janela. A coleção `tentativaacessos` se apaga sozinha (índice TTL).
+- **Esqueci a senha:** `/esqueci-senha` envia um link com um código aleatório, válido por 30 minutos e de uso único; o banco guarda só o hash do código. A resposta é a mesma exista a conta ou não, para não revelar quem usa o CultivAI. Sem SMTP configurado, em desenvolvimento o link aparece no terminal do `npm run dev`; em produção a tela avisa que a recuperação ainda não está ativa.
+- **Telas de conta:** erros aparecem dentro do formulário e levam o foco ao campo a corrigir; os campos têm rótulo ligado, `autocomplete` para o gerenciador de senhas e botão de mostrar a senha.
 
 ### Perfil da propriedade
 Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.
@@ -178,12 +191,10 @@ node scripts/verify-ingest.mjs "pergunta solta"   # sem PDF esperado, só lista 
 
 A migração da arquitetura antiga (Railway + Render + AnythingLLM) para o modelo atual, 100% serverless e de custo zero, já está em produção para o fluxo principal do chat. Itens ainda pendentes, em divisão de tarefas com o grupo:
 
-- O perfil da propriedade e o clima atual ainda **não** são usados no contexto enviado ao chatbot.
-- O logout ainda não invalida a sessão no servidor (o cookie `httpOnly` continua válido após sair).
 - `/api/weather` ainda não exige autenticação.
-- `/api/auth/reset-password` ainda não verifica a identidade de quem está redefinindo a senha.
-- Não é possível excluir o perfil de propriedade cadastrado.
-- Da base de PDFs da Embrapa, apenas uma amostra foi ingerida até o momento; a ingestão completa (36 PDFs) está em andamento.
+- Não é possível excluir o perfil de propriedade nem a conta pelo próprio app.
+- As páginas autenticadas se protegem pelo lado do navegador (não há *middleware* do Next.js).
+- A recuperação de senha por email só funciona com as variáveis de SMTP configuradas na Vercel.
 
 ## Variáveis de ambiente
 
@@ -207,6 +218,14 @@ RAG_MIN_SCORE=          # opcional (padrão: 0.65); trechos abaixo disso não en
 # Limites de uso
 RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
 RATE_LIMIT_PER_DAY=     # opcional (padrão: 30)
+
+# Email de recuperação de senha (SMTP; ex.: Gmail com senha de app, ou Brevo)
+SMTP_HOST=              # ex.: smtp.gmail.com ou smtp-relay.brevo.com
+SMTP_PORT=              # opcional (padrão: 587; 465 usa conexão segura direta)
+SMTP_USER=              # usuário/login do SMTP
+SMTP_PASS=              # senha do SMTP (no Gmail, uma "senha de app", não a senha da conta)
+EMAIL_REMETENTE=        # opcional; ex.: "CultivAI <cultivai.projeto@gmail.com>" (padrão: SMTP_USER)
+APP_URL=                # opcional; endereço usado no link do email (ex.: https://prototipo-cultivai.vercel.app)
 ```
 
 `JWT_SECRET` é obrigatória — as rotas de API lançam erro na inicialização se ela não estiver definida.
