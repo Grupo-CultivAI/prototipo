@@ -32,10 +32,10 @@ export async function conversaAtual(userId: unknown, { criar = true } = {}) {
 }
 
 // A conversa indicada pelo navegador, se for mesmo dessa pessoa; senão, a atual.
-export async function conversaDoUsuario(userId: unknown, conversaId: unknown) {
+export async function conversaDoUsuario(userId: unknown, conversaId: unknown, { criar = true } = {}) {
     if (mongoose.isValidObjectId(conversaId)) {
         const conversa = await Conversa.findOne({ _id: conversaId, userId });
         if (conversa) return conversa;
     }
-    return conversaAtual(userId);
+    return conversaAtual(userId, { criar });
 }

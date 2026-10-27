@@ -1,24 +1,33 @@
 /**
- * Resumo de clima em UMA linha (economiza tokens do Groq: 12K TPM no Llama 70B).
+ * Clima e previsão em poucas linhas (economiza tokens do Groq: 8K TPM por modelo).
  * - Chama a OpenWeather direto (o código antigo fazia fetch HTTP para a própria Vercel,
  *   dobrando cold start e falhando com Deployment Protection).
- * - Cache em memória de 10 min por cidade (free tier: 60 chamadas/min).
+ * - Cache em memória por cidade (free tier: 60 chamadas/min).
  * - Timeout de 3s: clima é opcional, nunca deve derrubar o chat.
  */
 type Cached = { at: number; value: string };
 const cache = new Map<string, Cached>();
-const TTL_MS = 10 * 60 * 1000;
+const TTL_AGORA_MS = 10 * 60 * 1000;
+// A previsão da OpenWeather é atualizada a cada 3 horas.
+const TTL_PREVISAO_MS = 60 * 60 * 1000;
+const DIAS_DE_PREVISAO = 5;
+const DIAS_DA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
-export async function getWeatherSummary(cidade?: string | null): Promise<string | null> {
+async function consultar(
+    recurso: 'weather' | 'forecast',
+    cidade: string | null | undefined,
+    ttl: number,
+    resumir: (d: any) => string | null,
+): Promise<string | null> {
     const apiKey = process.env.OPENWEATHER_API_KEY;
-    if (!apiKey || !cidade) return null;
+    if (!apiKey || !cidade?.trim()) return null;
 
-    const key = cidade.trim().toLowerCase();
+    const key = `${recurso}:${cidade.trim().toLowerCase()}`;
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.at < TTL_MS) return hit.value;
+    if (hit && Date.now() - hit.at < ttl) return hit.value;
 
     try {
-        const url = new URL('https://api.openweathermap.org/data/2.5/weather');
+        const url = new URL(`https://api.openweathermap.org/data/2.5/${recurso}`);
         // ",BR" evita resolver "Bela Vista" para outro país
         url.searchParams.set('q', `${cidade.trim()},BR`);
         url.searchParams.set('appid', apiKey);
@@ -27,8 +36,19 @@ export async function getWeatherSummary(cidade?: string | null): Promise<string 
 
         const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
         if (!res.ok) return null;
-        const d = await res.json();
+        const value = resumir(await res.json());
+        if (!value) return null;
 
+        if (cache.size > 400) cache.clear();
+        cache.set(key, { at: Date.now(), value });
+        return value;
+    } catch {
+        return null;
+    }
+}
+
+export function getWeatherSummary(cidade?: string | null) {
+    return consultar('weather', cidade, TTL_AGORA_MS, (d) => {
         const partes = [
             d.weather?.[0]?.description ?? 'sem descrição',
             `${Math.round(d.main?.temp)}°C (sensação ${Math.round(d.main?.feels_like)}°C)`,
@@ -36,12 +56,39 @@ export async function getWeatherSummary(cidade?: string | null): Promise<string 
             `vento ${d.wind?.speed} m/s`,
         ];
         if (d.rain?.['1h']) partes.push(`chuva ${d.rain['1h']} mm/h`);
+        return partes.join(', ');
+    });
+}
 
-        const value = partes.join(', ');
-        if (cache.size > 200) cache.clear();
-        cache.set(key, { at: Date.now(), value });
-        return value;
-    } catch {
-        return null;
-    }
+/**
+ * Previsão dos próximos dias, uma linha por dia: "qua 28/10: 18 a 29°C, chuva 12 mm (chance 80%)".
+ * A OpenWeather gratuita entrega blocos de 3 horas por 5 dias; aqui eles viram totais por dia,
+ * no fuso da cidade. O dia de hoje entra só com as horas que ainda faltam.
+ */
+export function getForecastSummary(cidade?: string | null) {
+    return consultar('forecast', cidade, TTL_PREVISAO_MS, (d) => {
+        const fuso = Number(d.city?.timezone ?? -10800);
+        const dias = new Map<string, { min: number; max: number; chuva: number; chance: number; dia: Date }>();
+        for (const bloco of d.list ?? []) {
+            // Data "local" da cidade: desloca pelo fuso e lê em UTC.
+            const dia = new Date((bloco.dt + fuso) * 1000);
+            const chave = dia.toISOString().slice(0, 10);
+            const atual = dias.get(chave) ?? { min: Infinity, max: -Infinity, chuva: 0, chance: 0, dia };
+            atual.min = Math.min(atual.min, bloco.main?.temp_min ?? Infinity);
+            atual.max = Math.max(atual.max, bloco.main?.temp_max ?? -Infinity);
+            atual.chuva += bloco.rain?.['3h'] ?? 0;
+            atual.chance = Math.max(atual.chance, bloco.pop ?? 0);
+            dias.set(chave, atual);
+        }
+        const hoje = new Date(Date.now() + fuso * 1000).toISOString().slice(0, 10);
+        const linhas = [...dias.entries()].slice(0, DIAS_DE_PREVISAO).map(([chave, { min, max, chuva, chance, dia }]) => {
+            const data = (chave === hoje ? 'hoje, ' : '') + `${DIAS_DA_SEMANA[dia.getUTCDay()]} ${String(dia.getUTCDate()).padStart(2, '0')}/${String(dia.getUTCMonth() + 1).padStart(2, '0')}`;
+            const mm = Math.round(chuva);
+            const textoChuva = mm >= 1
+                ? `chuva ${mm} mm (chance ${Math.round(chance * 100)}%)`
+                : chance >= 0.3 ? `chuva fraca possível (chance ${Math.round(chance * 100)}%)` : 'sem chuva';
+            return `- ${data}: ${Math.round(min)} a ${Math.round(max)}°C, ${textoChuva}`;
+        });
+        return linhas.length ? linhas.join('\n') : null;
+    });
 }

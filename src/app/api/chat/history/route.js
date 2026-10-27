@@ -25,14 +25,16 @@ async function getUserIdFromToken() {
     }
 }
 
-export async function GET() {
+// Mensagens da conversa pedida (?conversa=id, vinda da lista) ou, sem ela, da mais recente.
+export async function GET(req) {
     try {
         const userId = await getUserIdFromToken();
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         await dbConnect();
-        // A conversa atual (a mais recente). Quem nunca perguntou nada ainda não tem conversa.
-        const conversa = await conversaAtual(userId, { criar: false });
+        const pedida = new URL(req.url).searchParams.get('conversa');
+        // Quem nunca perguntou nada ainda não tem conversa.
+        const conversa = pedida ? await conversaDoUsuario(userId, pedida, { criar: false }) : await conversaAtual(userId, { criar: false });
         // Perguntas que falharam ou foram apagadas ficam gravadas só para contar no limite de uso.
         const [history, restantesHoje] = await Promise.all([
             conversa

@@ -131,13 +131,13 @@
     font-weight: 500;
 }
 
-/* --- 👍/👎 ao lado de "CultivAI" --- */
-.avaliacao {
+/* --- 🔊 e 👍/👎 ao lado de "CultivAI" --- */
+.acoesMensagem {
     display: inline-flex;
     gap: 0.25rem;
 }
 
-.avaliacao button {
+.acoesMensagem button {
     display: inline-flex;
     padding: 0.3rem;
     border: 1px solid transparent;
@@ -148,12 +148,12 @@
     opacity: 0.7;
 }
 
-.avaliacao button:hover {
+.acoesMensagem button:hover {
     opacity: 1;
     border-color: var(--border);
 }
 
-.avaliacao .avaliada {
+.acoesMensagem .avaliada {
     opacity: 1;
     color: var(--primary);
     border-color: var(--primary);
@@ -253,6 +253,83 @@
     gap: 1rem;
 }
 
+/* --- Botão "Conversas" e a lista que ele abre --- */
+.botaoCabecalho {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.botaoCabecalhoAtivo {
+    border-color: var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+}
+
+.listaConversas {
+    max-height: 40vh;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.listaConversas p {
+    margin: 0;
+    padding: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.listaConversas ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.listaConversas button {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+}
+
+.listaConversas button:hover {
+    background: var(--bg);
+}
+
+.listaConversas button[aria-current="true"] {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+.tituloConversa {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.detalheConversa {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
 /* --- Microfone --- */
 .botaoVoz {
     display: inline-flex;
@@ -333,6 +410,10 @@
     .chatMensagens {
         padding: 1rem;
         gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .listaConversas {
         margin-bottom: 0.75rem;
     }
 
@@ -420,8 +501,9 @@
     .chatSubtitulo,
     .contador,
     .chatEntrada,
+    .listaConversas,
     .sugestoes,
-    .avaliacao,
+    .acoesMensagem,
     .balao form {
         display: none !important;
     }

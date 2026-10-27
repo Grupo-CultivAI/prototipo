@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
 // Cada conversa do chat. As mensagens apontam para ela (ChatMessage.conversaId).
-// Hoje a tela mostra só a mais recente ("Nova conversa" cria outra); a lista de conversas
-// anteriores pode ser montada depois sobre este mesmo modelo.
+// O chat abre na mais recente ("Nova conversa" cria outra); as anteriores ficam no botão
+// "Conversas" (GET /api/conversas).
 const ConversaSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -17,5 +17,7 @@ const ConversaSchema = new mongoose.Schema({
 
 // A conversa atual é a mais recente de cada pessoa.
 ConversaSchema.index({ userId: 1, createdAt: -1 });
+// A lista de conversas vem pela última mensagem.
+ConversaSchema.index({ userId: 1, ultimaMensagemEm: -1 });
 
 export default mongoose.models.Conversa || mongoose.model('Conversa', ConversaSchema);

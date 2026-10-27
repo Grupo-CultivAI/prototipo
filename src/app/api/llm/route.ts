@@ -6,7 +6,7 @@ import Propriedade from '@/models/Propriedade';
 import Conversa from '@/models/Conversa';
 import { conversaDoUsuario, tituloDe } from '@/lib/conversas';
 import { getUserIdFromToken } from '@/lib/auth';
-import { getWeatherSummary } from '@/lib/weather';
+import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
 
@@ -346,9 +346,10 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore }, clima] = await Promise.all([
+        const [{ trechos, maiorScore }, clima, previsao] = await Promise.all([
             buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
             getWeatherSummary(cidade),
+            getForecastSummary(cidade),
         ]);
 
         const contexto = trechos
@@ -370,6 +371,7 @@ COMO RESPONDER
 - Comece pela resposta. Até ~250 palavras; se o produtor pedir um plano de rotação, pode chegar a ~400. Use listas curtas quando ajudar.
 - Se a mensagem for só um cumprimento ou agradecimento, responda em uma ou duas frases, sem marcadores.
 - Considere o perfil da propriedade, o clima e a data abaixo quando forem relevantes (época de plantio, tipo de solo, região). Não repita o perfil de volta para o produtor.
+- Se a pergunta for sobre plantar, semear, adubar, aplicar algum produto ou colher nos próximos dias, inclua uma frase com a previsão abaixo, no formato "A previsão indica chuva de cerca de X mm na quinta (dd/mm); ela pode mudar." (ou que não há chuva prevista). Se a chuva ajuda ou atrapalha, diga só o que tiver base nos trechos da Embrapa ou em prática agronômica conhecida, sem exagerar. Em outras perguntas, não fale da previsão.
 - Leve em conta a conversa anterior: perguntas curtas como "e para soja?" continuam o assunto em andamento.${instrucaoDePedido}
 
 ORIGEM DA INFORMAÇÃO
@@ -394,6 +396,9 @@ PERFIL DA PROPRIEDADE (informado pelo produtor):
 ${perfil || '(não preenchido)'}
 
 CLIMA AGORA${cidade ? ` EM ${cidade.toUpperCase()}` : ''}: ${clima || '(indisponível)'}
+
+PREVISÃO PARA OS PRÓXIMOS DIAS:
+${previsao || '(indisponível)'}
 
 TRECHOS DA EMBRAPA:
 ${contexto || '(nenhum trecho relevante encontrado)'}`;
@@ -464,7 +469,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
                 perguntaId,
                 busca: { texto: busca, maiorScore, trechosUsados: trechos.length },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
-                contexto: { perfil: perfil ?? undefined, clima: clima || undefined },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
             },
         });
