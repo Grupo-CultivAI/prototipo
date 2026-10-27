@@ -14,7 +14,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
   - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
   - [Groq](https://groq.com) e Gemini — geram a resposta final, numa fila de modelos: `gpt-oss-20b` → `gpt-oss-120b` (Groq) → `gemini-3.5-flash-lite` (Google) → `qwen3.8-27b` (Groq). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
-- **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat
+- **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat: clima de agora e previsão dos próximos 5 dias
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
 ## Arquitetura
@@ -43,7 +43,7 @@ src/
         reset-password/       POST → senha nova pelo código do link, ou troca com a senha atual
       chat/history/           GET → mensagens da conversa atual e perguntas restantes no dia; DELETE → apaga a conversa
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
-      conversas/              POST → "Nova conversa" (a anterior fica guardada)
+      conversas/              GET → lista de conversas · POST → "Nova conversa" (a anterior fica guardada)
       llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
       propriedade/            GET/POST → perfil da propriedade; DELETE → "Apagar dados da propriedade"
       user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
@@ -102,8 +102,8 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 3. Lê do MongoDB o perfil da propriedade e as últimas mensagens **da conversa aberta**. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
 5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
-6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil.
-7. Monta o prompt com data de hoje, perfil, clima, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
+6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual e a previsão dos próximos 5 dias da cidade do perfil (uma linha por dia: mínima, máxima e chuva). A previsão fica 1 hora em cache por cidade.
+7. Monta o prompt com data de hoje, perfil, clima, previsão, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
 9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia.
 
@@ -119,11 +119,11 @@ Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em 
 npm run cenarios-chat
 ```
 
-**Conversas:** o botão "Nova conversa" começa do zero sem apagar nada. O contexto da IA (mensagens anteriores e a junção de perguntas curtas com a anterior) fica restrito à conversa aberta, para uma dúvida antiga sobre outro assunto não contaminar a nova. A tela mostra sempre a conversa mais recente; as anteriores ficam guardadas na coleção `conversas`, prontas para uma futura lista. O histórico gravado antes das conversas existirem vira uma conversa na primeira vez que a pessoa abre o chat.
+**Conversas:** o botão "Nova conversa" começa do zero sem apagar nada. O contexto da IA (mensagens anteriores e a junção de perguntas curtas com a anterior) fica restrito à conversa aberta, para uma dúvida antiga sobre outro assunto não contaminar a nova. O botão "Conversas" lista as anteriores (`GET /api/conversas`, da última mensagem mais recente para a mais antiga); abrir uma delas e perguntar continua aquela conversa. A conversa aberta fica guardada no navegador, para voltar a ela ao recarregar a página. O histórico gravado antes das conversas existirem vira uma conversa na primeira vez que a pessoa abre o chat.
 
-**O que fica registrado de cada resposta** (`ChatMessage`): quem perguntou (`userId`), em que conversa (`conversaId`), a pergunta que ela responde (`metadata.perguntaId`), as fontes usadas, a busca (texto buscado, maior score, trechos usados), a geração (modelo, tokens de entrada e saída, tempo de resposta, se a checagem de números pediu revisão e se a resposta saiu com aviso), o perfil e o clima que a IA considerou naquele momento, o pedido de dado, se houve, e a avaliação 👍/👎.
+**O que fica registrado de cada resposta** (`ChatMessage`): quem perguntou (`userId`), em que conversa (`conversaId`), a pergunta que ela responde (`metadata.perguntaId`), as fontes usadas, a busca (texto buscado, maior score, trechos usados), a geração (modelo, tokens de entrada e saída, tempo de resposta, se a checagem de números pediu revisão e se a resposta saiu com aviso), o perfil, o clima e a previsão que a IA considerou naquele momento, o pedido de dado, se houve, e a avaliação 👍/👎.
 
-**Na tela do chat** o produtor também encontra: sugestões de primeira pergunta montadas com o perfil, o contador de perguntas restantes no dia, 👍/👎 em cada resposta, o botão Imprimir (que gera papel ou PDF só com a conversa, pelo próprio navegador) e o microfone para ditar a pergunta. O microfone usa o reconhecimento de fala do navegador, gratuito, e aparece só onde ele existe (Chrome e Edge, inclusive no Android).
+**Na tela do chat** o produtor também encontra: sugestões de primeira pergunta montadas com o perfil, o contador de perguntas restantes no dia, 👍/👎 em cada resposta, o botão Imprimir (que gera papel ou PDF só com a conversa, pelo próprio navegador), o microfone para ditar a pergunta e o alto-falante 🔊 para ouvir cada resposta. O microfone usa o reconhecimento de fala do navegador, gratuito, e aparece só onde ele existe (Chrome e Edge, inclusive no Android). A leitura usa a síntese de voz do próprio aparelho, em frases curtas e sem emojis, e também só aparece onde existe.
 
 #### Relatório do chat
 Lê o MongoDB, sem consumir cota de API, e não mostra quem perguntou:
@@ -197,7 +197,6 @@ node scripts/verify-ingest.mjs "pergunta solta"   # sem PDF esperado, só lista 
 
 A migração da arquitetura antiga (Railway + Render + AnythingLLM) para o modelo atual, 100% serverless e de custo zero, já está em produção para o fluxo principal do chat. Itens ainda pendentes, em divisão de tarefas com o grupo:
 
-- Lista de conversas anteriores: o banco já guarda as conversas (coleção `conversas`), mas a tela mostra só a mais recente.
 - A recuperação de senha por email depende das variáveis de SMTP na Vercel (configuradas com a conta pex.ifsp@gmail.com).
 
 A antiga rota `/api/weather` foi removida em 26/10/2026: nenhuma tela a usava (o chat consulta o clima pelo servidor) e ela permitia a qualquer pessoa, sem login, gastar a cota do OpenWeather do projeto.
