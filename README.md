@@ -15,6 +15,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
   - [Groq](https://groq.com) e Gemini — geram a resposta final, numa fila de modelos: `gpt-oss-20b` → `gpt-oss-120b` (Groq) → `gemini-3.5-flash-lite` (Google) → `qwen3.8-27b` (Groq). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat: clima de agora e previsão dos próximos 5 dias
+- **Época de plantio**: [ZARC](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico), dados abertos do Ministério da Agricultura (licença CC-BY), importados para o MongoDB (`scripts/importar-zarc.mjs`)
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
 ## Arquitetura
@@ -102,9 +103,9 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 3. Lê do MongoDB o perfil da propriedade e as últimas mensagens **da conversa aberta**. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
 5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
-6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual e a previsão dos próximos 5 dias da cidade do perfil (uma linha por dia: mínima, máxima e chuva). A previsão fica 1 hora em cache por cidade.
-7. Monta o prompt com data de hoje, perfil, clima, previsão, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
-8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
+6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil e, em perguntas sobre o trabalho no campo (plantar, adubar, aplicar, colher, chuva), a previsão dos próximos 5 dias (uma linha por dia: mínima, máxima e chuva), que fica 1 hora em cache por cidade. Em perguntas sobre época de plantio, busca também as janelas do ZARC do município (ver abaixo).
+7. Monta o prompt com data de hoje, perfil, clima, previsão, janelas do ZARC, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
+8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados, e se as datas depois de "🗓️ Segundo o ZARC" aparecem nas janelas enviadas. Se não aparecem, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor.
 9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia.
 
 **Capacidade no plano gratuito:** cada modelo tem a própria cota, somando todos os usuários. Na Groq, 8.000 tokens por minuto por modelo, e cada pergunta gasta entre 1.300 e 1.700: os dois `gpt-oss` dão cerca de 10 perguntas por minuto. O `gemini-3.5-flash-lite` entra quando eles se esgotam, com cota própria por minuto e por dia definida pelo Google, separada da cota dos embeddings. Por ser de outro provedor, ele também cobre o caso de a Groq inteira ficar fora do ar. A fila é configurável pela variável `MODELOS_IA`. O log da função registra qual modelo respondeu e os tokens de cada resposta.
@@ -121,9 +122,27 @@ npm run cenarios-chat
 
 **Conversas:** o botão "Nova conversa" começa do zero sem apagar nada. O contexto da IA (mensagens anteriores e a junção de perguntas curtas com a anterior) fica restrito à conversa aberta, para uma dúvida antiga sobre outro assunto não contaminar a nova. O botão "Conversas" lista as anteriores (`GET /api/conversas`, da última mensagem mais recente para a mais antiga); abrir uma delas e perguntar continua aquela conversa. A conversa aberta fica guardada no navegador, para voltar a ela ao recarregar a página. O histórico gravado antes das conversas existirem vira uma conversa na primeira vez que a pessoa abre o chat.
 
-**O que fica registrado de cada resposta** (`ChatMessage`): quem perguntou (`userId`), em que conversa (`conversaId`), a pergunta que ela responde (`metadata.perguntaId`), as fontes usadas, a busca (texto buscado, maior score, trechos usados), a geração (modelo, tokens de entrada e saída, tempo de resposta, se a checagem de números pediu revisão e se a resposta saiu com aviso), o perfil, o clima e a previsão que a IA considerou naquele momento, o pedido de dado, se houve, e a avaliação 👍/👎.
+**O que fica registrado de cada resposta** (`ChatMessage`): quem perguntou (`userId`), em que conversa (`conversaId`), a pergunta que ela responde (`metadata.perguntaId`), as fontes usadas, a busca (texto buscado, maior score, trechos usados), a geração (modelo, tokens de entrada e saída, tempo de resposta, se a checagem de números pediu revisão e se a resposta saiu com aviso), o perfil, o clima, a previsão e as janelas do ZARC que a IA considerou naquele momento, o pedido de dado, se houve, e a avaliação 👍/👎.
 
 **Na tela do chat** o produtor também encontra: sugestões de primeira pergunta montadas com o perfil, o contador de perguntas restantes no dia, 👍/👎 em cada resposta, o botão Imprimir (que gera papel ou PDF só com a conversa, pelo próprio navegador), o microfone para ditar a pergunta e o alto-falante 🔊 para ouvir cada resposta. O microfone usa o reconhecimento de fala do navegador, gratuito, e aparece só onde ele existe (Chrome e Edge, inclusive no Android). A leitura usa a síntese de voz do próprio aparelho, em frases curtas e sem emojis, e também só aparece onde existe.
+
+#### Época de plantio oficial (ZARC)
+O Zoneamento Agrícola de Risco Climático, do Ministério da Agricultura com a Embrapa, diz para cada município, cultura, tipo de solo e manejo (sequeiro ou irrigado) o risco de perder a lavoura por clima em cada período de 10 dias do ano: 20%, 30% ou 40%; fora disso, o plantio não é indicado. Plantar dentro da janela é exigido pelo Proagro e pelo seguro rural.
+
+- **Fonte:** a tábua de risco dos dados abertos do Ministério (CSV, licença CC-BY). A API da Embrapa (AgroAPI) só é gratuita por um mês, por isso não é usada.
+- **No banco:** a coleção `zarcmunicipios` tem um documento por município (5.573, ~25 MB), com a janela de cada cultura em formato compacto (`src/lib/zarc-formato.mjs`). Entram 74 culturas: as anuais de verão e de inverno (soja, milho, feijão, arroz, trigo, aveia...) e perenes e hortaliças zoneadas (mandioca, cebola, batata, alho nobre, tomate industrial, frutas, café...). As linhas "Produção" das perenes ficam de fora, porque não são época de plantio.
+- **No chat** (`src/lib/zarc.ts`): só em perguntas sobre plantio ou época. Entram as culturas citadas na pergunta, ou, sem cultura citada, a próxima cultura e as culturas do perfil, no solo e no manejo do perfil. Culturas que o ZARC não cobre (alface, couve, cenoura e outras hortaliças) recebem a frase "o ZARC não tem janela", e cidade que não bate com o IBGE recebe o pedido para conferir o nome no Meu Cultivo. A resposta cita o ZARC com "🗓️". Toda resposta sobre quando plantar termina indicando o aplicativo gratuito Zarc Plantio Certo, da Embrapa: se o modelo esquecer, a rota acrescenta a linha.
+- **Aproximações:** o ZARC usa seis classes de água disponível no solo (AD1 a AD6), e o perfil só tem arenoso/argiloso/siltoso/misto; as classes foram agrupadas de duas em duas. Entre os ciclos de cultivar, fica o de menor risco em cada período.
+
+Importação (o banco do `.env.local` é o da produção; uns 700 MB de download, cerca de 1 minuto e ~500 MB de memória):
+
+```bash
+npm run importar-zarc                              # baixa e só mostra o resumo, sem gravar
+npm run importar-zarc -- --ver "Campinas/SP"       # mostra as janelas de um município
+npm run importar-zarc -- --confirmar               # grava (substitui a importação anterior)
+```
+
+A cada safra nova, acrescente o arquivo dela no início da lista `ARQUIVOS` do script e rode de novo: cada cultura vem do arquivo mais novo que a tem.
 
 #### Relatório do chat
 Lê o MongoDB, sem consumir cota de API, e não mostra quem perguntou:
@@ -197,6 +216,7 @@ node scripts/verify-ingest.mjs "pergunta solta"   # sem PDF esperado, só lista 
 
 A migração da arquitetura antiga (Railway + Render + AnythingLLM) para o modelo atual, 100% serverless e de custo zero, já está em produção para o fluxo principal do chat. Itens ainda pendentes, em divisão de tarefas com o grupo:
 
+- Época de plantio (ZARC): depois do merge, rodar uma vez `npm run importar-zarc -- --confirmar`. Até lá, o chat não tem as janelas oficiais e só indica o aplicativo Zarc Plantio Certo.
 - A recuperação de senha por email depende das variáveis de SMTP na Vercel (configuradas com a conta pex.ifsp@gmail.com).
 
 A antiga rota `/api/weather` foi removida em 26/10/2026: nenhuma tela a usava (o chat consulta o clima pelo servidor) e ela permitia a qualquer pessoa, sem login, gastar a cota do OpenWeather do projeto.
