@@ -14,13 +14,14 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
   - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
   - [Groq](https://groq.com) — gera a resposta final (`openai/gpt-oss-20b`, com fallback automático para `qwen/qwen3.8-27b` em caso de limite de cota)
-- **Clima**: [OpenWeatherMap](https://openweathermap.org/api)
+- **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
 
 ## Arquitetura
 
 ```
 src/
+  proxy.ts                  → manda ao login quem abre uma página logada sem sessão válida (o "middleware" do Next 16)
   app/
     (public)/              → páginas públicas (usam Navbar)
       page.js                 rota "/", redireciona para /login
@@ -44,9 +45,8 @@ src/
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
       conversas/              POST → "Nova conversa" (a anterior fica guardada)
       llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
-      propriedade/            GET/POST → CRUD do perfil da propriedade
-      user/                   GET → dados do usuário logado
-      weather/                GET → proxy para a API do OpenWeatherMap ⚠️ ainda sem autenticação (ver Status do projeto)
+      propriedade/            GET/POST → perfil da propriedade; DELETE → "Apagar dados da propriedade"
+      user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
   components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario, Button, Card
   lib/
     mongodb.js                conexão cacheada com o MongoDB
@@ -58,6 +58,7 @@ src/
     tentativas.ts             limite de tentativas de login e de pedidos de recuperação
     email.ts                  envio de email por SMTP (recuperação de senha)
     sessao.ts                 "já está logado?" para as telas de login e cadastro
+    cookieSessao.js           apaga o cookie de sessão (logout e exclusão de conta)
     schemas/propriedadeSchema.ts
   models/                   → User, Propriedade, Conversa, ChatMessage, TentativaAcesso (Mongoose)
 scripts/
@@ -191,10 +192,10 @@ node scripts/verify-ingest.mjs "pergunta solta"   # sem PDF esperado, só lista 
 
 A migração da arquitetura antiga (Railway + Render + AnythingLLM) para o modelo atual, 100% serverless e de custo zero, já está em produção para o fluxo principal do chat. Itens ainda pendentes, em divisão de tarefas com o grupo:
 
-- `/api/weather` ainda não exige autenticação.
-- Não é possível excluir o perfil de propriedade nem a conta pelo próprio app.
-- As páginas autenticadas se protegem pelo lado do navegador (não há *middleware* do Next.js).
-- A recuperação de senha por email só funciona com as variáveis de SMTP configuradas na Vercel.
+- Lista de conversas anteriores: o banco já guarda as conversas (coleção `conversas`), mas a tela mostra só a mais recente.
+- A recuperação de senha por email depende das variáveis de SMTP na Vercel (configuradas com a conta pex.ifsp@gmail.com).
+
+A antiga rota `/api/weather` foi removida em 26/10/2026: nenhuma tela a usava (o chat consulta o clima pelo servidor) e ela permitia a qualquer pessoa, sem login, gastar a cota do OpenWeather do projeto.
 
 ## Variáveis de ambiente
 

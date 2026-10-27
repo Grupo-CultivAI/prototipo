@@ -51,3 +51,17 @@ export async function POST(req) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+// "Apagar dados da propriedade" no Meu Cultivo: some o perfil, a conta continua.
+export async function DELETE() {
+    try {
+        await dbConnect();
+        const userId = await getUserIdFromToken();
+        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+        await Propriedade.deleteOne({ userId });
+        return NextResponse.json({ success: true });
+    } catch (err) {
+        return NextResponse.json({ message: 'Não conseguimos apagar os dados agora. Tente de novo em alguns instantes.' }, { status: 500 });
+    }
+}

@@ -48,9 +48,10 @@ const secoes = [
   {
     titulo: "Seus direitos",
     lista: [
-      "Corrigir seus dados: edite o Meu Cultivo a qualquer momento.",
+      "Corrigir ou apagar os dados da propriedade: edite o Meu Cultivo a qualquer momento, ou use \"Apagar dados da propriedade\" no fim da página.",
       "Apagar conversas: use o botão \"Apagar conversa\" no chat. As perguntas das últimas 24 horas ficam registradas por um dia, sem o texto, só para controlar o limite diário de perguntas.",
-      `Pedir uma cópia dos seus dados ou a exclusão da conta: escreva para ${CONTATO}, o email do projeto.`,
+      "Excluir a conta: em Minha Conta, use \"Excluir minha conta\". Tudo o que está guardado nela é apagado na hora: conta, Meu Cultivo, conversas e avaliações.",
+      `Pedir uma cópia dos seus dados: escreva para ${CONTATO}, o email do projeto.`,
     ],
   },
 ]

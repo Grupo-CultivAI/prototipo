@@ -5,7 +5,9 @@ import FormularioLogin from "./FormularioLogin"
 export const metadata = { title: "Entrar | CultivAI" }
 
 // Quem já entrou vai direto para o chat, sem ver o formulário.
-export default async function Login() {
+// ?conta=excluida: veio da exclusão de conta (Minha Conta).
+export default async function Login({ searchParams }) {
   if (await usuarioLogado()) redirect("/chatbot")
-  return <FormularioLogin />
+  const { conta } = await searchParams
+  return <FormularioLogin contaExcluida={conta === "excluida"} />
 }
