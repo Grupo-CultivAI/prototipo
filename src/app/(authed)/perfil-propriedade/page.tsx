@@ -1,18 +1,17 @@
-// @ts-nocheck
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { MapPin, Sprout, History, Target, ChevronDown, ChevronUp, Droplets, FlaskConical, AlertCircle, Info } from 'lucide-react';
 import styles from '../paginas.module.css';
+import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, normalizarCultura, semRepetir, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
 
 const SEM_PROBLEMAS = 'Nenhum';
 
-const VALORES_INICIAIS = {
-    tamanho: '', estado: '', cidade: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
+const VALORES_INICIAIS: PerfilFormulario = {
+    tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
     drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
     usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
     proximaCultura: '', observacoes: ''
@@ -31,32 +30,7 @@ const Opcoes = ({ opcoes, marcadas, alternar }: any) => (
     </div>
 );
 
-const estadosBr = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
-// Local Zod Schema matching backend
-const formSchema = z.object({
-    tamanho: z.string().optional(),
-    estado: z.string().min(1, "Estado é obrigatório"),
-    cidade: z.string().min(1, "Cidade é obrigatória"),
-    cep: z.string().optional().refine((val) => !val || /^\d{5}-\d{3}$/.test(val) || /^\d{8}$/.test(val), "CEP inválido"),
-    coordenadas: z.object({ lat: z.number().nullable().optional(), lng: z.number().nullable().optional() }).optional(),
-    tipoSolo: z.enum(["arenoso", "argiloso", "siltoso", "misto", "nao_sei", ""]),
-    phSolo: z.preprocess((val) => val === '' || val == null ? null : Number(val), z.number().min(3.5).max(9).nullable().optional()) as z.ZodType<number | null | undefined, any, any>,
-    materiaOrganica: z.enum(["Baixa", "Média", "Alta", ""]).optional().nullable(),
-    drenagem: z.enum(["Boa", "Média", "Ruim", ""]).optional().nullable(),
-    analiseSolo: z.boolean().default(false),
-    culturasHistorico: z.array(z.string()).default([]),
-    tempoCulturaAtual: z.preprocess((val) => val === '' || val == null ? null : Number(val), z.number().min(0, "Tempo não pode ser negativo").nullable().optional()) as z.ZodType<number | null | undefined, any, any>,
-    usoFertilizantes: z.enum(["Baixo", "Médio", "Alto", ""]).optional().nullable(),
-    sistemaPlantio: z.enum(["Plantio direto", "Convencional", "Cultivo mínimo", "Não sei", ""]).optional().nullable(),
-    irrigacao: z.enum(["Não irrigo", "Aspersão", "Gotejamento", "Sulco ou inundação", "Outro", ""]).optional().nullable(),
-    problemasRecentes: z.array(z.string()).default([]),
-    objetivos: z.array(z.string()).default([]),
-    proximaCultura: z.string().optional().nullable(),
-    observacoes: z.string().optional().nullable()
-});
-
-type FormData = z.infer<typeof formSchema>;
 
 export default function PerfilPropriedade() {
     const router = useRouter();
@@ -66,8 +40,8 @@ export default function PerfilPropriedade() {
     const [novaCultura, setNovaCultura] = useState('');
     const [confirmandoApagar, setConfirmandoApagar] = useState(false);
 
-    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors } } = useForm<FormData>({
-        resolver: zodResolver(formSchema),
+    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors } } = useForm<PerfilFormulario, unknown, PerfilValidado>({
+        resolver: zodResolver(formularioPerfilSchema),
         defaultValues: VALORES_INICIAIS
     });
 
@@ -127,7 +101,7 @@ export default function PerfilPropriedade() {
     }, [setValue]);
 
     // pedirAnalise: o chat abre e já envia a primeira pergunta (gasta uma do limite diário).
-    const onSubmit = async (data: any, pedirAnalise: boolean) => {
+    const onSubmit = async (data: PerfilValidado, pedirAnalise: boolean) => {
         setSaving(true);
         setMessage('');
         try {
@@ -228,7 +202,7 @@ export default function PerfilPropriedade() {
                                 <label style={labelStyle}>Estado *</label>
                                 <select {...register('estado')} style={inputStyle}>
                                     <option value="">Selecione...</option>
-                                    {estadosBr.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                                    {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                                 </select>
                                 {errors.estado && <span style={errorStyle}>{errors.estado.message}</span>}
                             </div>
@@ -369,12 +343,12 @@ export default function PerfilPropriedade() {
                                             if (!marcar) return field.onChange(marcados.filter((x: string) => x !== prob));
                                             field.onChange(prob === SEM_PROBLEMAS ? [SEM_PROBLEMAS] : [...marcados.filter((x: string) => x !== SEM_PROBLEMAS), prob]);
                                         };
-                                        return ['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', SEM_PROBLEMAS].map(prob => (
+                                        return <>{['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', SEM_PROBLEMAS].map(prob => (
                                             <label key={prob} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
                                                 <input type="checkbox" checked={marcados.includes(prob)} onChange={(e) => alternar(prob, e.target.checked)} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
                                                 {prob}
                                             </label>
-                                        ));
+                                        ))}</>;
                                     }} />
                                 </div>
                             </div>

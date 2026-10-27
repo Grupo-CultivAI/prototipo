@@ -1,0 +1,34 @@
+# Confere cada PR antes do merge: lint, checagem de tipos e build. Antes, quem descobria
+# um build quebrado era a Vercel, já no deploy. Gratuito para repositórios públicos.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # O build carrega rotas que exigem estas variáveis ao iniciar. Os valores são falsos e só
+    # servem para compilar: nada aqui conecta ao banco nem chama as APIs.
+    env:
+      JWT_SECRET: valor-falso-somente-para-compilar
+      MONGODB_URI: mongodb://localhost:27017/ci
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      # Depois do build: é ele que gera o next-env.d.ts (fora do git), com os tipos dos
+      # arquivos .css. Antes dele, a checagem acusa "Cannot find module ...module.css".
+      - name: Checagem de tipos
+        run: npx tsc --noEmit

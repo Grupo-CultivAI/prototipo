@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import Propriedade from '@/models/Propriedade';
+import { perfilParcialSchema } from '@/lib/perfilSchema';
 import { jwtVerify } from 'jose';
 
 if (!process.env.JWT_SECRET) {
@@ -40,10 +41,19 @@ export async function POST(req) {
         const userId = await getUserIdFromToken();
         if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const data = await req.json();
+        // Só os campos do perfil, com tamanho e valores conferidos: o perfil entra no prompt da
+        // IA, e antes a rota gravava qualquer coisa que o navegador mandasse.
+        const resultado = perfilParcialSchema.safeParse(await req.json().catch(() => null));
+        if (!resultado.success) {
+            const problema = resultado.error.issues[0];
+            return NextResponse.json(
+                { message: problema?.message || 'Dados inválidos.', campo: problema?.path?.[0] },
+                { status: 400 }
+            );
+        }
         const prop = await Propriedade.findOneAndUpdate(
             { userId },
-            { ...data, userId },
+            { $set: { ...resultado.data, userId } },
             { new: true, upsert: true }
         );
         return NextResponse.json({ success: true, propriedade: prop });
