@@ -1,0 +1,163 @@
+/* Telas de conta (login, cadastro, esqueci a senha, redefinir senha): mesmo cartão e
+   mesmos botões, num lugar só. */
+.fundo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 76px);
+    padding: 2rem;
+    background: radial-gradient(circle at top, #e8f5ec 0%, var(--bg) 100%);
+}
+
+.cartao {
+    width: 100%;
+    max-width: 460px;
+    padding: 3rem;
+    border-radius: 24px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+}
+
+.cabecalho {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.titulo {
+    font-size: 2.2rem;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.subtitulo {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.duasColunas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.botao {
+    width: 100%;
+    padding: 1.1rem;
+    margin-top: 0.25rem;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    font-size: 1.05rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.botao:hover:not(:disabled) {
+    background: var(--primary-dark);
+}
+
+.botao:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.botao:focus-visible {
+    outline: 3px solid rgba(22, 163, 74, 0.45);
+    outline-offset: 2px;
+}
+
+.linkPequeno {
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.linkPequeno:hover,
+.linkPequeno:focus-visible {
+    text-decoration: underline;
+}
+
+.rodape {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.rodape a {
+    color: var(--primary-dark);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.rodape a:hover,
+.rodape a:focus-visible {
+    text-decoration: underline;
+}
+
+.aceite {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.aceite input {
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+}
+
+.aceite a {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.aceiteInvalido {
+    color: #B91C1C;
+}
+
+.confirmacao {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+@media (max-width: 480px) {
+    .fundo {
+        padding: 1rem 0.75rem;
+        align-items: flex-start;
+    }
+
+    .cartao {
+        padding: 1.75rem 1.25rem;
+        border-radius: 20px;
+    }
+
+    .titulo {
+        font-size: 1.8rem;
+    }
+
+    .duasColunas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

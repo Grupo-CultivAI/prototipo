@@ -15,11 +15,14 @@ export default function Sidebar() {
     const router = useRouter();
     const pathname = usePathname();
 
+    // O cookie de sessão é httpOnly: só o servidor consegue apagá-lo (ver /api/auth/logout).
     const handleLogout = async () => {
-        localStorage.removeItem("usuarioLogado");
-        localStorage.removeItem("usuarioNome");
-        document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        router.push("/login");
+        try {
+            await fetch("/api/auth/logout", { method: "POST" });
+        } finally {
+            router.replace("/login");
+            router.refresh();
+        }
     };
 
     return (
