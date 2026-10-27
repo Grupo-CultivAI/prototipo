@@ -11,8 +11,8 @@
 //   node scripts/importar-zarc.mjs --ver "Campinas/SP"      → mostra como ficou um município
 //   node scripts/importar-zarc.mjs --municipios 3509502,4204202 → só esses (geocódigo do IBGE), para testes
 //
-// O banco do .env.local é o mesmo da produção. São uns 600 MB de download (dois ou três
-// minutos de processamento) e ~20 MB gravados.
+// O banco do .env.local é o mesmo da produção. São uns 700 MB de download (cerca de 1
+// minuto, ~500 MB de memória) e ~25 MB gravados.
 //
 // A cada safra nova, acrescente o arquivo dela no início de ARQUIVOS: cada cultura vem do
 // arquivo mais novo que a tem (o de 2025/2026 continua na lista pelas culturas de inverno,

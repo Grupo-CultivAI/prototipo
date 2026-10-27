@@ -7,6 +7,7 @@ import Conversa from '@/models/Conversa';
 import { conversaDoUsuario, tituloDe } from '@/lib/conversas';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
+import { INDICACAO_DO_APLICATIVO, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
 
@@ -37,6 +38,9 @@ const LIMIAR_RELEVANCIA = Number(process.env.RAG_MIN_SCORE ?? 0.65);
 const TRECHOS_NO_CONTEXTO = 3;
 const MENSAGENS_DE_HISTORICO = 4;
 const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
+// A previsão só entra no prompt em perguntas sobre o trabalho no campo. Em 27/10/2026, com
+// ela sempre presente, a IA comentou a chuva numa pergunta sobre nematoides.
+const PERGUNTA_DE_CAMPO = /plant|semea|semeio|adub|aplic|pulveriz|colh|chuv|chov|irrig|previs|geada|semana|amanh/i;
 
 // Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
 // Meu Cultivo, para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
@@ -190,19 +194,45 @@ const NUMERO = /\d+(?:[.,]\d+)*\s?%?/g;
 const numerosRelevantes = (texto: string) =>
     (texto.match(NUMERO) ?? []).map((n) => n.replace(/\s/g, '')).filter((n) => /\d{2,}|[.,]\d|%/.test(n));
 const semSeparador = (n: string) => n.replace(/[.,%]/g, '');
-const blocosAtribuidosEmbrapa = (resposta: string) =>
-    [...resposta.matchAll(/📘([\s\S]*?)(?=🌱|$)/gu)].map((m) => m[1]).join('\n');
+// Texto sob um marcador de origem, até o próximo marcador
+const blocosAtribuidos = (resposta: string, marcador: '📘' | '🗓') =>
+    [...resposta.matchAll(marcador === '📘' ? /📘([\s\S]*?)(?=📘|🌱|🗓|$)/gu : /🗓([\s\S]*?)(?=📘|🌱|🗓|$)/gu)].map((m) => m[1]).join('\n');
+const numerosSemRespaldo = (atribuido: string, fonte: string) => {
+    const daFonte = new Set(numerosRelevantes(fonte).map(semSeparador));
+    return [...new Set(numerosRelevantes(atribuido).filter((n) => !daFonte.has(semSeparador(n))))];
+};
 
-function problemaDeAtribuicao(resposta: string, contexto: string): string | null {
-    const atribuido = blocosAtribuidosEmbrapa(resposta);
-    if (!atribuido.trim()) return null;
-    if (!contexto) {
-        return 'Nenhum trecho da Embrapa foi fornecido para esta pergunta, então o marcador "📘 Segundo a Embrapa" não pode ser usado. Reescreva a resposta completa usando apenas "🌱 Prática agronômica geral".';
+// "11 / 9" e "11/09" viram "11/09"
+const datasDe = (texto: string) =>
+    [...texto.matchAll(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/g)].map((m) => `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}`);
+
+// O mesmo vale para as datas sob "🗓️ Segundo o ZARC": precisam estar nas janelas enviadas.
+function problemaDeAtribuicao(resposta: string, contexto: string, zarc: string | null, previsao: string | null): string | null {
+    const problemas: string[] = [];
+    const daEmbrapa = blocosAtribuidos(resposta, '📘');
+    if (daEmbrapa.trim()) {
+        if (!contexto) {
+            problemas.push('Nenhum trecho da Embrapa foi fornecido para esta pergunta, então o marcador "📘 Segundo a Embrapa" não pode ser usado; use "🌱 Prática agronômica geral".');
+        } else {
+            // O bloco vai até o próximo marcador e pode pegar a frase da previsão de chuva.
+            const semRespaldo = numerosSemRespaldo(daEmbrapa, `${contexto}\n${previsao ?? ''}`);
+            if (semRespaldo.length && zarc && !numerosSemRespaldo(semRespaldo.join(' '), zarc).length) {
+                problemas.push('As datas de plantio vêm do ZARC, do Ministério da Agricultura, e não da Embrapa: tire-as de depois de "📘" e coloque-as depois de "🗓️ Segundo o ZARC (Ministério da Agricultura):".');
+            } else if (semRespaldo.length) problemas.push(`Estes números aparecem depois de "📘 Segundo a Embrapa", mas não constam dos trechos da Embrapa fornecidos: ${semRespaldo.join(', ')}. Tire esses números.`);
+        }
     }
-    const doContexto = new Set(numerosRelevantes(contexto).map(semSeparador));
-    const semRespaldo = [...new Set(numerosRelevantes(atribuido).filter((n) => !doContexto.has(semSeparador(n))))];
-    if (!semRespaldo.length) return null;
-    return `Estes números aparecem depois de "📘 Segundo a Embrapa", mas não constam dos trechos da Embrapa fornecidos: ${semRespaldo.join(', ')}. Reescreva a resposta completa sem esses números. Não invente valores.`;
+    // Sob "🗓️" só as datas (dd/mm) são conferidas. O bloco vai até o próximo marcador e pode
+    // pegar a frase da previsão de chuva, cujas datas também valem. Indicar o aplicativo com o
+    // marcador, sem datas, não é problema.
+    const doZarc = blocosAtribuidos(resposta, '🗓');
+    const validas = new Set(datasDe(`${zarc ?? ''}\n${previsao ?? ''}`));
+    const datasSemRespaldo = [...new Set(datasDe(doZarc).filter((d) => !validas.has(d)))];
+    if (datasSemRespaldo.length) {
+        problemas.push(zarc
+            ? `Estas datas aparecem depois de "🗓️ Segundo o ZARC", mas não constam das janelas do ZARC fornecidas: ${datasSemRespaldo.join(', ')}. Copie as datas exatamente como estão nas janelas.`
+            : 'Não há dados do ZARC para esta pergunta, então nenhuma data oficial pode ser dada depois de "🗓️"; indique o aplicativo Zarc Plantio Certo.');
+    }
+    return problemas.length ? `${problemas.join(' ')} Reescreva a resposta completa. Não invente valores.` : null;
 }
 
 // Uma resposta longa (plano de ~400 palavras) usa uns 700 tokens. Em 26/10/2026 o gpt-oss-20b
@@ -346,10 +376,11 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore }, clima, previsao] = await Promise.all([
+        const [{ trechos, maiorScore }, clima, previsao, zarc] = await Promise.all([
             buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
             getWeatherSummary(cidade),
-            getForecastSummary(cidade),
+            PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastSummary(cidade) : null,
+            epocaDePlantio(propriedade, `${userPrompt} ${busca}`),
         ]);
 
         const contexto = trechos
@@ -377,7 +408,10 @@ COMO RESPONDER
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" antes do que vier dos trechos da Embrapa abaixo.
 - Use "🌱 Prática agronômica geral:" antes de complementos de conhecimento geral.
-- Nunca misture as duas origens na mesma frase.
+- Use "🗓️ Segundo o ZARC (Ministério da Agricultura):" antes das janelas de plantio da seção ÉPOCA DE PLANTIO OFICIAL. Essas datas são do Ministério da Agricultura, não da Embrapa: nunca as coloque depois de "📘". Copie as datas exatamente. Destaque a janela de risco 20% (a mais segura) e explique em poucas palavras que o risco é a chance de perder a lavoura por clima (seca, geada, calor). Diga que plantar dentro da janela do ZARC é exigido pelo Proagro e pelo seguro rural.
+- Nunca dê datas oficiais de plantio que não estejam nessa seção. Se ela não trouxer a cultura perguntada, diga que não tem a janela oficial dessa cultura para o município.
+- Em toda resposta sobre quando plantar ou semear, com ou sem dados do ZARC abaixo, a última frase indica o aplicativo gratuito Zarc Plantio Certo, da Embrapa, para conferir a janela da cultivar e do solo.
+- Nunca misture as origens na mesma frase.
 - Quando os trechos da Embrapa trouxerem algo útil para a pergunta, use-o sob "📘" — é a parte mais valiosa da resposta, porque vem de pesquisa.
 - Depois de "📘", só use números (percentuais, produtividades, doses, anos, prazos) que aparecem escritos nos trechos. Se o trecho não traz o número, descreva sem número.
 - Só deixe de usar "📘" se não houver trechos ou se nenhum deles tiver relação com a pergunta. Nesse caso responda com prática agronômica geral, sem se desculpar nem explicar o motivo.
@@ -398,7 +432,10 @@ ${perfil || '(não preenchido)'}
 CLIMA AGORA${cidade ? ` EM ${cidade.toUpperCase()}` : ''}: ${clima || '(indisponível)'}
 
 PREVISÃO PARA OS PRÓXIMOS DIAS:
-${previsao || '(indisponível)'}
+${previsao || '(não se aplica a esta pergunta ou indisponível)'}
+
+ÉPOCA DE PLANTIO OFICIAL (ZARC, Ministério da Agricultura; fora das datas, o plantio não é indicado):
+${zarc || '(sem dados do ZARC para esta pergunta: não dê datas oficiais)'}
 
 TRECHOS DA EMBRAPA:
 ${contexto || '(nenhum trecho relevante encontrado)'}`;
@@ -432,9 +469,9 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             comAviso: false,
         };
 
-        const problema = problemaDeAtribuicao(answer, contexto);
+        const problema = problemaDeAtribuicao(answer, contexto, zarc, previsao);
         if (problema) {
-            console.warn('⚠️ Atribuição à Embrapa sem respaldo nos trechos; pedindo revisão.', problema);
+            console.warn('⚠️ Atribuição à Embrapa ou ao ZARC sem respaldo; pedindo revisão.', problema);
             const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: problema }]);
             geracao.revisada = true;
             if (revisada.texto) {
@@ -443,9 +480,9 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
                 geracao.tokensEntrada += revisada.tokensEntrada ?? 0;
                 geracao.tokensSaida += revisada.tokensSaida ?? 0;
             }
-            if (problemaDeAtribuicao(answer, contexto)) {
+            if (problemaDeAtribuicao(answer, contexto, zarc, previsao)) {
                 console.warn('⚠️ Revisão manteve a atribuição sem respaldo; resposta segue com aviso.');
-                answer += '\n\n> ⚠️ Parte desta resposta não pôde ser conferida nos documentos da Embrapa consultados. Confirme com a assistência técnica antes de aplicar.';
+                answer += '\n\n> ⚠️ Parte desta resposta não pôde ser conferida nos documentos da Embrapa ou no ZARC. Confirme com a assistência técnica antes de aplicar.';
                 geracao.comAviso = true;
             }
         }
@@ -461,6 +498,10 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         const pedido = separarPedido(answer, faltando);
         if (faltando.length) console.log(`📝 Dados que faltam: ${faltando.join(', ')} — pedidos nesta resposta: ${pedido.codigos.join(', ') || 'nenhum'}`);
         answer = pedido.texto;
+        // O prompt já pede o aplicativo, mas o modelo às vezes esquece.
+        if (perguntaDeQuandoPlantar(userPrompt) && !/plantio certo/i.test(answer)) {
+            answer += `\n\n${INDICACAO_DO_APLICATIVO}`;
+        }
 
         const resposta = await ChatMessage.create({
             userId, conversaId: conversa._id, text: answer, sender: 'bot',
@@ -469,7 +510,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
                 perguntaId,
                 busca: { texto: busca, maiorScore, trechosUsados: trechos.length },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
-                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
             },
         });

@@ -54,7 +54,8 @@ const ChatMessageSchema = new mongoose.Schema({
         contexto: {
             perfil: String,
             clima: String,
-            previsao: String // próximos dias, uma linha por dia
+            previsao: String, // próximos dias, uma linha por dia
+            zarc: String // janelas de plantio oficiais enviadas à IA
         },
         // 👍/👎 do produtor (POST /api/chat/avaliacao)
         avaliacao: { type: String, enum: ['boa', 'ruim'] }
