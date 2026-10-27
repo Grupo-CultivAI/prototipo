@@ -11,6 +11,12 @@
     padding: 3rem 2rem;
 }
 
+/* O main é flex centralizado (globals.css): sem largura explícita, o contêiner encolhia até
+   o conteúdo, e o Meu Cultivo mudava de largura ao abrir e fechar cada bloco. */
+.container {
+    width: 100%;
+}
+
 /* --- Títulos e grades --- */
 .tituloPagina {
     font-size: 2.6rem;
