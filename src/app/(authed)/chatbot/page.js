@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -46,6 +46,22 @@ function sugestoesDePergunta(p) {
 const SAUDACAO = "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?";
 const conversaNova = () => [{ id: crypto.randomUUID(), text: SAUDACAO, sender: "bot" }];
 
+// "hoje", "ontem" ou a data, para a lista de conversas.
+function quando(data) {
+  const d = new Date(data);
+  const dias = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
+  if (dias === 0) return "hoje";
+  if (dias === 1) return "ontem";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+}
+
+// A conversa aberta fica guardada neste navegador, para voltar a ela ao recarregar a página.
+// Um id que não é da pessoa (outra conta no mesmo navegador) é ignorado pela API.
+const CHAVE_CONVERSA_ABERTA = "cultivai:conversaAberta";
+const lerConversaAberta = () => {
+  try { return localStorage.getItem(CHAVE_CONVERSA_ABERTA); } catch { return null; }
+};
+
 const reconhecimentoDeVoz = () => typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
 export default function ChatCultivAI() {
@@ -59,6 +75,9 @@ export default function ChatCultivAI() {
   const [restantes, setRestantes] = useState(null);
   // Conversa aberta. null até a primeira pergunta de quem nunca usou o chat: a API cria.
   const [conversaId, setConversaId] = useState(null);
+  // Lista das conversas guardadas: null enquanto não foi aberta.
+  const [conversas, setConversas] = useState(null);
+  const [listaAberta, setListaAberta] = useState(false);
   const [ouvindo, setOuvindo] = useState(false);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
@@ -85,7 +104,8 @@ export default function ChatCultivAI() {
           setPropriedade(dataP.propriedade);
         }
 
-        const resHistory = await fetch('/api/chat/history');
+        const aberta = lerConversaAberta();
+        const resHistory = await fetch(`/api/chat/history${aberta ? `?conversa=${encodeURIComponent(aberta)}` : ""}`);
         // Uma carga que ficou para trás (a página foi montada de novo, o que o React faz em
         // desenvolvimento) não pode sobrescrever a conversa nem consumir a marca de análise.
         if (!ativo) return;
@@ -125,6 +145,11 @@ export default function ChatCultivAI() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!conversaId) return;
+    try { localStorage.setItem(CHAVE_CONVERSA_ABERTA, conversaId); } catch { }
+  }, [conversaId]);
+
   const copyHistory = () => {
     const debugData = {
       timestamp: new Date().toISOString(),
@@ -142,12 +167,42 @@ export default function ChatCultivAI() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // A lista é buscada a cada abertura: muda a cada pergunta feita.
+  const alternarLista = async () => {
+    if (listaAberta) { setListaAberta(false); return; }
+    setListaAberta(true);
+    try {
+      const r = await fetch('/api/conversas');
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message);
+      setConversas(d.conversas);
+    } catch (err) {
+      console.error("Erro ao listar conversas", err);
+      setConversas([]);
+    }
+  };
+
+  const abrirConversa = async (id) => {
+    setListaAberta(false);
+    if (id === conversaId) return;
+    try {
+      const r = await fetch(`/api/chat/history?conversa=${id}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message);
+      setConversaId(d.conversaId ?? null);
+      setMessages(d.history?.length ? d.history : conversaNova());
+    } catch (err) {
+      console.error("Erro ao abrir conversa", err);
+    }
+  };
+
   // Começa do zero sem apagar nada: a conversa anterior fica guardada no banco.
   const novaConversa = async () => {
     try {
       const r = await fetch('/api/conversas', { method: 'POST' });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message);
+      setListaAberta(false);
       setConversaId(d.conversaId);
       setMessages(conversaNova());
     } catch (err) {
@@ -160,6 +215,7 @@ export default function ChatCultivAI() {
     try {
       const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' });
       const d = await r.json();
+      setListaAberta(false);
       setConversaId(d.conversaId ?? null);
       setMessages(conversaNova());
     } catch (err) {
@@ -316,6 +372,16 @@ export default function ChatCultivAI() {
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button
+            onClick={alternarLista}
+            title="Ver as conversas anteriores"
+            aria-expanded={listaAberta}
+            aria-controls="lista-conversas"
+            className={`${styles.botaoCabecalho} ${listaAberta ? styles.botaoCabecalhoAtivo : ""}`}
+          >
+            <History size={16} />
+            <span className={styles.rotuloBotao}>Conversas</span>
+          </button>
+          <button
             onClick={novaConversa}
             title="Começar uma conversa nova. Esta fica guardada."
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
@@ -353,6 +419,29 @@ export default function ChatCultivAI() {
           )}
         </div>
       </div>
+
+      {listaAberta && (
+        <nav id="lista-conversas" aria-label="Conversas anteriores" className={styles.listaConversas}>
+          {conversas === null ? (
+            <p>Carregando...</p>
+          ) : conversas.length === 0 ? (
+            <p>Nenhuma conversa guardada ainda. Elas aparecem aqui depois da primeira pergunta.</p>
+          ) : (
+            <ul>
+              {conversas.map((c) => (
+                <li key={c.id}>
+                  <button type="button" onClick={() => abrirConversa(c.id)} aria-current={c.id === conversaId ? "true" : undefined}>
+                    <span className={styles.tituloConversa}>{c.titulo}</span>
+                    <span className={styles.detalheConversa}>
+                      {quando(c.ultimaMensagemEm)} · {c.perguntas} {c.perguntas === 1 ? "pergunta" : "perguntas"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+      )}
 
       <div className={styles.chatMensagens} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
         {messages.map((msg) => (
