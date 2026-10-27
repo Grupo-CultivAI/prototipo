@@ -24,7 +24,6 @@ const PropriedadeSchema = new mongoose.Schema({
     drenagem: { type: String, enum: ["Boa", "Média", "Ruim", ""], default: "" },
     analiseSolo: { type: Boolean, default: false },
     // history
-    culturas: { type: String, default: "" }, // keeping for compatibility, maybe use as multi-input text or create culturasHistorico
     culturasHistorico: { type: [String], default: [] },
     tempoCulturaAtual: { type: Number, default: null },
     usoFertilizantes: { type: String, enum: ["Baixo", "Médio", "Alto", ""], default: "" },
@@ -32,7 +31,6 @@ const PropriedadeSchema = new mongoose.Schema({
     irrigacao: { type: String, enum: ["Não irrigo", "Aspersão", "Gotejamento", "Sulco ou inundação", "Outro", ""], default: "" },
     problemasRecentes: { type: [String], default: [] },
     // objectives
-    objetivo: { type: String, default: "" }, // keeping for compatibility
     objetivos: { type: [String], default: [] },
     proximaCultura: { type: String, default: "" }, // "Ainda não decidi" também é resposta
     observacoes: { type: String, default: "" }

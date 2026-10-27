@@ -53,6 +53,7 @@ src/
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
     limites.ts                limite de perguntas por minuto e por dia (usado pelo chat e pelo contador)
+    perfilSchema.ts           regras do Meu Cultivo (campos, opções, tamanhos), usadas pela tela e pela rota /api/propriedade
     conversas.ts              conversa atual de cada pessoa e migração do histórico antigo
     senha.js                  regra de senha (mínimo de 8) e padronização do email
     tentativas.ts             limite de tentativas de login e de pedidos de recuperação
@@ -65,6 +66,7 @@ scripts/
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
   ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
   remover-documento.mjs     → tira um documento da base (Pinecone, estado da ingestão e pasta); simula antes, apaga com --confirmar
+  limpar-campos-legados.mjs → apaga dos perfis gravados os campos antigos culturas e objetivo; simula antes, altera com --confirmar
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
   test-integrations.mjs     → testa se as chaves do Gemini, do Pinecone e da Groq funcionam (node scripts/test-integrations.mjs)
   relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
@@ -256,3 +258,5 @@ npm run build   # build de produção
 npm run start   # inicia o servidor de produção
 npm run lint    # roda o ESLint
 ```
+
+**Integração contínua:** a cada PR e a cada push na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda lint, build e checagem de tipos. Um PR com erro aparece com ❌ no GitHub antes do merge. O fluxo usa valores falsos de `JWT_SECRET` e `MONGODB_URI` só para compilar; nenhuma chave real fica no GitHub.
