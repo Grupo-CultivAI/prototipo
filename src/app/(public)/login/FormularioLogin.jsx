@@ -9,7 +9,7 @@ import styles from "../conta.module.css"
 
 const semInscricao = () => () => {}
 
-export default function FormularioLogin() {
+export default function FormularioLogin({ contaExcluida = false }) {
   const router = useRouter()
   // Depois do cadastro, o email já vem preenchido e só falta a senha. No servidor não há
   // sessionStorage: a primeira renderização vem sem email e o navegador completa em seguida.
@@ -76,6 +76,7 @@ export default function FormularioLogin() {
 
         <form onSubmit={entrar} noValidate className={styles.formulario}>
           {vindoDoCadastro && !erro && <AvisoFormulario tipo="sucesso">Conta criada. Agora é só digitar sua senha para entrar.</AvisoFormulario>}
+          {contaExcluida && !vindoDoCadastro && !erro && <AvisoFormulario tipo="sucesso">Sua conta e todos os seus dados foram excluídos.</AvisoFormulario>}
 
           <Input
             ref={emailRef}

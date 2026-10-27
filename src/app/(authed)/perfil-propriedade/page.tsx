@@ -10,6 +10,13 @@ import styles from '../paginas.module.css';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, normalizarCultura, semRepetir, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
 
 const SEM_PROBLEMAS = 'Nenhum';
+
+const VALORES_INICIAIS = {
+    tamanho: '', estado: '', cidade: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
+    drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
+    usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
+    proximaCultura: '', observacoes: ''
+};
 const AINDA_NAO_DECIDI = 'Ainda não decidi';
 
 // Botões que marcam e desmarcam, no lugar de texto separado por vírgula.
@@ -57,16 +64,28 @@ export default function PerfilPropriedade() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [novaCultura, setNovaCultura] = useState('');
+    const [confirmandoApagar, setConfirmandoApagar] = useState(false);
 
-    const { register, handleSubmit, setValue, watch, control, formState: { errors } } = useForm<FormData>({
+    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            tamanho: '', estado: '', cidade: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
-            drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
-            usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
-            proximaCultura: '', observacoes: ''
-        }
+        defaultValues: VALORES_INICIAIS
     });
+
+    // "Apagar dados da propriedade": some o perfil, a conta e as conversas continuam.
+    const apagarDados = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/propriedade', { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            reset(VALORES_INICIAIS);
+            setMessage('Dados da propriedade apagados.');
+        } catch {
+            setMessage('Não foi possível apagar os dados. Tente de novo.');
+        } finally {
+            setSaving(false);
+            setConfirmandoApagar(false);
+        }
+    };
 
     const cepValue = watch('cep');
     const valores = watch();
@@ -415,6 +434,27 @@ export default function PerfilPropriedade() {
                     </div>
                 </div>
             </form>
+
+            <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                {!confirmandoApagar ? (
+                    <button type="button" onClick={() => setConfirmandoApagar(true)}
+                        style={{ background: 'none', border: 'none', padding: 0, color: '#B91C1C', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem' }}>
+                        Apagar dados da propriedade
+                    </button>
+                ) : (
+                    <div role="group" aria-label="Confirmar exclusão dos dados da propriedade" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                        <span>Apagar tudo o que foi preenchido no Meu Cultivo? Sua conta e suas conversas continuam.</span>
+                        <button type="button" onClick={apagarDados} disabled={saving}
+                            style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: 'none', background: '#DC2626', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                            Apagar
+                        </button>
+                        <button type="button" onClick={() => setConfirmandoApagar(false)}
+                            style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
+                            Cancelar
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
