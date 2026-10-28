@@ -21,6 +21,8 @@ export const perfilSchema = z.object({
     tamanho: texto(20),
     estado: z.enum([...ESTADOS, ''], OPCAO_INVALIDA),
     cidade: texto(80),
+    // Código do IBGE da cidade escolhida na lista (ou vinda do CEP). O ZARC busca por ele.
+    codigoMunicipio: z.string().trim().refine((v) => !v || /^\d{7}$/.test(v), 'Município inválido.'),
     cep: z.string().trim().refine((v) => !v || /^\d{5}-?\d{3}$/.test(v), 'CEP inválido.'),
     tipoSolo: z.enum(['arenoso', 'argiloso', 'siltoso', 'misto', 'nao_sei', ''], OPCAO_INVALIDA),
     phSolo: numeroOpcional(3.5, 9, 'O pH vai de 3,5 a 9.'),
@@ -41,11 +43,12 @@ export const perfilSchema = z.object({
 // Na rota, tudo é opcional: o formulário do chat manda só o dado pedido (ex.: { tipoSolo }).
 export const perfilParcialSchema = perfilSchema.partial();
 
-// Na tela do Meu Cultivo, estado e cidade são obrigatórios.
+// Na tela do Meu Cultivo, estado e cidade são obrigatórios, e a cidade vem da lista do IBGE
+// (texto livre não bate com o ZARC: "Uberlandia", "Campinas - SP"...).
 export const formularioPerfilSchema = perfilSchema.extend({
     estado: z.enum(ESTADOS, { error: 'Estado é obrigatório.' }),
     cidade: texto(80).min(1, 'Cidade é obrigatória.'),
-});
+}).refine((p) => /^\d{7}$/.test(p.codigoMunicipio), { path: ['cidade'], message: 'Escolha a cidade na lista.' });
 
 export type PerfilFormulario = z.input<typeof formularioPerfilSchema>;
 export type PerfilValidado = z.output<typeof formularioPerfilSchema>;

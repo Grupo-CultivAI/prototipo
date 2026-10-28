@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,11 +7,12 @@ import { MapPin, Sprout, History, Target, ChevronDown, ChevronUp, Droplets, Flas
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, normalizarCultura, semRepetir, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
+import BuscaCidade from '@/components/BuscaCidade';
 
 const SEM_PROBLEMAS = 'Nenhum';
 
 const VALORES_INICIAIS: PerfilFormulario = {
-    tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
+    tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', codigoMunicipio: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
     drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
     usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
     proximaCultura: '', observacoes: ''
@@ -70,7 +71,9 @@ export default function PerfilPropriedade() {
     const [novaCultura, setNovaCultura] = useState('');
     const [confirmandoApagar, setConfirmandoApagar] = useState(false);
 
-    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors } } = useForm<PerfilFormulario, unknown, PerfilValidado>({
+    const [statusCep, setStatusCep] = useState('');
+
+    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors, isSubmitted } } = useForm<PerfilFormulario, unknown, PerfilValidado>({
         resolver: zodResolver(formularioPerfilSchema),
         defaultValues: VALORES_INICIAIS
     });
@@ -92,23 +95,45 @@ export default function PerfilPropriedade() {
     };
 
     // useWatch, e não watch(): o watch() não é compatível com o otimizador do React.
-    const cepValue = useWatch({ control, name: 'cep' });
     const valores = useWatch({ control });
     const faltando = itensFaltando(valores);
 
-    useEffect(() => {
-        if (cepValue && cepValue.replace(/\D/g, '').length === 8) {
-            const cleanCep = cepValue.replace(/\D/g, '');
-            fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.erro) {
-                        setValue('cidade', data.localidade);
-                        setValue('estado', data.uf);
-                    }
-                }).catch(() => { });
+    const definirCidade = useCallback(({ nome, codigo }: { nome: string; codigo: string }) => {
+        setValue('cidade', nome, { shouldDirty: true, shouldValidate: isSubmitted });
+        setValue('codigoMunicipio', codigo, { shouldDirty: true });
+    }, [setValue, isSubmitted]);
+
+    // Cidade escolhida à mão: o CEP digitado antes era de outro lugar e sai. A correção
+    // automática de perfil antigo (nome sem acento) não mexe no CEP.
+    const escolherCidade = useCallback(({ nome, codigo, automatico }: { nome: string; codigo: string; automatico?: boolean }) => {
+        if (!automatico) {
+            setValue('cep', '', { shouldDirty: true });
+            setStatusCep('');
         }
-    }, [cepValue, setValue]);
+        definirCidade({ nome, codigo });
+    }, [setValue, definirCidade]);
+
+    // CEP completo: a ViaCEP devolve estado, cidade e o código do IBGE. Só quando o produtor
+    // digita (e não ao carregar o perfil), para não trocar uma cidade escolhida na lista.
+    const buscarCep = async (digitado: string) => {
+        const numeros = digitado.replace(/\D/g, '').slice(0, 8);
+        const formatado = numeros.length > 5 ? `${numeros.slice(0, 5)}-${numeros.slice(5)}` : numeros;
+        if (formatado !== digitado) setValue('cep', formatado);
+        if (numeros.length !== 8) { setStatusCep(''); return; }
+        setStatusCep('Buscando o CEP...');
+        try {
+            const data = await (await fetch(`https://viacep.com.br/ws/${numeros}/json/`)).json();
+            if (data.erro || !/^\d{7}$/.test(String(data.ibge ?? ''))) {
+                setStatusCep('CEP não encontrado. Escolha o estado e a cidade abaixo.');
+                return;
+            }
+            setValue('estado', data.uf, { shouldDirty: true });
+            definirCidade({ nome: data.localidade, codigo: String(data.ibge) });
+            setStatusCep(`✓ ${data.localidade}/${data.uf}`);
+        } catch {
+            setStatusCep('Não deu para buscar o CEP agora. Escolha o estado e a cidade abaixo.');
+        }
+    };
 
     useEffect(() => {
         async function loadProfile() {
@@ -197,18 +222,20 @@ export default function PerfilPropriedade() {
                                 <div style={{ display: 'flex', padding: '1rem', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '12px', alignItems: 'flex-start', gap: '12px' }}>
                                     <Info size={20} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
                                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                                        Com o CEP, preenchemos a cidade e o estado. A IA usa a cidade para consultar o clima de agora e a data de hoje para considerar a época do ano.
+                                        Digite o CEP para preencher o estado e a cidade, ou escolha os dois abaixo. A IA usa a cidade para o clima, a previsão de chuva e a época de plantio oficial (ZARC) do seu município.
                                     </p>
                                 </div>
                             </div>
                             <div>
                                 <label style={labelStyle}>CEP <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
-                                <input placeholder="XXXXX-XXX" {...register('cep')} style={inputStyle} />
+                                <input placeholder="00000-000" inputMode="numeric" maxLength={9} {...register('cep', { onChange: (e) => buscarCep(e.target.value) })} style={inputStyle} />
                                 {errors.cep && <span style={errorStyle}>{errors.cep.message}</span>}
+                                {statusCep && <span className={styles.statusCep} role="status">{statusCep}</span>}
                             </div>
                             <div>
                                 <label style={labelStyle}>Estado *</label>
-                                <select {...register('estado')} style={inputStyle}>
+                                {/* Trocar o estado à mão apaga a cidade, que era de outro estado */}
+                                <select {...register('estado', { onChange: () => escolherCidade({ nome: '', codigo: '' }) })} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                                 </select>
@@ -216,7 +243,7 @@ export default function PerfilPropriedade() {
                             </div>
                             <div>
                                 <label style={labelStyle}>Cidade *</label>
-                                <input placeholder="Sua cidade" {...register('cidade')} style={inputStyle} />
+                                <BuscaCidade uf={valores.estado} valor={valores.cidade} codigo={valores.codigoMunicipio} aoEscolher={escolherCidade} estilo={inputStyle} invalido={Boolean(errors.cidade)} />
                                 {errors.cidade && <span style={errorStyle}>{errors.cidade.message}</span>}
                             </div>
                             <div>

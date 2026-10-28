@@ -58,7 +58,10 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
     if (!PERGUNTA_DE_EPOCA.test(`${pergunta} ${antes}`)) return null;
 
     try {
-        const municipio = await ZarcMunicipio.findOne({ uf, busca: cidade }).select('nome uf j').lean<{ nome: string; uf: string; j: Record<string, Entrada> }>();
+        // Pelo código do IBGE quando o perfil tem (cidade escolhida na lista ou vinda do CEP);
+        // senão, pelo nome (perfis antigos e cidade informada pelo formulário do chat).
+        const codigo = String(propriedade?.codigoMunicipio ?? '');
+        const municipio = await ZarcMunicipio.findOne(/^\d{7}$/.test(codigo) ? { _id: codigo } : { uf, busca: cidade }).select('nome uf j').lean<{ nome: string; uf: string; j: Record<string, Entrada> }>();
         if (!municipio?.j) {
             // Sem isso, a IA concluía que "não há janela de soja no município". Se a coleção
             // ainda está vazia (antes da primeira importação), não há o que avisar.
