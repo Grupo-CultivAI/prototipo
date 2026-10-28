@@ -1,5 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { LIMIAR_RELEVANCIA, NAMESPACE_DA_BASE, gerarEmbeddings } from '../src/lib/embeddings.mjs';
 dotenv.config({ path: '.env.local' });
 
 // Aceita mais de um PDF esperado: quando a base tem documentos irmãos, como as
@@ -7,7 +7,7 @@ dotenv.config({ path: '.env.local' });
 // resultado que está correto.
 const [pergunta, ...pdfsEsperados] = process.argv.slice(2);
 const TOP_K = 3;
-const MIN_SCORE = Number(process.env.RAG_MIN_SCORE ?? 0.5);
+const MIN_SCORE = LIMIAR_RELEVANCIA;
 
 if (!pergunta) {
     console.error('Uso: node scripts/verify-ingest.mjs "<pergunta>" [pdf-esperado.pdf ...]');
@@ -16,24 +16,14 @@ if (!pergunta) {
 
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
-const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
-// Usa a chave dos scripts, se houver, para não gastar a cota do chat (ver ingest-pdfs.mjs).
-const geminiApiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
+const namespace = NAMESPACE_DA_BASE;
 
-if (!host || !pineconeApiKey || !geminiApiKey) {
-    console.error('❌ PINECONE_INDEX_HOST, PINECONE_API_KEY e GEMINI_API_KEY são obrigatórios no .env.local');
+if (!host || !pineconeApiKey) {
+    console.error('❌ PINECONE_INDEX_HOST e PINECONE_API_KEY são obrigatórios no .env.local');
     process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-
-// Medido em 25/10/2026: com ou sem taskType os scores saem idênticos; mantido por ser o uso documentado.
-const res = await ai.models.embedContent({
-    model: 'gemini-embedding-001',
-    contents: pergunta,
-    config: { outputDimensionality: 768, taskType: 'RETRIEVAL_QUERY' },
-});
-const vector = res.embedding?.values || res.embeddings?.[0]?.values || res.values;
+const [vector] = await gerarEmbeddings([pergunta], { tipo: 'query', apiKey: pineconeApiKey, tentativas: 3 });
 
 const qRes = await fetch(`https://${host}/query`, {
     method: 'POST',

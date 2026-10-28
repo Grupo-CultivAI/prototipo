@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { GoogleGenAI } from '@google/genai';
 import { extractText } from 'unpdf';
 import dotenv from 'dotenv';
+import { NAMESPACE_DA_BASE, gerarEmbeddings } from '../src/lib/embeddings.mjs';
 dotenv.config({ path: '.env.local' });
 
 const FOLDER_PATH = process.argv[2] || './docs-embrapa';
@@ -31,18 +31,14 @@ const PREFIXO_POR_ARQUIVO = {
 // Validação de variáveis de ambiente
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
-const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
-// GEMINI_API_KEY_INGESTAO (opcional): chave de outro projeto do Google só para os scripts.
-// A cota gratuita de embeddings (1.000 por dia) é por projeto; com a chave do chat, um lote
-// grande de ingestão deixava o chat publicado sem busca na base até o dia seguinte.
-const geminiApiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
+// O namespace acompanha o modelo de embedding (src/lib/embeddings.mjs). Os embeddings vêm do
+// Pinecone Inference, com a mesma chave do índice; até 28/10/2026 eram do Gemini.
+const namespace = NAMESPACE_DA_BASE;
 
-if (!host || !pineconeApiKey || !geminiApiKey) {
-    console.error('❌ Erro: PINECONE_INDEX_HOST, PINECONE_API_KEY e GEMINI_API_KEY são obrigatórios no .env.local');
+if (!host || !pineconeApiKey) {
+    console.error('❌ Erro: PINECONE_INDEX_HOST e PINECONE_API_KEY são obrigatórios no .env.local');
     process.exit(1);
 }
-
-const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Leitura do estado de progresso para retomada automática
 let state = { processedFiles: [], failedFiles: [] };
@@ -52,8 +48,8 @@ if (fs.existsSync(STATE_FILE)) {
         // JSON.parse rejeita esse caractere.
         state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8').replace(/^﻿/, ''));
     } catch (e) {
-        // Recomeçar do zero aqui reprocessaria todos os PDFs e esgotaria a cota
-        // diária do Gemini à toa. É mais seguro parar e deixar a decisão com quem roda.
+        // Recomeçar do zero aqui reprocessaria todos os PDFs e gastaria a cota
+        // de embeddings à toa. É mais seguro parar e deixar a decisão com quem roda.
         console.error(`❌ "${STATE_FILE}" existe mas não pôde ser lido: ${e.message}`);
         console.error('   Para ignorar o progresso e reprocessar tudo, apague o arquivo manualmente.');
         process.exit(1);
@@ -138,21 +134,6 @@ async function withRetry(fn, label, tentativas = 5) {
         }
     }
     throw new Error(`${label}: esgotou as tentativas. Rode o script de novo depois — o progresso por arquivo foi salvo.`);
-}
-
-// Função de embedding agora envelopada no withRetry e com taskType adicionado
-async function getEmbedding(text) {
-    return withRetry(async () => {
-        const res = await ai.models.embedContent({
-            model: 'gemini-embedding-001',
-            contents: text,
-            config: { 
-                outputDimensionality: 768, 
-                taskType: 'RETRIEVAL_DOCUMENT' // Especifica que é para RAG
-            },
-        });
-        return res.embedding?.values || res.embeddings?.[0]?.values || res.values;
-    }, 'Gemini embedContent');
 }
 
 // Função de upsert envelopada no withRetry
@@ -252,27 +233,19 @@ async function main() {
                 console.log('   └ prefixo de contexto aplicado a todos os trechos deste arquivo.');
             }
 
-            const vectors = [];
-            for (let j = 0; j < chunks.length; j++) {
-                const chunk = chunks[j];
-                const prefixo = PREFIXO_POR_ARQUIVO[fileName];
-                const texto = prefixo ? `${prefixo}\n\n${chunk.texto}` : chunk.texto;
-                const vector = await getEmbedding(texto);
-
-                const id = `${prefixoDoArquivo(fileName)}${j}`;
-                vectors.push({
-                    id,
-                    values: vector,
-                    metadata: {
-                        fonte: fileName,
-                        texto,
-                        pagina: paginaDoOffset(offsets, chunk.inicio),
-                    },
-                });
-
-                // Pequena pausa para respeitar cotas de requisições por minuto (mantida do código original)
-                await new Promise((r) => setTimeout(r, 200));
-            }
+            const prefixo = PREFIXO_POR_ARQUIVO[fileName];
+            const textos = chunks.map((chunk) => (prefixo ? `${prefixo}\n\n${chunk.texto}` : chunk.texto));
+            // Em lotes, com novas tentativas no limite por minuto do plano gratuito
+            const valores = await gerarEmbeddings(textos, { tipo: 'passage', apiKey: pineconeApiKey, tentativas: 5 });
+            const vectors = chunks.map((chunk, j) => ({
+                id: `${prefixoDoArquivo(fileName)}${j}`,
+                values: valores[j],
+                metadata: {
+                    fonte: fileName,
+                    texto: textos[j],
+                    pagina: paginaDoOffset(offsets, chunk.inicio),
+                },
+            }));
 
             // Envia para o Pinecone em lotes de 100
             for (let k = 0; k < vectors.length; k += 100) {

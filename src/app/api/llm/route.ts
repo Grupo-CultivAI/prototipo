@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { LIMIAR_RELEVANCIA, MODELO_EMBEDDING, NAMESPACE_DA_BASE, gerarEmbeddings } from '@/lib/embeddings.mjs';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import Propriedade from '@/models/Propriedade';
@@ -33,9 +33,8 @@ const PROVEDORES: Record<string, { url: string; chave: () => string | undefined 
 const PRAZO_POR_MODELO_MS = 20_000;
 
 
-// Calibrado em 25/10/2026: perguntas fora do tema pontuam 0,54–0,59 e as do tema, 0,71–0,83.
-// Não separa assunto agrícola ausente da base (0,68–0,76); para esse caso há a checagem de números.
-const LIMIAR_RELEVANCIA = Number(process.env.RAG_MIN_SCORE ?? 0.65);
+// O limiar de relevância (LIMIAR_RELEVANCIA) vem de src/lib/embeddings.mjs, junto com o modelo:
+// a escala dos scores muda de um modelo para outro.
 const TRECHOS_NO_CONTEXTO = 3;
 const MENSAGENS_DE_HISTORICO = 4;
 const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
@@ -153,21 +152,14 @@ function textoParaBusca(pergunta: string, perguntaAnterior: string | null): stri
 
 // maiorScore fica gravado com a resposta: perguntas com score baixo apontam assuntos que
 // faltam na base (npm run relatorio-chat). null = a busca não aconteceu.
-async function buscarTrechos(texto: string, cfg: { gemini: string; pinecone: string; host: string; namespace: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null }> {
+async function buscarTrechos(texto: string, cfg: { pinecone: string; host: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null }> {
     try {
-        const ai = new GoogleGenAI({ apiKey: cfg.gemini });
-        const embedRes = await ai.models.embedContent({
-            model: 'gemini-embedding-001',
-            contents: texto,
-            config: { outputDimensionality: 768, taskType: 'RETRIEVAL_QUERY' },
-        });
-        const vector = embedRes.embeddings?.[0]?.values;
-        if (!Array.isArray(vector) || vector.length !== 768) throw new Error('vetor inválido do Gemini');
+        const [vector] = await gerarEmbeddings([texto], { tipo: 'query', apiKey: cfg.pinecone });
 
         const res = await fetch(`https://${cfg.host}/query`, {
             method: 'POST',
             headers: { 'Api-Key': cfg.pinecone, 'Content-Type': 'application/json', 'X-Pinecone-Api-Version': '2025-04' },
-            body: JSON.stringify({ vector, topK: 5, namespace: cfg.namespace, includeMetadata: true }),
+            body: JSON.stringify({ vector, topK: 5, namespace: NAMESPACE_DA_BASE, includeMetadata: true }),
         });
         if (!res.ok) throw new Error(`Pinecone ${res.status}: ${await res.text()}`);
         const matches: { score: number; metadata?: Record<string, unknown> }[] = (await res.json()).matches || [];
@@ -333,13 +325,12 @@ export async function POST(req: Request) {
             );
         }
 
-        const geminiKey = process.env.GEMINI_API_KEY;
+        // A GEMINI_API_KEY deixou de ser obrigatória: só serve ao modelo Gemini da fila MODELOS_IA.
         const pineconeKey = process.env.PINECONE_API_KEY;
         const pineconeHost = (process.env.PINECONE_INDEX_HOST || '').replace(/^https?:\/\//, '');
-        const pineconeNamespace = process.env.PINECONE_NAMESPACE || 'embrapa';
         const groqKey = process.env.GROQ_API_KEY;
 
-        if (!geminiKey || !pineconeKey || !pineconeHost || !groqKey) {
+        if (!pineconeKey || !pineconeHost || !groqKey) {
             return NextResponse.json({ success: false, message: 'Configuração de servidor incompleta.' }, { status: 500 });
         }
 
@@ -378,7 +369,7 @@ export async function POST(req: Request) {
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
         const [{ trechos, maiorScore }, clima, previsao, epoca] = await Promise.all([
-            buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
+            buscarTrechos(busca, { pinecone: pineconeKey, host: pineconeHost }),
             getWeatherSummary(cidade),
             PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastSummary(cidade) : null,
             epocaDePlantio(propriedade, userPrompt, busca === userPrompt ? '' : busca),
@@ -523,7 +514,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             metadata: {
                 fontes,
                 perguntaId,
-                busca: { texto: busca, maiorScore, trechosUsados: trechos.length },
+                busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
                 contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
