@@ -57,6 +57,12 @@ const ChatMessageSchema = new mongoose.Schema({
             previsao: String, // próximos dias, uma linha por dia
             zarc: String // janelas de plantio oficiais enviadas à IA
         },
+        // Quadro do ZARC mostrado abaixo da resposta (src/lib/zarc.ts)
+        epoca: {
+            local: String,
+            linhas: { type: [String], default: undefined },
+            aviso: String
+        },
         // 👍/👎 do produtor (POST /api/chat/avaliacao)
         avaliacao: { type: String, enum: ['boa', 'ruim'] }
     }

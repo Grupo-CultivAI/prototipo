@@ -123,6 +123,41 @@
     text-decoration: underline;
 }
 
+/* --- Quadro do ZARC no fim da resposta: informação, não parte do texto da IA --- */
+.quadroZarc {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    background: rgba(22, 163, 74, 0.06);
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.quadroZarc ul {
+    margin: 0 0 0.5rem;
+    padding-left: 1.1rem;
+}
+
+.quadroZarc li {
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.quadroZarc p {
+    margin: 0 0 0.4rem;
+}
+
+.notaZarc {
+    font-size: 0.8rem;
+}
+
+.quadroZarc .notaZarc {
+    margin: 0;
+}
+
 /* --- Perguntas restantes no dia, abaixo do título --- */
 .contador {
     display: block;
