@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
+import ContadorPerguntas from "@/components/ContadorPerguntas";
 import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
@@ -119,6 +120,8 @@ export default function ChatCultivAI() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [restantes, setRestantes] = useState(null);
+  // Limite das últimas 24 horas, vindo da API (RATE_LIMIT_PER_DAY; padrão 30)
+  const [limiteDiario, setLimiteDiario] = useState(30);
   // Conversa aberta. null até a primeira pergunta de quem nunca usou o chat: a API cria.
   const [conversaId, setConversaId] = useState(null);
   // Lista das conversas guardadas: null enquanto não foi aberta.
@@ -163,6 +166,7 @@ export default function ChatCultivAI() {
           const dataH = await resHistory.json();
           if (!ativo) return;
           if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
+          if (typeof dataH.limiteDiario === "number") setLimiteDiario(dataH.limiteDiario);
           setConversaId(dataH.conversaId ?? null);
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
@@ -453,11 +457,7 @@ export default function ChatCultivAI() {
         <div>
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
-          {restantes !== null && (
-            <span className={styles.contador} style={{ color: restantes <= 5 ? 'rgb(185,28,28)' : 'var(--text-secondary)' }}>
-              {restantes === 0 ? 'Limite de perguntas de hoje atingido' : `${restantes} ${restantes === 1 ? 'pergunta restante' : 'perguntas restantes'} hoje`}
-            </span>
-          )}
+          {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button
