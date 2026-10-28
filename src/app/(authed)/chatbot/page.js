@@ -120,8 +120,8 @@ export default function ChatCultivAI() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [restantes, setRestantes] = useState(null);
-  // Limite diário (renova à meia-noite), vindo da API (RATE_LIMIT_PER_DAY; padrão 30)
-  const [limiteDiario, setLimiteDiario] = useState(30);
+  // Limite diário (renova à meia-noite), vindo da API (RATE_LIMIT_PER_DAY; padrão 40)
+  const [limiteDiario, setLimiteDiario] = useState(40);
   // Conversa aberta. null até a primeira pergunta de quem nunca usou o chat: a API cria.
   const [conversaId, setConversaId] = useState(null);
   // Lista das conversas guardadas: null enquanto não foi aberta.

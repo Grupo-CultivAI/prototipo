@@ -3,7 +3,12 @@ import ChatMessage from '@/models/ChatMessage';
 // Limite de uso por pessoa. Conta também as tentativas que falharam, porque cada uma já
 // gastou cota das APIs (embedding da pergunta e modelo de resposta; ver /api/llm).
 export const LIMITE_POR_MINUTO = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 4);
-export const LIMITE_POR_DIA = Number(process.env.RATE_LIMIT_PER_DAY ?? 30);
+// 40 por dia (era 30): o teto real é a cota diária da Groq, compartilhada por todos — cerca de
+// 230 perguntas por dia (3 modelos x 200 mil tokens, ~2.600 tokens por pergunta com revisões).
+// Simulação de 28/10/2026 com 20 usuários (12 leves, 6 médios, 2 intensos): com 30, 7,9% dos
+// pedidos eram barrados; com 40, 0,9%, e a média do dia (128) fica longe do teto. Acima disso
+// quase não muda o uso comum, e uma pessoa sozinha passaria a gastar metade da cota de um modelo.
+export const LIMITE_POR_DIA = Number(process.env.RATE_LIMIT_PER_DAY ?? 40);
 
 export const perguntasDesde = (userId: unknown, ms: number) =>
     ChatMessage.countDocuments({ userId, sender: 'user', createdAt: { $gte: new Date(Date.now() - ms) } });

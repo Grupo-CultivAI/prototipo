@@ -102,7 +102,7 @@ Formulário multi-seção (`/perfil-propriedade`) com dados de localização, so
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
-2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto e 30 por dia; o diário renova à meia-noite de Brasília, `src/lib/limites.ts`). No chat, o contador do topo mostra um anel que enche conforme as perguntas do dia são usadas, com a explicação ao passar o mouse ou tocar. Tentativas que falham também contam, porque cada uma já gastou cota das APIs. O limite é por pessoa, não por conversa. "Apagar conversa" apaga as mensagens, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
+2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto e 40 por dia; o diário renova à meia-noite de Brasília, `src/lib/limites.ts`). No chat, o contador do topo mostra um anel que enche conforme as perguntas do dia são usadas, com a explicação ao passar o mouse ou tocar. Tentativas que falham também contam, porque cada uma já gastou cota das APIs. O limite é por pessoa, não por conversa. "Apagar conversa" apaga as mensagens, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
 3. Lê do MongoDB o perfil da propriedade e as últimas mensagens **da conversa aberta**. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
 5. Gera o embedding da pergunta no Pinecone Inference (`llama-text-embed-v2`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
@@ -248,7 +248,7 @@ PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
 
 # Limites de uso
 RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
-RATE_LIMIT_PER_DAY=     # opcional (padrão: 30); renova à meia-noite de Brasília
+RATE_LIMIT_PER_DAY=     # opcional (padrão: 40); renova à meia-noite de Brasília
 
 # Email de recuperação de senha (SMTP; ex.: Gmail com senha de app, ou Brevo)
 SMTP_HOST=              # ex.: smtp.gmail.com ou smtp-relay.brevo.com
