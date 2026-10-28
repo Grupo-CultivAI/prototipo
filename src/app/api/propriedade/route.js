@@ -51,9 +51,15 @@ export async function POST(req) {
                 { status: 400 }
             );
         }
+        // O formulário do chat manda cidade e estado sem o código do IBGE: o código antigo
+        // apontaria para a cidade anterior, então é limpo (o ZARC busca pelo nome).
+        const dados = { ...resultado.data };
+        if ((dados.cidade !== undefined || dados.estado !== undefined) && dados.codigoMunicipio === undefined) {
+            dados.codigoMunicipio = '';
+        }
         const prop = await Propriedade.findOneAndUpdate(
             { userId },
-            { $set: { ...resultado.data, userId } },
+            { $set: { ...dados, userId } },
             { new: true, upsert: true }
         );
         return NextResponse.json({ success: true, propriedade: prop });

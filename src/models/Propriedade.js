@@ -12,6 +12,7 @@ const PropriedadeSchema = new mongoose.Schema({
     // location
     estado: { type: String, default: "" },
     cidade: { type: String, default: "" },
+    codigoMunicipio: { type: String, default: "" }, // IBGE, 7 dígitos (lista do Meu Cultivo ou CEP)
     cep: { type: String, default: "" },
     coordenadas: {
         lat: { type: Number, default: null },

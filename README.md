@@ -88,7 +88,9 @@ A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend ger
 - **Telas de conta:** erros aparecem dentro do formulário e levam o foco ao campo a corrigir; os campos têm rótulo ligado, `autocomplete` para o gerenciador de senhas e botão de mostrar a senha.
 
 ### Perfil da propriedade
-Formulário multi-seção (`/perfil-propriedade`) com dados de localização (com autopreenchimento de endereço via [ViaCEP](https://viacep.com.br)), solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.
+Formulário multi-seção (`/perfil-propriedade`) com dados de localização, solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.
+
+**Localização:** o CEP preenche estado e cidade pela [ViaCEP](https://viacep.com.br), que também devolve o código do IBGE. Sem CEP, o produtor escolhe o estado e busca a cidade numa lista (`src/components/BuscaCidade.jsx`): ela filtra pelo estado, ignora acentos e só aceita cidades da lista. A lista fica em `public/municipios/<UF>.json` (5.571 municípios), gerada da API de localidades do IBGE por `node scripts/gerar-municipios.mjs`. O perfil guarda o código do IBGE (`codigoMunicipio`), e o ZARC busca o município por ele; perfis antigos, com o nome digitado, ganham o código ao abrir o Meu Cultivo, se o nome bater com o da lista.
 
 - As culturas são opções clicáveis, com campo para acrescentar outra; `src/lib/perfil.js` padroniza a grafia, para "milho" e "Milho" não virarem duas culturas.
 - "Não sei" é resposta válida no tipo de solo e no sistema de plantio, e a IA é avisada de que o produtor não sabe.

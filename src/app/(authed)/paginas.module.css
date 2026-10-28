@@ -123,6 +123,54 @@
     text-decoration: underline;
 }
 
+/* --- Busca de cidade no Meu Cultivo (components/BuscaCidade.jsx) --- */
+.buscaCidade {
+    position: relative;
+}
+
+.listaCidades {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.listaCidades li {
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.listaCidades .cidadeAtiva {
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.listaCidades .semCidade {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: default;
+}
+
+/* Andamento da busca do CEP */
+.statusCep {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
 /* --- Quadro do ZARC no fim da resposta: informação, não parte do texto da IA --- */
 .quadroZarc {
     margin-top: 0.75rem;
