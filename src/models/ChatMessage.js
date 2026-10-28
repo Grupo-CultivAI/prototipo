@@ -39,7 +39,8 @@ const ChatMessageSchema = new mongoose.Schema({
         busca: {
             texto: String, // o que foi buscado: a pergunta, ou ela junto com a anterior
             maiorScore: Number,
-            trechosUsados: Number
+            trechosUsados: Number,
+            modelo: String // modelo de embedding; sem ele (antes de 28/10/2026), gemini-embedding-001
         },
         // Como a resposta foi gerada, para entender erros e custo
         geracao: {

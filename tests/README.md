@@ -1,6 +1,6 @@
 # Verificação técnica da base (Frente 2)
 
-Confere se os PDFs da Embrapa foram indexados corretamente no Pinecone: para cada pergunta, se os melhores resultados vêm do documento esperado e com score de similaridade acima do limiar acordado pelo grupo (0,5).
+Confere se os PDFs da Embrapa foram indexados corretamente no Pinecone: para cada pergunta, se os melhores resultados vêm do documento esperado e com score de similaridade acima do limiar do modelo de embedding (0,35 com o `llama-text-embed-v2`; era 0,5 com o Gemini). O limiar fica em `src/lib/embeddings.mjs`, junto com o modelo, porque a escala dos scores muda de um modelo para outro.
 
 **O que isto não faz:** avaliar se a resposta final do chatbot está correta. Isso é escopo da Frente 3.
 
@@ -10,9 +10,9 @@ Confere se os PDFs da Embrapa foram indexados corretamente no Pinecone: para cad
 node tests/verificar-base.mjs      # ou: npm run verificar-base
 ```
 
-Precisa de `GEMINI_API_KEY`, `PINECONE_API_KEY` e `PINECONE_INDEX_HOST` no `.env.local`.
+Precisa de `PINECONE_API_KEY` e `PINECONE_INDEX_HOST` no `.env.local` (os embeddings vêm do Pinecone Inference).
 
-Códigos de saída: `0` tudo certo, `1` algum caso reprovou, `2` não foi possível consultar (tipicamente cota do Gemini esgotada).
+Códigos de saída: `0` tudo certo, `1` algum caso reprovou, `2` não foi possível consultar (tipicamente o limite por minuto do Pinecone Inference).
 
 Para uma consulta avulsa, fora da suíte, existe `scripts/verify-ingest.mjs`:
 
@@ -34,6 +34,28 @@ Dois campos merecem atenção ao editar:
 As perguntas foram escritas a partir de um trecho real de cada documento. Pergunta vaga casa com vários arquivos e produz reprovação falsa.
 
 ## Resultados registrados
+
+Execução de **28/10/2026**, depois da troca do modelo de embedding (Gemini → `llama-text-embed-v2`, namespace `embrapa-llama`), sobre os mesmos 35 PDFs e 835 trechos.
+
+**10 casos: 7 aprovados, 3 reprovados.** Nos 10, o 1º resultado vem do documento esperado. As 3 reprovações são do 2º ou 3º resultado vindo de um documento vizinho, de assunto parecido:
+
+| Documento | Melhor score | Resultado |
+|---|---|---|
+| `NubiaSelectivityofbentazon.pdf` (inglês) | 0,7358 | passou (3/3) |
+| `mandioca_rotacao_culturas_cultivo_consorciado.pdf` | 0,7035 | passou (3/3) |
+| `rotacao_culturas_manejo_nematoide_reniforme_algodoeiro.pdf` | 0,6976 | passou (3/3) |
+| `trigo_desempenho_agronomico_rotacao_culturas.pdf` (dados numéricos) | 0,6587 | passou (3/3) |
+| `manejo_nematoide_soja.pdf` ou `milho_nematoides.pdf` | 0,6467 | passou (3/3) |
+| `viabilidade_agroeconomica_rotacao.pdf` | 0,6421 | passou (3/3) |
+| `cereais_inverno_rotacao_culturas.pdf` | 0,5297 | passou (3/3) |
+| `oxido_nitroso_manejo_solo_rotacao_culturas.pdf` | 0,7374 | reprovou (1/3: 2º e 3º de `viabilidade_agroeconomica_rotacao.pdf` e `rotacao_culturas_cerrado.pdf`) |
+| `16silvasousa.pdf` | 0,7274 | reprovou (2/3: 3º de `46neilaproducao.pdf`, também sobre nabo-forrageiro) |
+| `trigo_desempenho_agronomico_rotacao_culturas.pdf` (tema) | 0,6596 | reprovou (2/3: 3º de `cereais_inverno_rotacao_culturas.pdf`, também sobre trigo) |
+
+Comparação feita no mesmo dia, com busca exata sobre os 835 trechos: `llama-text-embed-v2` acertou o 1º resultado em 10/10 e os 3 em 7/10; `multilingual-e5-large` (1.024 dimensões, exigiria outro índice) acertou 10/10 e 8/10, mas separa mal o que é do tema: "receita de bolo" pontuou 0,81 e perguntas do tema, de 0,84 a 0,89. Com o Llama, fora do tema fica abaixo de 0,31 e do tema acima de 0,37, o que permite um limiar confiável. Por isso a escolha foi o Llama.
+
+### Antes da troca (Gemini)
+
 
 Execução de **20/10/2026**, sobre 36 PDFs e 849 trechos indexados.
 

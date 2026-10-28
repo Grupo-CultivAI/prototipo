@@ -1,36 +1,21 @@
-import { GoogleGenAI } from '@google/genai';
+import { DIMENSOES, MODELO_EMBEDDING, NAMESPACE_DA_BASE, gerarEmbeddings } from '../src/lib/embeddings.mjs';
 
 async function testIntegrations() {
-    console.log('\n--- 1. Testando Gemini Embeddings ---');
+    console.log(`\n--- 1. Testando embeddings (Pinecone Inference, ${MODELO_EMBEDDING}) ---`);
     try {
-        // Testa a chave dos scripts de ingestão, se houver; senão, a do chat.
-        const apiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
-        if (!apiKey) throw new Error('GEMINI_API_KEY ausente no .env.local');
-        console.log(`(chave testada: ${process.env.GEMINI_API_KEY_INGESTAO ? 'GEMINI_API_KEY_INGESTAO' : 'GEMINI_API_KEY'})`);
-
-        const ai = new GoogleGenAI({ apiKey });
-        const res = await ai.models.embedContent({
-            model: 'gemini-embedding-001',
-            contents: 'teste de embedding para RAG agronômico',
-            config: { outputDimensionality: 768 },
-        });
-
-        const vec = res.embedding?.values || res.embeddings?.[0]?.values || res.values;
-
-        if (vec && vec.length === 768) {
-            console.log('✅ Gemini Embeddings OK! Vetor gerado com exatas 768 dimensões.');
-        } else {
-            console.error('❌ Resposta do Gemini sem vetor de 768d.');
-        }
+        const apiKey = process.env.PINECONE_API_KEY;
+        if (!apiKey) throw new Error('PINECONE_API_KEY ausente no .env.local');
+        const [vec] = await gerarEmbeddings(['teste de embedding para RAG agronômico'], { tipo: 'query', apiKey });
+        console.log(`✅ Embeddings OK! Vetor gerado com ${vec.length} dimensões (esperado: ${DIMENSOES}).`);
     } catch (err) {
-        console.error('❌ Gemini falhou:', err.message);
+        console.error('❌ Embeddings falharam:', err.message);
     }
 
     console.log('\n--- 2. Testando Pinecone (REST) ---');
     try {
         const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
         const apiKey = process.env.PINECONE_API_KEY;
-        const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
+        const namespace = NAMESPACE_DA_BASE;
 
         if (!host || !apiKey) {
             throw new Error('PINECONE_INDEX_HOST ou PINECONE_API_KEY ausentes no .env.local');

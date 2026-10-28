@@ -1,32 +1,24 @@
 import fs from 'node:fs';
-import { GoogleGenAI } from '@google/genai';
+import { LIMIAR_RELEVANCIA, MODELO_EMBEDDING, NAMESPACE_DA_BASE, gerarEmbeddings } from '../src/lib/embeddings.mjs';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const ARQUIVO_CASOS = new URL('./casos-verificacao.json', import.meta.url);
-const { limiarScore, topK, casos } = JSON.parse(fs.readFileSync(ARQUIVO_CASOS, 'utf-8'));
+// O limiar vem do modelo de embedding (src/lib/embeddings.mjs): a escala muda de um modelo para outro.
+const limiarScore = LIMIAR_RELEVANCIA;
+const { topK, casos } = JSON.parse(fs.readFileSync(ARQUIVO_CASOS, 'utf-8'));
 
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
-const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
-// Usa a chave dos scripts, se houver, para não gastar a cota do chat (ver ingest-pdfs.mjs).
-const geminiApiKey = process.env.GEMINI_API_KEY_INGESTAO || process.env.GEMINI_API_KEY;
+const namespace = NAMESPACE_DA_BASE;
 
-if (!host || !pineconeApiKey || !geminiApiKey) {
-    console.error('❌ PINECONE_INDEX_HOST, PINECONE_API_KEY e GEMINI_API_KEY são obrigatórios no .env.local');
+if (!host || !pineconeApiKey) {
+    console.error('❌ PINECONE_INDEX_HOST e PINECONE_API_KEY são obrigatórios no .env.local');
     process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-
 async function buscar(pergunta) {
-    // Medido em 25/10/2026: com ou sem taskType os scores saem idênticos; mantido por ser o uso documentado.
-    const res = await ai.models.embedContent({
-        model: 'gemini-embedding-001',
-        contents: pergunta,
-        config: { outputDimensionality: 768, taskType: 'RETRIEVAL_QUERY' },
-    });
-    const vector = res.embedding?.values || res.embeddings?.[0]?.values || res.values;
+    const [vector] = await gerarEmbeddings([pergunta], { tipo: 'query', apiKey: pineconeApiKey, tentativas: 3 });
 
     const resp = await fetch(`https://${host}/query`, {
         method: 'POST',
@@ -52,8 +44,8 @@ for (const caso of casos) {
         matches = await buscar(caso.pergunta);
     } catch (e) {
         console.error(`\n❌ Não foi possível consultar: ${e.message.slice(0, 200)}`);
-        if (/RESOURCE_EXHAUSTED|quota|429/i.test(e.message)) {
-            console.error('   A cota diária do Gemini está esgotada. Rode novamente quando ela renovar.');
+        if (/429/.test(e.message)) {
+            console.error('   Limite por minuto do Pinecone Inference. Rode novamente em 1 minuto.');
         }
         process.exit(2);
     }
@@ -71,7 +63,7 @@ for (const caso of casos) {
     resultados.push({ caso, situacao, melhor, noAlvo, total: matches.length, matches });
 }
 
-console.log(`\nLimiar: ${limiarScore} | topK: ${topK} | casos: ${casos.length}\n`);
+console.log(`\nModelo: ${MODELO_EMBEDDING} | limiar: ${limiarScore} | topK: ${topK} | casos: ${casos.length}\n`);
 console.log('situação'.padEnd(17) + 'melhor'.padStart(8) + '  no alvo  ' + 'fonte esperada');
 console.log('-'.repeat(96));
 for (const r of resultados) {

@@ -7,10 +7,11 @@
 //   node scripts/remover-documento.mjs arquivo.pdf --confirmar  → apaga
 //
 // O índice é o mesmo da produção: o documento some das respostas na hora.
-// Não consome cota do Gemini. Lembre de tirar a linha dele de src/lib/documentos.json.
+// Não gera embeddings. Lembre de tirar a linha dele de src/lib/documentos.json.
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
+import { NAMESPACE_DA_BASE } from '../src/lib/embeddings.mjs';
 dotenv.config({ path: '.env.local', quiet: true });
 
 const [arquivo] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -18,7 +19,7 @@ const confirmar = process.argv.includes('--confirmar');
 const PASTA = './docs-embrapa';
 const ESTADO = './.ingest-state.json';
 const host = (process.env.PINECONE_INDEX_HOST || '').replace(/^https?:\/\//, '');
-const namespace = process.env.PINECONE_NAMESPACE || 'embrapa';
+const namespace = NAMESPACE_DA_BASE;
 const cabecalhos = { 'Api-Key': process.env.PINECONE_API_KEY, 'X-Pinecone-Api-Version': '2025-04', 'Content-Type': 'application/json' };
 
 if (!arquivo) {

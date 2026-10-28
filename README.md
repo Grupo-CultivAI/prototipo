@@ -11,7 +11,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
 - **Autenticação**: `bcryptjs` (hash de senha) + `jose` (JWT em cookie httpOnly)
 - **Banco de dados**: MongoDB via `mongoose`
 - **IA / RAG** (chamadas feitas diretamente pela própria rota da API, sem servidor intermediário):
-  - [Google Gemini](https://ai.google.dev) (`@google/genai`) — gera os embeddings da base de conhecimento e das perguntas (`gemini-embedding-001`, 768 dimensões)
+  - [Pinecone Inference](https://docs.pinecone.io/guides/index-data/create-an-index#embedding-models) — gera os embeddings da base de conhecimento e das perguntas (`llama-text-embed-v2`, 768 dimensões), com a mesma chave do índice (`src/lib/embeddings.mjs`). Até 28/10/2026 eram do Gemini (`gemini-embedding-001`), que recusou o plano gratuito para o projeto
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
   - [Groq](https://groq.com) e Gemini — geram a resposta final, numa fila de modelos: `gpt-oss-20b` → `gpt-oss-120b` (Groq) → `gemini-3.5-flash-lite` (Google) → `qwen3.8-27b` (Groq). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat: clima de agora e previsão dos próximos 5 dias
@@ -45,7 +45,7 @@ src/
       chat/history/           GET → mensagens da conversa atual e perguntas restantes no dia; DELETE → apaga a conversa
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
       conversas/              GET → lista de conversas · POST → "Nova conversa" (a anterior fica guardada)
-      llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Gemini + Pinecone + Groq)
+      llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Pinecone + Groq)
       propriedade/            GET/POST → perfil da propriedade; DELETE → "Apagar dados da propriedade"
       user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
   components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario
@@ -65,11 +65,12 @@ src/
 scripts/
   check-pdfs.mjs            → checagem local dos PDFs antes de ingerir (não consome cota de API)
   ocr-pdf.ps1               → gera o .txt acompanhante de um PDF com texto corrompido (só Windows)
-  ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings via Gemini e indexa no Pinecone
+  ingest-pdfs.mjs           → ingestão dos PDFs da Embrapa: extrai texto, gera embeddings no Pinecone Inference e indexa no Pinecone
   remover-documento.mjs     → tira um documento da base (Pinecone, estado da ingestão e pasta); simula antes, apaga com --confirmar
   limpar-campos-legados.mjs → apaga dos perfis gravados os campos antigos culturas e objetivo; simula antes, altera com --confirmar
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
-  test-integrations.mjs     → testa se as chaves do Gemini, do Pinecone e da Groq funcionam (node scripts/test-integrations.mjs)
+  test-integrations.mjs     → testa os embeddings, o Pinecone e a Groq (node --env-file=.env.local scripts/test-integrations.mjs)
+  migrar-embeddings.mjs     → copia a base para o namespace de um modelo de embedding novo, gerando os vetores de novo
   relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
@@ -101,18 +102,18 @@ Formulário multi-seção (`/perfil-propriedade`) com dados de localização, so
 Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 1. Autentica o usuário via JWT — retorna 401 se não houver sessão válida.
-2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota do Gemini. O limite é por pessoa, não por conversa. "Apagar conversa" apaga as mensagens, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
+2. Aplica um limite de uso por usuário, contando as perguntas já feitas (padrão: 4 por minuto, 30 por dia). Tentativas que falham também contam, porque cada uma já gastou cota das APIs. O limite é por pessoa, não por conversa. "Apagar conversa" apaga as mensagens, mas as perguntas das últimas 24 horas ficam registradas sem o texto, para o limite não zerar.
 3. Lê do MongoDB o perfil da propriedade e as últimas mensagens **da conversa aberta**. O perfil vem do banco, nunca do navegador.
 4. Grava a pergunta. Se algo falhar adiante, ela é marcada e deixa de aparecer no histórico.
-5. Gera o embedding da pergunta via Gemini (`gemini-embedding-001`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
-6. Busca 5 trechos no Pinecone e descarta os de score abaixo de `RAG_MIN_SCORE` (padrão 0,65), ficando com até 3. Em paralelo, busca o clima atual da cidade do perfil e, em perguntas sobre o trabalho no campo (plantar, adubar, aplicar, colher, chuva), a previsão dos próximos 5 dias (uma linha por dia: mínima, máxima e chuva), que fica 1 hora em cache por cidade. Em perguntas sobre época de plantio, busca também as janelas do ZARC do município (ver abaixo).
+5. Gera o embedding da pergunta no Pinecone Inference (`llama-text-embed-v2`, 768 dimensões). Perguntas curtas de continuação ("e para soja?") são combinadas com a pergunta anterior antes da busca.
+6. Busca 5 trechos no Pinecone (namespace `embrapa-llama`) e descarta os de score abaixo de 0,35, ficando com até 3. O namespace e o limiar ficam em `src/lib/embeddings.mjs`, junto com o modelo: vetores de modelos diferentes não se comparam, e a escala dos scores muda (com o Llama, perguntas do tema ficam entre 0,37 e 0,57 e as de fora do tema abaixo de 0,31). Em paralelo, busca o clima atual da cidade do perfil e, em perguntas sobre o trabalho no campo (plantar, adubar, aplicar, colher, chuva), a previsão dos próximos 5 dias (uma linha por dia: mínima, máxima e chuva), que fica 1 hora em cache por cidade. Em perguntas sobre época de plantio, busca também as janelas do ZARC do município (ver abaixo).
 7. Monta o prompt com data de hoje, perfil, clima, previsão, janelas do ZARC, trechos e histórico, e envia à Groq. A cadeia de modelos tenta o próximo em qualquer falha, inclusive quando a resposta passa de 1.000 tokens (sinal de repetição em laço).
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados, e se as datas depois de "🗓️ Segundo o ZARC" aparecem nas janelas enviadas. Também procura agrotóxico com produto e dose, ou produto proibido no Brasil (`src/lib/agrotoxicos.ts`): os documentos da Embrapa descrevem experimentos com produtos antigos, e o modelo às vezes os repassava como recomendação. Se algo não confere, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor, e as frases com agrotóxico são cortadas e trocadas pela orientação de procurar um engenheiro agrônomo.
 9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia.
 
 **Capacidade no plano gratuito:** cada modelo tem a própria cota, somando todos os usuários. Na Groq, 8.000 tokens por minuto por modelo, e cada pergunta gasta entre 1.300 e 1.700: os dois `gpt-oss` dão cerca de 10 perguntas por minuto. O `gemini-3.5-flash-lite` entra quando eles se esgotam, com cota própria por minuto e por dia definida pelo Google, separada da cota dos embeddings. Por ser de outro provedor, ele também cobre o caso de a Groq inteira ficar fora do ar. A fila é configurável pela variável `MODELOS_IA`. O log da função registra qual modelo respondeu e os tokens de cada resposta.
 
-Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do projeto, e entre os modelos do Gemini só o `gemini-3.5-flash-lite` respondeu de forma estável nos testes: `gemini-3.5-flash` e `gemini-3.8-flash` davam "high demand" ou passavam de 25 s, e o `gemma-4` escrevia o próprio raciocínio na resposta.
+Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do projeto, e entre os modelos do Gemini só o `gemini-3.5-flash-lite` respondeu de forma estável nos testes (desde 28/10/2026 a chave do projeto é recusada pelo Google, e na fila ele falha na hora e passa a vez): `gemini-3.5-flash` e `gemini-3.8-flash` davam "high demand" ou passavam de 25 s, e o `gemma-4` escrevia o próprio raciocínio na resposta.
 
 **Pedido de dados que faltam:** se o perfil não tem tipo de solo, localização ou culturas e a resposta depende disso, o modelo termina pedindo o dado com a marca `[PEDIR: código]` na última linha. A rota tira a marca do texto e devolve `tipo: 'coleta_dados'` com os campos do formulário, usando as mesmas opções do Meu Cultivo; o que o produtor responde é salvo no perfil. Só se pede o que falta, no máximo dois dados, e no máximo uma vez a cada 4 mensagens.
 
@@ -151,16 +152,18 @@ Lê o MongoDB, sem consumir cota de API, e não mostra quem perguntou:
 
 ```bash
 npm run relatorio-chat                          # últimos 30 dias
-npm run relatorio-chat -- --dias 7 --limite 0.70
+npm run relatorio-chat -- --dias 7 --limite 0.40
 ```
 
 - **Respostas com 👎:** pergunta, resposta e score da busca, para a Frente 3 investigar.
-- **Pouca cobertura na base:** perguntas cuja busca não passou de 0,72 (ajustável com `--limite`). São candidatas a assuntos que faltam na base, mas as faixas de score se sobrepõem, então cada uma precisa ser lida. Abaixo de 0,62, em geral, a pergunta está fora do tema.
+- **Pouca cobertura na base:** perguntas cuja busca não passou de 0,42 (ajustável com `--limite`). São candidatas a assuntos que faltam na base, mas as faixas de score se sobrepõem, então cada uma precisa ser lida. Abaixo de 0,32, em geral, a pergunta está fora do tema. Respostas de antes de 28/10/2026 têm a nota do Gemini, noutra escala (faixas de 0,62 e 0,72), e aparecem marcadas com (G).
 
 Quem reinicia o chat apaga também as próprias avaliações, que deixam de aparecer no relatório.
 
 ### Base de conhecimento (RAG)
-`scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings via Gemini e envia os vetores para o Pinecone (namespace configurável por `PINECONE_NAMESPACE`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite diário gratuito da API do Gemini.
+`scripts/ingest-pdfs.mjs` é um script standalone que lê os PDFs colocados manualmente na pasta `docs-embrapa/`, quebra o texto em trechos, gera embeddings no Pinecone Inference e envia os vetores para o Pinecone (namespace `embrapa-llama`, definido em `src/lib/embeddings.mjs`). O progresso é salvo em `.ingest-state.json` (não versionado), permitindo retomar a ingestão de onde parou caso o processo seja interrompido — por exemplo, ao atingir o limite por minuto do plano gratuito.
+
+**Troca do modelo de embedding (28/10/2026):** o Google passou a recusar o plano gratuito do Gemini para o projeto (403, "free tier is not available for this project"), e o chat ficou sem busca na base. Os embeddings passaram para o Pinecone Inference, que é gratuito no plano do Pinecone e usa a mesma chave. A base foi copiada com `node scripts/migrar-embeddings.mjs --confirmar`: ele lê os 835 trechos do namespace antigo (`embrapa`), gera os vetores novos e grava em `embrapa-llama`, com os mesmos ids e metadados; documentos retirados da base não voltam. O namespace antigo continua no índice, para comparação.
 
 Cada vetor enviado ao Pinecone carrega três campos de metadata: `fonte` (nome do arquivo), `texto` (o trecho) e `pagina` (número da página **dentro do PDF**, começando em 1). Atenção: esse número é o índice da página no arquivo, que não necessariamente coincide com o número impresso na publicação original da Embrapa — um capítulo extraído de um livro maior começa na página 1 do PDF mesmo que o rodapé diga "29".
 
@@ -233,18 +236,15 @@ JWT_SECRET=             # segredo para assinar/verificar os JWTs de autenticaç�
 OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 
 # IA / RAG
-GEMINI_API_KEY=         # chave da API Gemini (embeddings do chat)
-GEMINI_API_KEY_INGESTAO= # opcional, só no .env.local; chave de OUTRO projeto do Google para os scripts
-                         # (ingestão, verificação). Sem ela, os scripts usam a GEMINI_API_KEY e gastam
-                         # a mesma cota diária do chat publicado
+GEMINI_API_KEY=         # opcional; só para o modelo Gemini da fila MODELOS_IA (os embeddings são do Pinecone)
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
 MODELOS_IA=             # opcional; fila de modelos "provedor:modelo", separados por vírgula (provedores: groq, gemini)
                          # (padrão: groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b)
                          # a antiga GROQ_MODELS não é mais lida
-PINECONE_API_KEY=       # chave da API do Pinecone
+PINECONE_API_KEY=       # chave da API do Pinecone (índice e embeddings)
 PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
-PINECONE_NAMESPACE=     # opcional (padrão: embrapa)
-RAG_MIN_SCORE=          # opcional (padrão: 0.65); trechos abaixo disso não entram no prompt
+                         # PINECONE_NAMESPACE e RAG_MIN_SCORE não são mais lidas: namespace e limiar
+                         # acompanham o modelo de embedding em src/lib/embeddings.mjs
 
 # Limites de uso
 RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
