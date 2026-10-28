@@ -10,7 +10,7 @@ import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
 import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
-import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
+import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, segundosAteMeiaNoite } from '@/lib/limites';
 
 // Fila de modelos, tentados em ordem: se um falha (limite, fora do ar, demora, resposta
 // cortada), o próximo responde. No plano gratuito cada modelo tem a própria cota, somando
@@ -318,20 +318,20 @@ export async function POST(req: Request) {
 
         await dbConnect();
 
-        const [ultimoMinuto, ultimas24h] = await Promise.all([
+        const [ultimoMinuto, feitasHoje] = await Promise.all([
             perguntasDesde(userId, 60_000),
-            perguntasDesde(userId, 86_400_000),
+            perguntasDeHoje(userId),
         ]);
-        if (ultimoMinuto >= LIMITE_POR_MINUTO || ultimas24h >= LIMITE_POR_DIA) {
-            const diario = ultimas24h >= LIMITE_POR_DIA;
+        if (ultimoMinuto >= LIMITE_POR_MINUTO || feitasHoje >= LIMITE_POR_DIA) {
+            const diario = feitasHoje >= LIMITE_POR_DIA;
             return NextResponse.json(
                 {
                     success: false,
                     message: diario
-                        ? `Você atingiu o limite de ${LIMITE_POR_DIA} perguntas nas últimas 24 horas. Volte amanhã para continuar.`
+                        ? `Você atingiu o limite de ${LIMITE_POR_DIA} perguntas de hoje. Ele renova à meia-noite (horário de Brasília).`
                         : 'Você fez várias perguntas seguidas. Aguarde cerca de 1 minuto e tente novamente.',
                 },
-                { status: 429, headers: { 'Retry-After': diario ? '3600' : '60' } },
+                { status: 429, headers: { 'Retry-After': String(diario ? segundosAteMeiaNoite() : 60) } },
             );
         }
 
@@ -540,8 +540,8 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             semBase: falhaDaBusca,
             mensagemId: resposta._id,
             conversaId: conversa._id,
-            // ultimas24h foi contado antes de gravar esta pergunta
-            restantesHoje: Math.max(0, LIMITE_POR_DIA - ultimas24h - 1),
+            // feitasHoje foi contado antes de gravar esta pergunta
+            restantesHoje: Math.max(0, LIMITE_POR_DIA - feitasHoje - 1),
         });
 
     } catch (err) {
