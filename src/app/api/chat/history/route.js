@@ -6,7 +6,7 @@ import ChatMessage from '@/models/ChatMessage';
 import Conversa from '@/models/Conversa';
 import { conversaAtual, conversaDoUsuario } from '@/lib/conversas';
 import { comTitulos } from '@/lib/documentos';
-import { perguntasRestantesHoje } from '@/lib/limites';
+import { LIMITE_POR_DIA, perguntasRestantesHoje } from '@/lib/limites';
 
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
@@ -51,10 +51,11 @@ export async function GET(req) {
             submittedData: msg.metadata?.submittedData,
             fontes: comTitulos(msg.metadata?.fontes),
             epoca: msg.metadata?.epoca,
+            semBase: msg.metadata?.busca?.falha,
             avaliacao: msg.metadata?.avaliacao
         }));
 
-        return NextResponse.json({ success: true, history: formattedHistory, restantesHoje, conversaId: conversa?._id ?? null });
+        return NextResponse.json({ success: true, history: formattedHistory, restantesHoje, limiteDiario: LIMITE_POR_DIA, conversaId: conversa?._id ?? null });
     } catch (error) {
         console.error("Erro ao buscar histórico:", error);
         return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });

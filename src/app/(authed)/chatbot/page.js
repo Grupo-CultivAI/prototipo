@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
+import ContadorPerguntas from "@/components/ContadorPerguntas";
 import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
@@ -23,6 +24,13 @@ const rotuloFonte = (fonte) => {
     return <><a href={fonte.url} target="_blank" rel="noopener noreferrer">{titulo}</a>{paginas}</>;
   }
   return titulo + paginas;
+};
+
+// Por que a busca na base da Embrapa não aconteceu (metadata.busca.falha, em /api/llm).
+const MOTIVO_SEM_BASE = {
+  cota: "a cota mensal gratuita da busca acabou e volta no início do próximo mês. Ela usa só conhecimento geral de agronomia.",
+  limite: "muitas buscas ao mesmo tempo. Ela usa só conhecimento geral de agronomia; pergunte de novo em um minuto para a resposta com os documentos.",
+  erro: "a busca nos documentos está fora do ar no momento. Ela usa só conhecimento geral de agronomia; tente de novo mais tarde.",
 };
 
 // Só respostas gravadas no banco (id do MongoDB) podem ser avaliadas; a saudação inicial e
@@ -112,6 +120,8 @@ export default function ChatCultivAI() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [restantes, setRestantes] = useState(null);
+  // Limite das últimas 24 horas, vindo da API (RATE_LIMIT_PER_DAY; padrão 30)
+  const [limiteDiario, setLimiteDiario] = useState(30);
   // Conversa aberta. null até a primeira pergunta de quem nunca usou o chat: a API cria.
   const [conversaId, setConversaId] = useState(null);
   // Lista das conversas guardadas: null enquanto não foi aberta.
@@ -156,6 +166,7 @@ export default function ChatCultivAI() {
           const dataH = await resHistory.json();
           if (!ativo) return;
           if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
+          if (typeof dataH.limiteDiario === "number") setLimiteDiario(dataH.limiteDiario);
           setConversaId(dataH.conversaId ?? null);
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
@@ -333,6 +344,7 @@ export default function ChatCultivAI() {
       let formData = null;
       let fontes = [];
       let epoca = null;
+      let semBase = null;
 
       // --- INÍCIO DA ALTERAÇÃO 1 ---
       if (data.success && data.parsedData) {
@@ -342,6 +354,7 @@ export default function ChatCultivAI() {
         }
         if (Array.isArray(data.fontes)) fontes = data.fontes;
         if (data.epoca) epoca = data.epoca;
+        if (data.semBase) semBase = data.semBase;
         if (typeof data.restantesHoje === "number") setRestantes(data.restantesHoje);
         if (data.conversaId) setConversaId(data.conversaId);
       } else if (data.message) {
@@ -350,7 +363,7 @@ export default function ChatCultivAI() {
       // --- FIM DA ALTERAÇÃO 1 ---
 
       // O id do banco substitui o provisório, para a resposta poder ser avaliada.
-      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca } : msg));
+      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca, semBase } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
     }
@@ -444,11 +457,7 @@ export default function ChatCultivAI() {
         <div>
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
-          {restantes !== null && (
-            <span className={styles.contador} style={{ color: restantes <= 5 ? 'rgb(185,28,28)' : 'var(--text-secondary)' }}>
-              {restantes === 0 ? 'Limite de perguntas de hoje atingido' : `${restantes} ${restantes === 1 ? 'pergunta restante' : 'perguntas restantes'} hoje`}
-            </span>
-          )}
+          {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button
@@ -552,6 +561,13 @@ export default function ChatCultivAI() {
                     {msg.fontes.map(rotuloFonte).filter(Boolean).map((rotulo, i) => <li key={i}>{rotulo}</li>)}
                   </ul>
                 </div>
+              )}
+
+              {/* A busca nos documentos não aconteceu: a resposta veio só de conhecimento geral. */}
+              {msg.sender === "bot" && msg.semBase && (
+                <p className={styles.avisoSemBase} role="note">
+                  ⚠️ Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
+                </p>
               )}
 
               {/* Vem dos dados do ZARC, não do texto da IA: aparece mesmo se ela não citar. */}

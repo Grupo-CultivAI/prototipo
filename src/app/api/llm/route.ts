@@ -152,7 +152,7 @@ function textoParaBusca(pergunta: string, perguntaAnterior: string | null): stri
 
 // maiorScore fica gravado com a resposta: perguntas com score baixo apontam assuntos que
 // faltam na base (npm run relatorio-chat). null = a busca não aconteceu.
-async function buscarTrechos(texto: string, cfg: { pinecone: string; host: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null }> {
+async function buscarTrechos(texto: string, cfg: { pinecone: string; host: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null; falha?: FalhaDaBusca }> {
     try {
         const [vector] = await gerarEmbeddings([texto], { tipo: 'query', apiKey: cfg.pinecone });
 
@@ -176,9 +176,19 @@ async function buscarTrechos(texto: string, cfg: { pinecone: string; host: strin
         return { trechos, maiorScore: matches.length ? Math.max(...matches.map((m) => m.score)) : null };
     } catch (err) {
         // Sem a base, o chat ainda responde com prática geral: o prompt proíbe usar "📘" sem trechos.
-        console.warn('⚠️ Busca na base indisponível:', err instanceof Error ? err.message : err);
-        return { trechos: [], maiorScore: null };
+        // O motivo vai para a tela, para o produtor saber que a resposta não consultou a Embrapa.
+        const mensagem = err instanceof Error ? err.message : String(err);
+        console.warn('⚠️ Busca na base indisponível:', mensagem);
+        return { trechos: [], maiorScore: null, falha: motivoDaFalha(mensagem) };
     }
+}
+
+// 429 do Pinecone Inference: a cota mensal gratuita (5 milhões de tokens por modelo) acabou, ou
+// muitas buscas no mesmo minuto. Qualquer outro erro: busca fora do ar.
+type FalhaDaBusca = 'cota' | 'limite' | 'erro';
+function motivoDaFalha(mensagem: string): FalhaDaBusca {
+    if (!/\b429\b/.test(mensagem)) return 'erro';
+    return /month|monthly|quota|mensal|RESOURCE_EXHAUSTED/i.test(mensagem) ? 'cota' : 'limite';
 }
 
 // Números sob "📘 Segundo a Embrapa" precisam constar dos trechos enviados. Em 25/10/2026 o
@@ -368,7 +378,7 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore }, clima, previsao, epoca] = await Promise.all([
+        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, previsao, epoca] = await Promise.all([
             buscarTrechos(busca, { pinecone: pineconeKey, host: pineconeHost }),
             getWeatherSummary(cidade),
             PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastSummary(cidade) : null,
@@ -514,7 +524,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             metadata: {
                 fontes,
                 perguntaId,
-                busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING },
+                busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING, ...(falhaDaBusca ? { falha: falhaDaBusca } : {}) },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
                 contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
@@ -527,6 +537,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             parsedData: pedido.form ? { tipo: 'coleta_dados', resposta: answer, ...pedido.form } : { tipo: 'resposta', resposta: answer },
             fontes,
             epoca: quadroZarc,
+            semBase: falhaDaBusca,
             mensagemId: resposta._id,
             conversaId: conversa._id,
             // ultimas24h foi contado antes de gravar esta pergunta
