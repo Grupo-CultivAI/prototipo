@@ -51,6 +51,7 @@ export async function GET(req) {
             submittedData: msg.metadata?.submittedData,
             fontes: comTitulos(msg.metadata?.fontes),
             epoca: msg.metadata?.epoca,
+            semBase: msg.metadata?.busca?.falha,
             avaliacao: msg.metadata?.avaliacao
         }));
 

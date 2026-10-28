@@ -25,6 +25,13 @@ const rotuloFonte = (fonte) => {
   return titulo + paginas;
 };
 
+// Por que a busca na base da Embrapa não aconteceu (metadata.busca.falha, em /api/llm).
+const MOTIVO_SEM_BASE = {
+  cota: "a cota mensal gratuita da busca acabou e volta no início do próximo mês. Ela usa só conhecimento geral de agronomia.",
+  limite: "muitas buscas ao mesmo tempo. Ela usa só conhecimento geral de agronomia; pergunte de novo em um minuto para a resposta com os documentos.",
+  erro: "a busca nos documentos está fora do ar no momento. Ela usa só conhecimento geral de agronomia; tente de novo mais tarde.",
+};
+
 // Só respostas gravadas no banco (id do MongoDB) podem ser avaliadas; a saudação inicial e
 // as mensagens de erro não têm id.
 const respostaGravada = (msg) => msg.sender === "bot" && /^[a-f0-9]{24}$/.test(String(msg.id));
@@ -333,6 +340,7 @@ export default function ChatCultivAI() {
       let formData = null;
       let fontes = [];
       let epoca = null;
+      let semBase = null;
 
       // --- INÍCIO DA ALTERAÇÃO 1 ---
       if (data.success && data.parsedData) {
@@ -342,6 +350,7 @@ export default function ChatCultivAI() {
         }
         if (Array.isArray(data.fontes)) fontes = data.fontes;
         if (data.epoca) epoca = data.epoca;
+        if (data.semBase) semBase = data.semBase;
         if (typeof data.restantesHoje === "number") setRestantes(data.restantesHoje);
         if (data.conversaId) setConversaId(data.conversaId);
       } else if (data.message) {
@@ -350,7 +359,7 @@ export default function ChatCultivAI() {
       // --- FIM DA ALTERAÇÃO 1 ---
 
       // O id do banco substitui o provisório, para a resposta poder ser avaliada.
-      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca } : msg));
+      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca, semBase } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
     }
@@ -552,6 +561,13 @@ export default function ChatCultivAI() {
                     {msg.fontes.map(rotuloFonte).filter(Boolean).map((rotulo, i) => <li key={i}>{rotulo}</li>)}
                   </ul>
                 </div>
+              )}
+
+              {/* A busca nos documentos não aconteceu: a resposta veio só de conhecimento geral. */}
+              {msg.sender === "bot" && msg.semBase && (
+                <p className={styles.avisoSemBase} role="note">
+                  ⚠️ Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
+                </p>
               )}
 
               {/* Vem dos dados do ZARC, não do texto da IA: aparece mesmo se ela não citar. */}

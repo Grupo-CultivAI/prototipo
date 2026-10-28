@@ -40,7 +40,8 @@ const ChatMessageSchema = new mongoose.Schema({
             texto: String, // o que foi buscado: a pergunta, ou ela junto com a anterior
             maiorScore: Number,
             trechosUsados: Number,
-            modelo: String // modelo de embedding; sem ele (antes de 28/10/2026), gemini-embedding-001
+            modelo: String, // modelo de embedding; sem ele (antes de 28/10/2026), gemini-embedding-001
+            falha: { type: String, enum: ['cota', 'limite', 'erro'] } // a busca não aconteceu (aviso na tela)
         },
         // Como a resposta foi gerada, para entender erros e custo
         geracao: {

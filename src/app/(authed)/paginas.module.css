@@ -172,6 +172,19 @@
 }
 
 /* --- Quadro do ZARC no fim da resposta: informação, não parte do texto da IA --- */
+/* --- Aviso de resposta sem a busca na base (cota, limite ou erro) --- */
+.avisoSemBase {
+    margin: 0.75rem 0 0;
+    padding: 0.6rem 0.8rem;
+    border-left: 3px solid rgb(217, 119, 6);
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
 .quadroZarc {
     margin-top: 0.75rem;
     padding: 0.75rem 0.9rem;
