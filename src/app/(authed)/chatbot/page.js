@@ -332,6 +332,7 @@ export default function ChatCultivAI() {
       let respostaTexto = "Desculpe, ocorreu um erro ao se comunicar com o CultivAI.";
       let formData = null;
       let fontes = [];
+      let epoca = null;
 
       // --- INÍCIO DA ALTERAÇÃO 1 ---
       if (data.success && data.parsedData) {
@@ -340,6 +341,7 @@ export default function ChatCultivAI() {
           formData = data.parsedData;
         }
         if (Array.isArray(data.fontes)) fontes = data.fontes;
+        if (data.epoca) epoca = data.epoca;
         if (typeof data.restantesHoje === "number") setRestantes(data.restantesHoje);
         if (data.conversaId) setConversaId(data.conversaId);
       } else if (data.message) {
@@ -348,7 +350,7 @@ export default function ChatCultivAI() {
       // --- FIM DA ALTERAÇÃO 1 ---
 
       // O id do banco substitui o provisório, para a resposta poder ser avaliada.
-      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes } : msg));
+      setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
     }
@@ -549,6 +551,27 @@ export default function ChatCultivAI() {
                   <ul>
                     {msg.fontes.map(rotuloFonte).filter(Boolean).map((rotulo, i) => <li key={i}>{rotulo}</li>)}
                   </ul>
+                </div>
+              )}
+
+              {/* Vem dos dados do ZARC, não do texto da IA: aparece mesmo se ela não citar. */}
+              {msg.sender === "bot" && msg.epoca && (
+                <div className={styles.quadroZarc}>
+                  <span className={styles.fontesTitulo}>
+                    🗓️ Época de plantio oficial (ZARC){msg.epoca.local ? ` · ${msg.epoca.local}` : ""}
+                  </span>
+                  {msg.epoca.linhas?.length > 0 && (
+                    <ul>
+                      {msg.epoca.linhas.map((linha) => {
+                        const [cultura, ...janela] = linha.split(": ");
+                        return <li key={linha}><strong>{cultura}:</strong> {janela.join(": ")}</li>;
+                      })}
+                    </ul>
+                  )}
+                  {msg.epoca.aviso && <p>{msg.epoca.aviso}</p>}
+                  <p className={styles.notaZarc}>
+                    ℹ️ O risco é a chance de perder a lavoura por clima (seca, geada, calor); 20% é o menor. Plantar dentro da janela do ZARC é condição para o Proagro e o seguro rural. Para conferir a janela da sua cultivar e do seu solo, use o aplicativo gratuito <strong>Zarc Plantio Certo</strong>, da Embrapa.
+                  </p>
                 </div>
               )}
 

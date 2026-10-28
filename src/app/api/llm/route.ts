@@ -7,7 +7,7 @@ import Conversa from '@/models/Conversa';
 import { conversaDoUsuario, tituloDe } from '@/lib/conversas';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
-import { INDICACAO_DO_APLICATIVO, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
+import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDesde } from '@/lib/limites';
 
@@ -376,12 +376,13 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore }, clima, previsao, zarc] = await Promise.all([
+        const [{ trechos, maiorScore }, clima, previsao, epoca] = await Promise.all([
             buscarTrechos(busca, { gemini: geminiKey, pinecone: pineconeKey, host: pineconeHost, namespace: pineconeNamespace }),
             getWeatherSummary(cidade),
             PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastSummary(cidade) : null,
-            epocaDePlantio(propriedade, `${userPrompt} ${busca}`),
+            epocaDePlantio(propriedade, userPrompt, busca === userPrompt ? '' : busca),
         ]);
+        const zarc = epoca?.paraIA ?? null;
 
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
@@ -408,9 +409,9 @@ COMO RESPONDER
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" antes do que vier dos trechos da Embrapa abaixo.
 - Use "🌱 Prática agronômica geral:" antes de complementos de conhecimento geral.
-- Use "🗓️ Segundo o ZARC (Ministério da Agricultura):" antes das janelas de plantio da seção ÉPOCA DE PLANTIO OFICIAL. Essas datas são do Ministério da Agricultura, não da Embrapa: nunca as coloque depois de "📘". Copie as datas exatamente. Destaque a janela de risco 20% (a mais segura) e explique em poucas palavras que o risco é a chance de perder a lavoura por clima (seca, geada, calor). Diga que plantar dentro da janela do ZARC é exigido pelo Proagro e pelo seguro rural.
+- Use "🗓️ Segundo o ZARC (Ministério da Agricultura):" antes das janelas de plantio da seção ÉPOCA DE PLANTIO OFICIAL. Essas datas são do Ministério da Agricultura, não da Embrapa: nunca as coloque depois de "📘". Copie as datas exatamente. Destaque a janela de risco 20% (a mais segura) e explique em poucas palavras que o risco é a chance de perder a lavoura por clima (seca, geada, calor).
 - Nunca dê datas oficiais de plantio que não estejam nessa seção. Se ela não trouxer a cultura perguntada, diga que não tem a janela oficial dessa cultura para o município.
-- Em toda resposta sobre quando plantar ou semear, com ou sem dados do ZARC abaixo, a última frase indica o aplicativo gratuito Zarc Plantio Certo, da Embrapa, para conferir a janela da cultivar e do solo.
+- Não fale do aplicativo Zarc Plantio Certo nem do Proagro ou do seguro rural: um quadro abaixo da resposta já mostra a janela oficial, o aplicativo e essa informação.
 - Nunca misture as origens na mesma frase.
 - Quando os trechos da Embrapa trouxerem algo útil para a pergunta, use-o sob "📘" — é a parte mais valiosa da resposta, porque vem de pesquisa.
 - Depois de "📘", só use números (percentuais, produtividades, doses, anos, prazos) que aparecem escritos nos trechos. Se o trecho não traz o número, descreva sem número.
@@ -498,9 +499,15 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         const pedido = separarPedido(answer, faltando);
         if (faltando.length) console.log(`📝 Dados que faltam: ${faltando.join(', ')} — pedidos nesta resposta: ${pedido.codigos.join(', ') || 'nenhum'}`);
         answer = pedido.texto;
-        // O prompt já pede o aplicativo, mas o modelo às vezes esquece.
-        if (perguntaDeQuandoPlantar(userPrompt) && !/plantio certo/i.test(answer)) {
-            answer += `\n\n${INDICACAO_DO_APLICATIVO}`;
+        // Quadro do ZARC abaixo da resposta: a janela oficial (quando há) e a indicação do
+        // aplicativo. Vem dos dados, não do modelo, então aparece sempre que a pergunta pede.
+        const quadroZarc = epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt)
+            ? { local: epoca?.local, linhas: epoca?.linhas ?? [], aviso: epoca?.aviso }
+            : undefined;
+        // O prompt pede para não falar do aplicativo; se o modelo falar, o parágrafo sai,
+        // para não repetir o quadro.
+        if (quadroZarc) {
+            answer = answer.split(/\n\s*\n/).filter((p) => !(/plantio certo/i.test(p) && p.length < 400)).join('\n\n');
         }
 
         const resposta = await ChatMessage.create({
@@ -512,6 +519,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
                 contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
+                ...(quadroZarc ? { epoca: quadroZarc } : {}),
             },
         });
 
@@ -519,6 +527,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             success: true,
             parsedData: pedido.form ? { tipo: 'coleta_dados', resposta: answer, ...pedido.form } : { tipo: 'resposta', resposta: answer },
             fontes,
+            epoca: quadroZarc,
             mensagemId: resposta._id,
             conversaId: conversa._id,
             // ultimas24h foi contado antes de gravar esta pergunta

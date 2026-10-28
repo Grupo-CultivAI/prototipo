@@ -38,7 +38,7 @@ export async function GET(req) {
         // Perguntas que falharam ou foram apagadas ficam gravadas só para contar no limite de uso.
         const [history, restantesHoje] = await Promise.all([
             conversa
-                ? ChatMessage.find({ conversaId: conversa._id, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } }).sort({ timestamp: 1 })
+                ? ChatMessage.find({ conversaId: conversa._id, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } }).sort({ timestamp: 1 }).lean()
                 : [],
             perguntasRestantesHoje(userId),
         ]);
@@ -50,6 +50,7 @@ export async function GET(req) {
             form: msg.metadata?.form,
             submittedData: msg.metadata?.submittedData,
             fontes: comTitulos(msg.metadata?.fontes),
+            epoca: msg.metadata?.epoca,
             avaliacao: msg.metadata?.avaliacao
         }));
 
