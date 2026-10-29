@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, CalendarDays, CloudRain, Sprout, Mic, ShieldCheck, UserPlus, ClipboardList, MessageCircle, Mail } from "lucide-react";
 import { usuarioLogado } from "@/lib/sessao";
+import { linkFaleConosco } from "@/lib/faleConosco";
 import styles from "./inicio.module.css";
 
 // Página inicial: explica o CultivAI a quem chega pela primeira vez, antes do login ou do
@@ -12,8 +13,7 @@ export const metadata = {
   description: "Assistente gratuito que ajuda pequenos produtores a decidir o que plantar, quando plantar e como cuidar do solo, com base em pesquisas da Embrapa e no calendário oficial de plantio do seu município.",
 };
 
-const EMAIL = "pex.ifsp@gmail.com";
-const FALE_CONOSCO = `mailto:${EMAIL}?subject=${encodeURIComponent("Contato pelo site do CultivAI")}`;
+const FALE_CONOSCO = linkFaleConosco("/");
 
 const RECURSOS = [
   { icone: BookOpen, titulo: "Respostas com base na Embrapa", texto: "O CultivAI consulta publicações da Embrapa sobre rotação de culturas e manejo do solo, e mostra quais documentos usou." },
@@ -46,7 +46,7 @@ export default async function Inicio() {
       {/* Abertura */}
       <section className={styles.abertura}>
         <div className={styles.aberturaTexto}>
-          <span className={styles.selo}>Gratuito · Projeto de extensão do IFSP</span>
+          <span className={styles.selo}>Gratuito · Projeto de extensão do IFSP Campus Pirituba</span>
           <h1>Decida o que plantar, e quando, com mais segurança</h1>
           <p className={styles.chamada}>
             O CultivAI é um assistente que ajuda pequenos produtores a planejar a <strong>rotação de culturas</strong>:
@@ -136,7 +136,7 @@ export default async function Inicio() {
         <div>
           <h2>Sobre o projeto</h2>
           <p>
-            O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP), desenvolvido por estudantes
+            O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP), Campus Pirituba, desenvolvido por estudantes
             para levar informação técnica sobre rotação de culturas a pequenos produtores e à agricultura familiar, de graça.
           </p>
           <p>
@@ -153,7 +153,7 @@ export default async function Inicio() {
       </section>
 
       <footer className={styles.rodape}>
-        <span>CultivAI · Projeto de extensão do IFSP</span>
+        <span>CultivAI · Projeto de extensão do IFSP Campus Pirituba</span>
         <nav aria-label="Rodapé">
           <Link href="/privacidade">Privacidade</Link>
           <a href={FALE_CONOSCO}>Contato</a>

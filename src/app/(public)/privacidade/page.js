@@ -12,7 +12,7 @@ const CONTATO = "pex.ifsp@gmail.com"
 const secoes = [
   {
     titulo: "Quem somos",
-    texto: ["O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP) que ajuda pequenos agricultores a planejar a rotação de culturas, com respostas baseadas em documentos da Embrapa. O uso é gratuito."],
+    texto: ["O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP), Campus Pirituba, que ajuda pequenos agricultores a planejar a rotação de culturas, com respostas baseadas em documentos da Embrapa. O uso é gratuito."],
   },
   {
     titulo: "Quais dados guardamos",
