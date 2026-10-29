@@ -80,6 +80,9 @@ docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados man
 
 ## Como funciona
 
+### Página inicial
+A raiz do site (`/`, `src/app/(public)/page.js`) apresenta o CultivAI a quem chega pela primeira vez: o que ele faz, por que fazer rotação de culturas, como funciona em 3 passos, dúvidas frequentes, sobre o projeto e o botão "Fale conosco" (email do projeto, pex.ifsp@gmail.com). As ilustrações são SVG próprios, em `public/inicio/`. Quem já entrou vê "Abrir o CultivAI" no lugar de "Criar conta". O cabeçalho mostra os links das seções na página inicial, em telas largas.
+
 ### Autenticação
 A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder. "Sair da Conta" chama `/api/auth/logout`, que apaga o cookie pelo servidor.
 

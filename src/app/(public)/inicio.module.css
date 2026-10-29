@@ -1,0 +1,395 @@
+/* Página inicial (src/app/(public)/page.js). O <main> global centraliza em flex; a página
+   ocupa a largura toda e começa no topo. */
+.pagina {
+    align-self: stretch;
+    width: 100%;
+    color: var(--text-primary);
+}
+
+.pagina h1,
+.pagina h2,
+.pagina h3 {
+    font-family: var(--font-title), sans-serif;
+    color: var(--primary-dark);
+}
+
+.pagina h2 {
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+}
+
+.pagina h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+}
+
+.pagina p {
+    line-height: 1.6;
+}
+
+/* --- Botões --- */
+.botoes,
+.botoesCentro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.botoesCentro {
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.botaoPrincipal,
+.botaoSecundario {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9rem 1.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.botaoPrincipal {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.25);
+}
+
+.botaoPrincipal:hover,
+.botaoPrincipal:focus-visible {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.botaoSecundario {
+    border: 1px solid var(--primary);
+    color: var(--primary-dark);
+    background: #fff;
+}
+
+.botaoSecundario:hover,
+.botaoSecundario:focus-visible {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+/* --- Abertura --- */
+.abertura {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: center;
+    padding: 2.5rem 1.25rem 3rem;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.selo {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--primary-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.abertura h1 {
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+.chamada {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.75rem;
+    max-width: 38rem;
+}
+
+.chamada strong {
+    color: var(--text-primary);
+}
+
+.aberturaImagem {
+    position: relative;
+}
+
+.ilustracao {
+    width: 100%;
+    height: auto;
+    border-radius: 24px;
+    box-shadow: var(--shadow-lg);
+}
+
+.exemplo {
+    margin: -2.5rem 0.75rem 0;
+    position: relative;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: var(--shadow-lg);
+    font-size: 0.92rem;
+}
+
+.exemploPergunta {
+    margin: 0 0 0.6rem auto;
+    width: fit-content;
+    max-width: 85%;
+    padding: 0.55rem 0.85rem;
+    border-radius: 16px 16px 4px 16px;
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.exemploResposta {
+    padding: 0.55rem 0.85rem;
+    border-radius: 16px 16px 16px 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+}
+
+/* --- Seções --- */
+.secao {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem;
+    scroll-margin-top: 90px; /* a barra de navegação fixa não cobre o título */
+}
+
+.subtitulo {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.recursos {
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.cartao {
+    padding: 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.cartao p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.icone {
+    display: inline-flex;
+    margin-bottom: 0.8rem;
+    padding: 0.6rem;
+    border-radius: 12px;
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--primary);
+}
+
+/* --- Por que rotação --- */
+.rotacao {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: center;
+}
+
+.rotacao p {
+    color: var(--text-secondary);
+    margin-bottom: 0.8rem;
+}
+
+.rotacao strong {
+    color: var(--text-primary);
+}
+
+.ilustracaoRotacao {
+    width: min(100%, 320px);
+    height: auto;
+    margin: 0 auto;
+}
+
+/* --- Como funciona --- */
+.passos {
+    list-style: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.passo {
+    position: relative;
+    padding: 1.6rem 1.4rem 1.4rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid var(--border);
+}
+
+.passo p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.numero {
+    position: absolute;
+    top: 1rem;
+    right: 1.2rem;
+    font-family: var(--font-title), sans-serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: rgba(22, 163, 74, 0.18);
+}
+
+.iconePasso {
+    color: var(--primary);
+    margin-bottom: 0.6rem;
+}
+
+/* --- Dúvidas --- */
+.duvidas {
+    display: grid;
+    gap: 0.6rem;
+    max-width: 52rem;
+}
+
+.duvida {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+    padding: 0 1.1rem;
+}
+
+.duvida summary {
+    cursor: pointer;
+    padding: 1rem 0;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.duvida p {
+    padding-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+/* --- Sobre e contato --- */
+.sobre {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+}
+
+.sobre p {
+    color: var(--text-secondary);
+    margin-bottom: 0.8rem;
+}
+
+.contato {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 1.6rem;
+    border-radius: 20px;
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.contato h3,
+.contato p {
+    color: #fff;
+}
+
+.contato p {
+    opacity: 0.85;
+}
+
+.contato .botaoPrincipal {
+    background: #fff;
+    color: var(--primary-dark);
+    box-shadow: none;
+}
+
+.contato .botaoPrincipal:hover,
+.contato .botaoPrincipal:focus-visible {
+    background: #E6F6EC;
+}
+
+.email {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    overflow-wrap: anywhere;
+}
+
+/* --- Rodapé --- */
+.rodape {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 1180px;
+    margin: 1rem auto 0;
+    padding: 1.5rem 1.25rem 2.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.rodape nav {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.rodape a {
+    color: var(--text-secondary);
+}
+
+/* --- Telas maiores --- */
+@media (min-width: 720px) {
+    .recursos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .passos {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    /* À direita, para deixar à mostra as faixas coloridas (as culturas em rotação) da esquerda */
+    .exemplo {
+        position: absolute;
+        right: -1.5rem;
+        bottom: -2rem;
+        margin: 0;
+        max-width: 320px;
+    }
+}
+
+@media (min-width: 960px) {
+    .abertura {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        padding: 4rem 1.25rem 5rem;
+    }
+
+    .recursos {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rotacao {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    }
+
+    .sobre {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    }
+}

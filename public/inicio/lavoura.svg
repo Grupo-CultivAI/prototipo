@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="t">
+  <title id="t">Ilustração de uma propriedade rural com faixas de culturas diferentes em rotação, sol e chuva no horizonte</title>
+  <defs>
+    <linearGradient id="ceu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E6F6EC"/>
+      <stop offset="1" stop-color="#F8FAF9"/>
+    </linearGradient>
+    <linearGradient id="morroFundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9AD9AE"/>
+      <stop offset="1" stop-color="#7CC795"/>
+    </linearGradient>
+    <clipPath id="campo">
+      <path d="M0 250 C 140 205, 300 215, 640 240 L640 480 L0 480 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- céu -->
+  <rect width="640" height="480" fill="url(#ceu)"/>
+  <!-- sol -->
+  <circle cx="500" cy="95" r="44" fill="#FCD34D"/>
+  <circle cx="500" cy="95" r="62" fill="#FCD34D" opacity="0.25"/>
+  <!-- nuvem com chuva leve -->
+  <g transform="translate(120 70)">
+    <ellipse cx="40" cy="30" rx="40" ry="22" fill="#FFFFFF"/>
+    <ellipse cx="78" cy="24" rx="32" ry="24" fill="#FFFFFF"/>
+    <ellipse cx="110" cy="34" rx="28" ry="18" fill="#FFFFFF"/>
+    <g stroke="#60A5FA" stroke-width="4" stroke-linecap="round">
+      <line x1="40" y1="62" x2="34" y2="78"/>
+      <line x1="70" y1="62" x2="64" y2="78"/>
+      <line x1="100" y1="62" x2="94" y2="78"/>
+    </g>
+  </g>
+
+  <!-- morros ao fundo -->
+  <path d="M0 215 C 120 160, 230 175, 330 200 C 420 175, 540 160, 640 190 L640 260 L0 260 Z" fill="url(#morroFundo)"/>
+
+  <!-- campo com faixas: cada cor é uma cultura da rotação -->
+  <g clip-path="url(#campo)">
+    <rect x="0" y="200" width="640" height="280" fill="#86C99A"/>
+    <!-- faixas em perspectiva -->
+    <path d="M-40 480 L150 230 L230 230 L120 480 Z" fill="#F2C94C"/>   <!-- milho maduro -->
+    <path d="M120 480 L230 230 L310 230 L290 480 Z" fill="#4CAF6E"/>   <!-- feijão -->
+    <path d="M290 480 L310 230 L390 230 L460 480 Z" fill="#A3D977"/>   <!-- adubo verde -->
+    <path d="M460 480 L390 230 L470 230 L640 450 L640 480 Z" fill="#C79A5B"/> <!-- solo em preparo -->
+    <path d="M640 450 L470 230 L700 230 L700 480 Z" fill="#5DBB7F"/>   <!-- soja -->
+    <!-- linhas de plantio -->
+    <g stroke="#06402B" stroke-opacity="0.12" stroke-width="2">
+      <line x1="40" y1="480" x2="190" y2="230"/>
+      <line x1="205" y1="480" x2="270" y2="230"/>
+      <line x1="375" y1="480" x2="350" y2="230"/>
+      <line x1="550" y1="480" x2="430" y2="230"/>
+    </g>
+  </g>
+
+  <!-- plantas em primeiro plano -->
+  <g fill="#16A34A">
+    <path d="M70 470 C 70 440, 50 425, 35 420 C 52 432, 62 448, 64 470 Z"/>
+    <path d="M72 470 C 74 438, 95 422, 112 418 C 94 432, 82 448, 80 470 Z"/>
+    <path d="M300 472 C 300 446, 285 432, 270 428 C 286 440, 294 454, 295 472 Z"/>
+    <path d="M302 472 C 305 444, 322 432, 338 430 C 322 442, 310 456, 309 472 Z"/>
+  </g>
+  <g fill="#06402B">
+    <rect x="68" y="440" width="5" height="34" rx="2"/>
+    <rect x="298" y="444" width="5" height="30" rx="2"/>
+  </g>
+
+  <!-- casa e árvore -->
+  <g transform="translate(520 168)">
+    <rect x="0" y="22" width="56" height="38" fill="#FFFFFF" stroke="#06402B" stroke-opacity="0.15"/>
+    <path d="M-6 24 L28 0 L62 24 Z" fill="#B45309"/>
+    <rect x="22" y="38" width="12" height="22" fill="#06402B" opacity="0.6"/>
+  </g>
+  <g transform="translate(470 150)">
+    <rect x="10" y="40" width="7" height="34" fill="#7C4A1E"/>
+    <circle cx="14" cy="32" r="26" fill="#2F9E5B"/>
+  </g>
+</svg>
