@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import ContadorPerguntas from "@/components/ContadorPerguntas";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -514,7 +514,7 @@ export default function ChatCultivAI() {
     <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent' }}>
       <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI ✨</h1>
+          <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
           {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
         </div>
@@ -615,7 +615,7 @@ export default function ChatCultivAI() {
 
               {msg.sender === "bot" && msg.fontes?.length > 0 && citouEmbrapa(msg.text) && (
                 <div className={styles.fontes}>
-                  <span className={styles.fontesTitulo}>📚 Documentos da Embrapa consultados</span>
+                  <span className={styles.fontesTitulo}><BookOpen size={15} aria-hidden="true" /> Documentos da Embrapa consultados</span>
                   <ul>
                     {msg.fontes.map(rotuloFonte).filter(Boolean).map((rotulo, i) => <li key={i}>{rotulo}</li>)}
                   </ul>
@@ -625,7 +625,7 @@ export default function ChatCultivAI() {
               {/* A busca nos documentos não aconteceu: a resposta veio só de conhecimento geral. */}
               {msg.sender === "bot" && msg.semBase && (
                 <p className={styles.avisoSemBase} role="note">
-                  ⚠️ Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
+                  <TriangleAlert size={15} aria-hidden="true" className={styles.iconeAviso} /> Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
                 </p>
               )}
 
@@ -633,7 +633,7 @@ export default function ChatCultivAI() {
               {msg.sender === "bot" && msg.epoca && (
                 <div className={styles.quadroZarc}>
                   <span className={styles.fontesTitulo}>
-                    🗓️ Época de plantio oficial (ZARC){msg.epoca.local ? ` · ${msg.epoca.local}` : ""}
+                    <CalendarDays size={15} aria-hidden="true" /> Época de plantio oficial (ZARC){msg.epoca.local ? ` · ${msg.epoca.local}` : ""}
                   </span>
                   {msg.epoca.linhas?.length > 0 && (
                     <ul>
@@ -645,7 +645,7 @@ export default function ChatCultivAI() {
                   )}
                   {msg.epoca.aviso && <p>{msg.epoca.aviso}</p>}
                   <p className={styles.notaZarc}>
-                    ℹ️ {NOTA_ZARC}
+                    <Info size={14} aria-hidden="true" className={styles.iconeNota} /> {NOTA_ZARC}
                   </p>
                 </div>
               )}
@@ -691,7 +691,7 @@ export default function ChatCultivAI() {
         ))}
         {conversaVazia && faltando.length > 0 && (
           <div className={styles.lembretePerfil}>
-            💡 {propriedade
+            <Lightbulb size={16} aria-hidden="true" className={styles.iconeLembrete} /> {propriedade
               ? `Para respostas mais certeiras, complete no Meu Cultivo: ${faltando.slice(0, 3).map((i) => i.rotulo).join(", ")}${faltando.length > 3 ? ` e mais ${faltando.length - 3}` : ""}.`
               : "Preencha o Meu Cultivo para receber respostas pensadas para a sua área."}{" "}
             <Link href="/perfil-propriedade">{propriedade ? "Completar perfil" : "Preencher agora"}</Link>
