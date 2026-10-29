@@ -32,8 +32,8 @@ const PASSOS = [
 
 const PERGUNTAS = [
   { p: "O CultivAI é pago?", r: "Não. É gratuito, sem anúncios. Cada pessoa pode fazer até 40 perguntas por dia." },
-  { p: "Preciso entender de tecnologia?", r: "Não. Funciona no navegador do celular ou do computador, como uma conversa. Dá para perguntar falando." },
-  { p: "As respostas substituem a assistência técnica?", r: "Não. O CultivAI ajuda a planejar e tirar dúvidas, mas decisões importantes devem ser confirmadas com a assistência técnica, como a Emater, ou com um engenheiro agrônomo." },
+  { p: "Preciso entender de tecnologia?", r: "Não. Funciona no navegador do celular ou do computador, como uma conversa." },
+  { p: "As respostas substituem a assistência técnica?", r: "Não. O CultivAI é uma ferramenta de apoio à tomada de decisão: ajuda a planejar e tirar dúvidas, mas não substitui os profissionais da área. Decisões importantes devem ser confirmadas com a assistência técnica, como a Emater, ou com um engenheiro agrônomo." },
   { p: "O que acontece com os meus dados?", r: "Os dados da sua propriedade servem só para personalizar as respostas. Você pode corrigir ou apagar tudo quando quiser, e excluir a conta a qualquer momento." },
 ];
 
@@ -140,8 +140,8 @@ export default async function Inicio() {
             para levar informação técnica sobre rotação de culturas a pequenos produtores e à agricultura familiar, de graça.
           </p>
           <p>
-            Ele orienta e ajuda a planejar, mas não substitui a assistência técnica. Para decisões importantes, procure
-            a Emater da sua região ou um engenheiro agrônomo.
+            É uma <strong>ferramenta de apoio à tomada de decisão</strong>: orienta e ajuda a planejar, mas não substitui
+            os profissionais da área. Para decisões importantes, procure a Emater da sua região ou um engenheiro agrônomo.
           </p>
         </div>
         <div className={styles.contato}>
@@ -149,7 +149,6 @@ export default async function Inicio() {
           <h3>Fale conosco</h3>
           <p>Dúvidas, sugestões ou quer levar o CultivAI para a sua comunidade? Escreva para a equipe.</p>
           <a href={FALE_CONOSCO} className={styles.botaoPrincipal}>Fale conosco</a>
-          <span className={styles.email}>{EMAIL}</span>
         </div>
       </section>
 

@@ -315,7 +315,12 @@
     opacity: 0.85;
 }
 
+.sobre strong {
+    color: var(--text-primary);
+}
+
 .contato .botaoPrincipal {
+    margin-top: 0.4rem;
     background: #fff;
     color: var(--primary-dark);
     box-shadow: none;
@@ -324,12 +329,6 @@
 .contato .botaoPrincipal:hover,
 .contato .botaoPrincipal:focus-visible {
     background: #E6F6EC;
-}
-
-.email {
-    font-size: 0.9rem;
-    opacity: 0.85;
-    overflow-wrap: anywhere;
 }
 
 /* --- Rodapé --- */
