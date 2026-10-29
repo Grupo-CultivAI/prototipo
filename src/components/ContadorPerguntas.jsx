@@ -3,8 +3,8 @@ import { useId, useState } from "react";
 import styles from "@/app/(authed)/paginas.module.css";
 
 // Perguntas do dia num anel que vai enchendo conforme são usadas, com a explicação ao passar
-// o mouse, ao focar pelo teclado ou ao tocar no celular. O limite conta as perguntas das
-// últimas 24 horas (src/lib/limites.ts), então cada uma volta 24 horas depois de feita.
+// o mouse, ao focar pelo teclado ou ao tocar no celular. O limite conta as perguntas feitas
+// desde a meia-noite de Brasília (src/lib/limites.ts).
 const RAIO = 8;
 const VOLTA = 2 * Math.PI * RAIO;
 
@@ -19,8 +19,8 @@ export default function ContadorPerguntas({ restantes, limite }) {
     ? "Limite de perguntas de hoje atingido"
     : `${restantes} ${restantes === 1 ? "pergunta restante" : "perguntas restantes"} hoje`;
   const dica = restantes === 0
-    ? `Você usou as ${limite} perguntas das últimas 24 horas. Cada uma volta a ficar disponível 24 horas depois de feita.`
-    : `Você usou ${usadas} de ${limite} perguntas nas últimas 24 horas. Cada uma volta a ficar disponível 24 horas depois de feita.`;
+    ? `Você usou as ${limite} perguntas de hoje. O limite renova à meia-noite (horário de Brasília).`
+    : `Você usou ${usadas} de ${limite} perguntas hoje. O limite renova à meia-noite (horário de Brasília).`;
 
   return (
     <span className={styles.contador}>
