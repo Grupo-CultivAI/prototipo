@@ -2,9 +2,9 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import { getUserIdFromToken } from '@/lib/auth';
 
-// Para as telas de login e cadastro mandarem direto ao chat quem já entrou. Confere se a
+// Para as telas de login e cadastro mandarem direto ao Painel quem já entrou. Confere se a
 // conta ainda existe: um cookie válido de uma conta apagada (ou do banco antigo) levaria ao
-// chat, o chat mandaria de volta ao login, e a pessoa ficaria presa nesse vaivém.
+// Painel, o Painel mandaria de volta ao login, e a pessoa ficaria presa nesse vaivém.
 export async function usuarioLogado(): Promise<boolean> {
     try {
         const userId = await getUserIdFromToken();

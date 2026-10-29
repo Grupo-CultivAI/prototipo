@@ -10,6 +10,7 @@ const NOME_DA_TELA = {
   "/esqueci-senha": "Esqueci a senha",
   "/redefinir-senha": "Redefinir senha",
   "/privacidade": "Privacidade",
+  "/painel": "Início (painel)",
   "/chatbot": "Assistente (chat)",
   "/perfil-propriedade": "Meu Cultivo",
   "/conta": "Minha Conta",
