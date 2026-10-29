@@ -32,10 +32,7 @@ export default function Sidebar() {
                 <div style={{ background: 'var(--primary-dark)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Image src={folha} alt="Logo CultivAI" width={24} height={24} style={{ filter: 'brightness(0) invert(1)' }} />
                 </div>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>CultivAI</h2>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Projeto IFSP</span>
-                </div>
+                <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>CultivAI</h2>
             </div>
 
             <nav className={styles.nav}>

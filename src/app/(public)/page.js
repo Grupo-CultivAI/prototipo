@@ -46,7 +46,7 @@ export default async function Inicio() {
       {/* Abertura */}
       <section className={styles.abertura}>
         <div className={styles.aberturaTexto}>
-          <span className={styles.selo}>Gratuito · Projeto de extensão do IFSP</span>
+          <span className={styles.selo}>Gratuito · Projeto de extensão do IFSP Campus Pirituba</span>
           <h1>Decida o que plantar, e quando, com mais segurança</h1>
           <p className={styles.chamada}>
             O CultivAI é um assistente que ajuda pequenos produtores a planejar a <strong>rotação de culturas</strong>:
@@ -136,7 +136,7 @@ export default async function Inicio() {
         <div>
           <h2>Sobre o projeto</h2>
           <p>
-            O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP), desenvolvido por estudantes
+            O CultivAI é um projeto de extensão do Instituto Federal de São Paulo (IFSP), Campus Pirituba, desenvolvido por estudantes
             para levar informação técnica sobre rotação de culturas a pequenos produtores e à agricultura familiar, de graça.
           </p>
           <p>
@@ -153,7 +153,7 @@ export default async function Inicio() {
       </section>
 
       <footer className={styles.rodape}>
-        <span>CultivAI · Projeto de extensão do IFSP</span>
+        <span>CultivAI · Projeto de extensão do IFSP Campus Pirituba</span>
         <nav aria-label="Rodapé">
           <Link href="/privacidade">Privacidade</Link>
           <a href={FALE_CONOSCO}>Contato</a>

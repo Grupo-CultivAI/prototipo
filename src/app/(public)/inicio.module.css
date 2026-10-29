@@ -90,12 +90,14 @@
 .selo {
     display: inline-block;
     margin-bottom: 1rem;
-    padding: 0.35rem 0.8rem;
-    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    /* Cantos menores que pílula: no celular o texto quebra em duas linhas */
+    border-radius: 12px;
     background: rgba(22, 163, 74, 0.1);
     color: var(--primary-dark);
     font-size: 0.85rem;
     font-weight: 600;
+    line-height: 1.35;
 }
 
 .abertura h1 {
