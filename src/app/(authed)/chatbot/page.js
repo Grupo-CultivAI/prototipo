@@ -14,16 +14,19 @@ import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/p
 const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
 
 // O título vem do catálogo (src/lib/documentos.json); sem ele, o nome do arquivo arrumado.
-const rotuloFonte = (fonte) => {
+const partesDaFonte = (fonte) => {
   const arquivo = typeof fonte === "string" ? fonte : fonte?.fonte;
   if (!arquivo) return null;
   const nome = fonte?.titulo || String(arquivo).replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
   const paginas = Array.isArray(fonte?.paginas) && fonte.paginas.length ? ` (p. ${fonte.paginas.join(", ")} do PDF)` : "";
-  const titulo = nome.charAt(0).toUpperCase() + nome.slice(1);
-  if (/^https:\/\//.test(fonte?.url || "")) {
-    return <><a href={fonte.url} target="_blank" rel="noopener noreferrer">{titulo}</a>{paginas}</>;
-  }
-  return titulo + paginas;
+  const url = /^https:\/\//.test(fonte?.url || "") ? fonte.url : null;
+  return { titulo: nome.charAt(0).toUpperCase() + nome.slice(1), paginas, url };
+};
+
+const rotuloFonte = (fonte) => {
+  const p = partesDaFonte(fonte);
+  if (!p) return null;
+  return p.url ? <><a href={p.url} target="_blank" rel="noopener noreferrer">{p.titulo}</a>{p.paginas}</> : p.titulo + p.paginas;
 };
 
 // Por que a busca na base da Embrapa não aconteceu (metadata.busca.falha, em /api/llm).
@@ -32,6 +35,44 @@ const MOTIVO_SEM_BASE = {
   limite: "muitas buscas ao mesmo tempo. Ela usa só conhecimento geral de agronomia; pergunte de novo em um minuto para a resposta com os documentos.",
   erro: "a busca nos documentos está fora do ar no momento. Ela usa só conhecimento geral de agronomia; tente de novo mais tarde.",
 };
+
+const NOTA_ZARC = "O risco é a chance de perder a lavoura por clima (seca, geada, calor); 20% é o menor. Plantar dentro da janela do ZARC é condição para o Proagro e o seguro rural. Para conferir a janela da sua cultivar e do seu solo, use o aplicativo gratuito Zarc Plantio Certo, da Embrapa.";
+
+// Texto do botão Copiar: a pergunta, a resposta e o que aparece abaixo dela (documentos
+// consultados, quadro do ZARC, aviso de resposta sem a base), como texto simples.
+function textoParaCopiar(msg, pergunta) {
+  const partes = [];
+  if (pergunta) partes.push(`Pergunta: ${pergunta}`, "");
+  partes.push(pergunta ? `Resposta do CultivAI:\n${msg.text}` : msg.text);
+  if (msg.fontes?.length && citouEmbrapa(msg.text)) {
+    const fontes = msg.fontes.map(partesDaFonte).filter(Boolean).map((p) => `- ${p.titulo}${p.paginas}${p.url ? ` — ${p.url}` : ""}`);
+    partes.push("", "📚 Documentos da Embrapa consultados:", ...fontes);
+  }
+  if (msg.semBase) partes.push("", `⚠️ Esta resposta não consultou os documentos da Embrapa: ${MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}`);
+  if (msg.epoca) {
+    partes.push("", `🗓️ Época de plantio oficial (ZARC)${msg.epoca.local ? ` · ${msg.epoca.local}` : ""}`);
+    (msg.epoca.linhas || []).forEach((l) => partes.push(`- ${l}`));
+    if (msg.epoca.aviso) partes.push(msg.epoca.aviso);
+    partes.push(`ℹ️ ${NOTA_ZARC}`);
+  }
+  return partes.join("\n");
+}
+
+// navigator.clipboard só existe em HTTPS (e localhost); no resto, o jeito antigo.
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = texto;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+}
 
 // Só respostas gravadas no banco (id do MongoDB) podem ser avaliadas; a saudação inicial e
 // as mensagens de erro não têm id.
@@ -134,6 +175,7 @@ export default function ChatCultivAI() {
   // Leitura das respostas em voz alta, pela voz do próprio aparelho (sem custo e sem internet).
   const [temFala] = useState(() => !!sinteseDeFala());
   const [falandoId, setFalandoId] = useState(null);
+  const [copiadoId, setCopiadoId] = useState(null);
   const falaRef = useRef(0);
   const reconhecimentoRef = useRef(null);
   const enviarRef = useRef(null);
@@ -417,6 +459,15 @@ export default function ChatCultivAI() {
     await sendMessageToAPI(followUp, propriedade, null, true);
   };
 
+  // A pergunta é a última mensagem do produtor antes da resposta (respostas a formulário não têm texto).
+  const copiarResposta = async (msg) => {
+    const i = messages.findIndex((m) => m.id === msg.id);
+    const pergunta = messages.slice(0, i).reverse().find((m) => m.sender === "user" && m.text)?.text;
+    await copiarTexto(textoParaCopiar(msg, pergunta));
+    setCopiadoId(msg.id);
+    setTimeout(() => setCopiadoId((atual) => (atual === msg.id ? null : atual)), 2000);
+  };
+
   const avaliar = async (msg, valor) => {
     const avaliacao = msg.avaliacao === valor ? null : valor; // clicar de novo desfaz
     setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, avaliacao } : m)));
@@ -586,7 +637,7 @@ export default function ChatCultivAI() {
                   )}
                   {msg.epoca.aviso && <p>{msg.epoca.aviso}</p>}
                   <p className={styles.notaZarc}>
-                    ℹ️ O risco é a chance de perder a lavoura por clima (seca, geada, calor); 20% é o menor. Plantar dentro da janela do ZARC é condição para o Proagro e o seguro rural. Para conferir a janela da sua cultivar e do seu solo, use o aplicativo gratuito <strong>Zarc Plantio Certo</strong>, da Embrapa.
+                    ℹ️ {NOTA_ZARC}
                   </p>
                 </div>
               )}
@@ -620,6 +671,11 @@ export default function ChatCultivAI() {
                     <ThumbsDown size={15} />
                   </button>
                   </>}
+                  {msg.text !== "Pensando..." && (
+                    <button type="button" onClick={() => copiarResposta(msg)} title={copiadoId === msg.id ? "Copiado!" : "Copiar a resposta"} aria-label={copiadoId === msg.id ? "Resposta copiada" : "Copiar a resposta"}>
+                      {copiadoId === msg.id ? <Check size={15} /> : <Copy size={15} />}
+                    </button>
+                  )}
                 </span>
               )}
             </div>
