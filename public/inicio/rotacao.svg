@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-labelledby="t">
+  <title id="t">Ciclo de rotação de culturas: milho, depois feijão, depois adubo verde, e de volta ao milho</title>
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#16A34A"/>
+    </marker>
+  </defs>
+  <circle cx="180" cy="180" r="150" fill="#F0FAF3"/>
+  <!-- setas do ciclo -->
+  <g fill="none" stroke="#16A34A" stroke-width="5" stroke-linecap="round" marker-end="url(#seta)">
+    <path d="M222 78 A 110 110 0 0 1 284 214"/>
+    <path d="M250 268 A 110 110 0 0 1 112 268"/>
+    <path d="M76 214 A 110 110 0 0 1 138 78"/>
+  </g>
+  <!-- milho (topo) -->
+  <g transform="translate(180 62)">
+    <circle r="38" fill="#FFFFFF" stroke="#F2C94C" stroke-width="4"/>
+    <rect x="-3" y="-26" width="6" height="46" rx="3" fill="#2F9E5B"/>
+    <ellipse cx="9" cy="-4" rx="8" ry="16" fill="#F2C94C"/>
+    <path d="M0 4 C -16 -4, -22 -16, -24 -24 C -14 -16, -6 -10, 0 -6 Z" fill="#4CAF6E"/>
+    <path d="M0 14 C 14 8, 22 -2, 24 -10 C 16 -2, 8 4, 0 6 Z" fill="#4CAF6E"/>
+  </g>
+  <!-- feijão (direita, embaixo) -->
+  <g transform="translate(282 250)">
+    <circle r="38" fill="#FFFFFF" stroke="#4CAF6E" stroke-width="4"/>
+    <path d="M-4 22 C -4 0, 2 -14, 8 -22" stroke="#2F9E5B" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="-12" cy="-4" rx="12" ry="7" fill="#4CAF6E" transform="rotate(-25 -12 -4)"/>
+    <ellipse cx="14" cy="4" rx="12" ry="7" fill="#4CAF6E" transform="rotate(25 14 4)"/>
+    <path d="M4 10 C 14 12, 18 20, 16 26" stroke="#8B5E34" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- adubo verde (esquerda, embaixo) -->
+  <g transform="translate(78 250)">
+    <circle r="38" fill="#FFFFFF" stroke="#A3D977" stroke-width="4"/>
+    <g fill="#7BC24F">
+      <path d="M-14 22 C -16 4, -22 -6, -26 -14 C -14 -6, -10 6, -10 22 Z"/>
+      <path d="M0 22 C 0 0, -2 -12, 0 -24 C 4 -12, 4 0, 4 22 Z"/>
+      <path d="M14 22 C 14 6, 20 -4, 26 -12 C 22 0, 18 10, 18 22 Z"/>
+    </g>
+    <circle cx="0" cy="-26" r="5" fill="#FCD34D"/>
+  </g>
+  <!-- rótulos -->
+  <g font-family="Poppins, Arial, sans-serif" font-size="15" font-weight="600" fill="#06402B" text-anchor="middle">
+    <text x="180" y="122">Milho</text>
+    <text x="282" y="308">Feijão</text>
+    <text x="78" y="308">Adubo verde</text>
+  </g>
+  <text x="180" y="186" font-family="Poppins, Arial, sans-serif" font-size="14" font-weight="600" fill="#16A34A" text-anchor="middle">Rotação</text>
+  <text x="180" y="205" font-family="Roboto, Arial, sans-serif" font-size="12" fill="#6B7280" text-anchor="middle">solo mais forte,</text>
+  <text x="180" y="221" font-family="Roboto, Arial, sans-serif" font-size="12" fill="#6B7280" text-anchor="middle">menos pragas</text>
+</svg>

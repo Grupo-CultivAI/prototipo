@@ -1,0 +1,22 @@
+/* Links das seções da página inicial: só em telas largas; no celular ficam Entrar e Criar conta. */
+.secoes {
+    display: none;
+    gap: 1.5rem;
+}
+
+.secoes a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.secoes a:hover,
+.secoes a:focus-visible {
+    color: var(--primary-dark);
+}
+
+@media (min-width: 900px) {
+    .secoes {
+        display: flex;
+    }
+}
