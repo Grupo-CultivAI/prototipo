@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import folha from "@/assets/leaves-of-a-plant.png";
+import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
 import styles from './Sidebar.module.css';
 
 const LINKS = [
@@ -33,7 +34,7 @@ export default function Sidebar() {
                 </div>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>CultivAI</h2>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Premium</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Projeto IFSP</span>
                 </div>
             </div>
 
@@ -43,6 +44,10 @@ export default function Sidebar() {
                         <span className={styles.icone}>{icone}</span> <span className={styles.rotulo}>{rotulo}</span>
                     </Link>
                 ))}
+                {/* Para contar um problema ou uma resposta errada; o email já vai com a tela atual */}
+                <a href={linkFaleConosco(pathname)} className={styles.link} title={`Escrever para ${EMAIL_DO_PROJETO}`}>
+                    <span className={styles.icone}>✉️</span> <span className={styles.rotulo}>Fale conosco</span>
+                </a>
             </nav>
 
             <div className={styles.rodape}>

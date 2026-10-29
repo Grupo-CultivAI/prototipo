@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, CalendarDays, CloudRain, Sprout, Mic, ShieldCheck, UserPlus, ClipboardList, MessageCircle, Mail } from "lucide-react";
 import { usuarioLogado } from "@/lib/sessao";
+import { linkFaleConosco } from "@/lib/faleConosco";
 import styles from "./inicio.module.css";
 
 // Página inicial: explica o CultivAI a quem chega pela primeira vez, antes do login ou do
@@ -12,8 +13,7 @@ export const metadata = {
   description: "Assistente gratuito que ajuda pequenos produtores a decidir o que plantar, quando plantar e como cuidar do solo, com base em pesquisas da Embrapa e no calendário oficial de plantio do seu município.",
 };
 
-const EMAIL = "pex.ifsp@gmail.com";
-const FALE_CONOSCO = `mailto:${EMAIL}?subject=${encodeURIComponent("Contato pelo site do CultivAI")}`;
+const FALE_CONOSCO = linkFaleConosco("/");
 
 const RECURSOS = [
   { icone: BookOpen, titulo: "Respostas com base na Embrapa", texto: "O CultivAI consulta publicações da Embrapa sobre rotação de culturas e manejo do solo, e mostra quais documentos usou." },
