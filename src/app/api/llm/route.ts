@@ -24,7 +24,13 @@ import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, seg
 // 10.000 requisições por dia, contra ~230 perguntas por dia somando a Groq (200 mil tokens por
 // dia por modelo). Fica por último porque o acesso gratuito é de avaliação e pode ficar lento
 // com o tráfego de outros usuários; só responde quando a Groq esgota.
-const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,groq:qwen/qwen3.8-27b,nvidia:openai/gpt-oss-20b')
+// Também em 29/10/2026 o gpt-oss-120b passou para a frente: nas mesmas perguntas, respondeu tão
+// rápido quanto o 20b (1 a 3 s) e melhor (usa o ZARC com o marcador e cruza com a previsão; o 20b
+// precisou de revisão numa delas). Cotas separadas, então a capacidade não muda. Testados na
+// NVIDIA e descartados: nemotron-3-ultra-550b (bom, mas 6 de 15 respostas passaram de 20 s),
+// mistral-large-4 (lento e passa do teto de tokens), minimax-m3.1-flash (lento e 429), e
+// deepseek-v4.1-flash, gemma-4-31b, glm-5.3-flash e step-5 (não responderam em 45 s).
+const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b,nvidia:openai/gpt-oss-20b')
     .split(',').map((s) => s.trim()).filter(Boolean);
 
 // Todos aceitam o formato de chat da OpenAI. Provedor sem chave é pulado.
