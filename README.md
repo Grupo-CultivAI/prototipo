@@ -13,7 +13,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
 - **IA / RAG** (chamadas feitas diretamente pela própria rota da API, sem servidor intermediário):
   - [Pinecone Inference](https://docs.pinecone.io/guides/index-data/create-an-index#embedding-models) — gera os embeddings da base de conhecimento e das perguntas (`llama-text-embed-v2`, 768 dimensões), com a mesma chave do índice (`src/lib/embeddings.mjs`). Até 28/10/2026 eram do Gemini (`gemini-embedding-001`), que recusou o plano gratuito para o projeto
   - [Pinecone](https://www.pinecone.io) (Starter, serverless) — banco vetorial com os trechos indexados dos PDFs da Embrapa
-  - [Groq](https://groq.com) e Gemini — geram a resposta final, numa fila de modelos: `gpt-oss-20b` → `gpt-oss-120b` (Groq) → `gemini-3.5-flash-lite` (Google) → `qwen3.8-27b` (Groq). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
+  - [Groq](https://groq.com) e [NVIDIA](https://build.nvidia.com) — geram a resposta final, numa fila de modelos: `gpt-oss-120b` → `gpt-oss-20b` → `qwen3.8-27b` (Groq) → `gpt-oss-20b` (NVIDIA). Se um falha, passa do limite ou demora mais de 20 s, o próximo responde
 - **Clima**: [OpenWeatherMap](https://openweathermap.org/api), consultado pelo servidor (`lib/weather.ts`) para o contexto do chat: clima de agora e previsão dos próximos 5 dias
 - **Época de plantio**: [ZARC](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico), dados abertos do Ministério da Agricultura (licença CC-BY), importados para o MongoDB (`scripts/importar-zarc.mjs`)
 - **Outros**: `lucide-react` (ícones), `react-markdown` (renderização das respostas do bot)
@@ -111,7 +111,7 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 8. Confere se os números escritos depois de "📘 Segundo a Embrapa" aparecem nos trechos enviados, e se as datas depois de "🗓️ Segundo o ZARC" aparecem nas janelas enviadas. Também procura agrotóxico com produto e dose, ou produto proibido no Brasil (`src/lib/agrotoxicos.ts`): os documentos da Embrapa descrevem experimentos com produtos antigos, e o modelo às vezes os repassava como recomendação. Se algo não confere, pede ao modelo que reescreva; se a revisão também falhar, a resposta vai com um aviso ao produtor, e as frases com agrotóxico são cortadas e trocadas pela orientação de procurar um engenheiro agrônomo.
 9. Grava a resposta com as fontes usadas (arquivo e páginas) e devolve ao chat, com o título de cada documento tirado de `src/lib/documentos.json`. Também grava o maior score da busca, que alimenta o relatório de lacunas, e devolve quantas perguntas restam no dia. Se a busca na base falhar, a resposta sai só com prática geral e com um aviso no fim: "Esta resposta não consultou os documentos da Embrapa", com o motivo (cota mensal do Pinecone esgotada, muitas buscas no mesmo minuto ou busca fora do ar), gravado em `metadata.busca.falha`.
 
-**Capacidade no plano gratuito:** cada modelo tem a própria cota, somando todos os usuários. Na Groq, 8.000 tokens por minuto por modelo, e cada pergunta gasta entre 1.300 e 1.700: os dois `gpt-oss` dão cerca de 10 perguntas por minuto. O `gemini-3.5-flash-lite` entra quando eles se esgotam, com cota própria por minuto e por dia definida pelo Google, separada da cota dos embeddings. Por ser de outro provedor, ele também cobre o caso de a Groq inteira ficar fora do ar. A fila é configurável pela variável `MODELOS_IA`. O log da função registra qual modelo respondeu e os tokens de cada resposta.
+**Capacidade no plano gratuito:** cada modelo tem a própria cota, somando todos os usuários. Na Groq, 8.000 tokens por minuto e 200 mil tokens por dia por modelo; cada pergunta gasta de 1.400 a 2.400 de entrada mais umas centenas de saída, o que dá cerca de 10 perguntas por minuto e 230 por dia somando os três modelos. A NVIDIA (build.nvidia.com, mesmo `gpt-oss-20b`) entra quando a Groq se esgota, com cerca de 40 requisições por minuto e 10.000 por dia; é mais lenta (2 a 20 s nos testes) e, por ser de outro provedor, também cobre o caso de a Groq inteira ficar fora do ar. O acesso gratuito da NVIDIA é de avaliação: para uso em produção ela exige licença, o que precisa ser confirmado antes de um piloto com produtores. O Gemini saiu da fila padrão em 28/10/2026, quando o Google bloqueou o plano gratuito do projeto. A fila é configurável pela variável `MODELOS_IA`. O log da função registra qual modelo respondeu e os tokens de cada resposta.
 
 Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do projeto, e entre os modelos do Gemini só o `gemini-3.5-flash-lite` respondeu de forma estável nos testes (desde 28/10/2026 a chave do projeto é recusada pelo Google, e na fila ele falha na hora e passa a vez): `gemini-3.5-flash` e `gemini-3.8-flash` davam "high demand" ou passavam de 25 s, e o `gemma-4` escrevia o próprio raciocínio na resposta.
 
@@ -236,10 +236,11 @@ JWT_SECRET=             # segredo para assinar/verificar os JWTs de autenticaç�
 OPENWEATHER_API_KEY=    # chave da API do OpenWeatherMap
 
 # IA / RAG
-GEMINI_API_KEY=         # opcional; só para o modelo Gemini da fila MODELOS_IA (os embeddings são do Pinecone)
+NVIDIA_API_KEY=         # chave do build.nvidia.com (começa com nvapi-); último modelo da fila. Sem ela, a NVIDIA é pulada
+GEMINI_API_KEY=         # opcional; só se um modelo gemini: for posto em MODELOS_IA (fora da fila padrão desde 28/10/2026)
 GROQ_API_KEY=           # chave da API Groq (geração de texto)
-MODELOS_IA=             # opcional; fila de modelos "provedor:modelo", separados por vírgula (provedores: groq, gemini)
-                         # (padrão: groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b)
+MODELOS_IA=             # opcional; fila de modelos "provedor:modelo", separados por vírgula (provedores: groq, nvidia, gemini)
+                         # (padrão: groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b,nvidia:openai/gpt-oss-20b)
                          # a antiga GROQ_MODELS não é mais lida
 PINECONE_API_KEY=       # chave da API do Pinecone (índice e embeddings)
 PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"

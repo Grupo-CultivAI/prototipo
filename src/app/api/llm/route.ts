@@ -19,12 +19,24 @@ import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, seg
 // úteis; o Gemini 3.5 Flash-Lite (mesma chave dos embeddings, cota separada) foi o único
 // estável nos testes: gemini-3.5-flash e gemini-3.8-flash davam "high demand" ou demoravam
 // mais de 25 s, e o gemma-4 escrevia o próprio raciocínio na resposta.
-const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b,gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b')
+// Em 28/10/2026 o Google bloqueou o plano gratuito do projeto, e o Gemini saiu da fila padrão.
+// Em 29/10/2026 entrou a NVIDIA (build.nvidia.com), no fim: o mesmo gpt-oss-20b, com cerca de
+// 10.000 requisições por dia, contra ~230 perguntas por dia somando a Groq (200 mil tokens por
+// dia por modelo). Fica por último porque o acesso gratuito é de avaliação e pode ficar lento
+// com o tráfego de outros usuários; só responde quando a Groq esgota.
+// Também em 29/10/2026 o gpt-oss-120b passou para a frente: nas mesmas perguntas, respondeu tão
+// rápido quanto o 20b (1 a 3 s) e melhor (usa o ZARC com o marcador e cruza com a previsão; o 20b
+// precisou de revisão numa delas). Cotas separadas, então a capacidade não muda. Testados na
+// NVIDIA e descartados: nemotron-3-ultra-550b (bom, mas 6 de 15 respostas passaram de 20 s),
+// mistral-large-4 (lento e passa do teto de tokens), minimax-m3.1-flash (lento e 429), e
+// deepseek-v4.1-flash, gemma-4-31b, glm-5.3-flash e step-5 (não responderam em 45 s).
+const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b,nvidia:openai/gpt-oss-20b')
     .split(',').map((s) => s.trim()).filter(Boolean);
 
-// Os dois provedores aceitam o formato de chat da OpenAI.
+// Todos aceitam o formato de chat da OpenAI. Provedor sem chave é pulado.
 const PROVEDORES: Record<string, { url: string; chave: () => string | undefined }> = {
     groq: { url: 'https://api.groq.com/openai/v1/chat/completions', chave: () => process.env.GROQ_API_KEY },
+    nvidia: { url: 'https://integrate.api.nvidia.com/v1/chat/completions', chave: () => process.env.NVIDIA_API_KEY },
     gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', chave: () => process.env.GEMINI_API_KEY },
 };
 
