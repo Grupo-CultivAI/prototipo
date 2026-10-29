@@ -183,6 +183,12 @@ export default function ChatCultivAI() {
 
   useEffect(() => {
     async function loadData() {
+      // Links do Painel: ?conversa= abre uma conversa recente; ?pergunta= deixa uma pergunta
+      // sugerida pronta no campo (a pessoa decide se envia). Lidos antes de qualquer espera:
+      // em desenvolvimento o efeito roda duas vezes, e a segunda ainda precisa encontrá-los.
+      const parametros = new URLSearchParams(window.location.search);
+      const conversaDoLink = parametros.get("conversa");
+      const perguntaDoLink = parametros.get("pergunta");
       try {
         const resUser = await fetch('/api/user');
         if (resUser.ok) {
@@ -199,11 +205,13 @@ export default function ChatCultivAI() {
           setPropriedade(dataP.propriedade);
         }
 
-        const aberta = lerConversaAberta();
+        const aberta = conversaDoLink || lerConversaAberta();
         const resHistory = await fetch(`/api/chat/history${aberta ? `?conversa=${encodeURIComponent(aberta)}` : ""}`);
         // Uma carga que ficou para trás (a página foi montada de novo, o que o React faz em
         // desenvolvimento) não pode sobrescrever a conversa nem consumir a marca de análise.
         if (!ativo) return;
+        if (conversaDoLink || perguntaDoLink) window.history.replaceState(null, "", "/chatbot");
+        if (perguntaDoLink) setInputValue(perguntaDoLink.slice(0, 500));
         if (resHistory.ok) {
           const dataH = await resHistory.json();
           if (!ativo) return;

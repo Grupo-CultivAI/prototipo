@@ -44,24 +44,52 @@ function textoDaJanela(janelas: Janelas, grupo: string | undefined): string {
     return melhor ? `${melhor} (varia com o tipo de solo)` : 'plantio não indicado';
 }
 
-// "anterior" é a pergunta anterior, para continuações como "e para soja?". A cultura da
-// pergunta atual tem prioridade: em "E alface, quando planto?" depois de falar de feijão,
-// o quadro é o da alface.
-export async function epocaDePlantio(propriedade: any, texto: string, anterior = ''): Promise<EpocaDePlantio | null> {
+// Riscos dos 36 decêndios no solo do perfil; sem solo informado, o melhor caso entre os solos.
+// null: plantio não indicado neste tipo de solo.
+function riscosDaJanela(janelas: Janelas, grupo: string | undefined): number[] | null {
+    if (typeof janelas === 'string') return decodificarFaixas(janelas);
+    if (grupo) {
+        const doSolo = janelas[grupo as 'A' | 'M' | 'G'];
+        return doSolo ? decodificarFaixas(doSolo) : null;
+    }
+    return melhorRisco(...Object.values(janelas).map((f) => decodificarFaixas(f)));
+}
+
+type Municipio = { _id: string; nome: string; uf: string; j: Record<string, Entrada> };
+
+// Filtro do município do perfil na coleção do ZARC; null sem cidade ou estado.
+function filtroDoMunicipio(propriedade: any) {
     const uf = String(propriedade?.estado ?? '').trim().toUpperCase();
     // "Campinas - SP" ou "Campinas/SP" no campo da cidade
     const cidade = normalizar(String(propriedade?.cidade ?? '').replace(/\s*[-/,]\s*[A-Za-z]{2}\s*$/, ''));
     if (!uf || !cidade) return null;
+    // Pelo código do IBGE quando o perfil tem (cidade escolhida na lista ou vinda do CEP);
+    // senão, pelo nome (perfis antigos e cidade informada pelo formulário do chat).
+    const codigo = String(propriedade?.codigoMunicipio ?? '');
+    return /^\d{7}$/.test(codigo) ? { _id: codigo } : { uf, busca: cidade };
+}
+
+const culturasDoPerfil = (propriedade: any): string[] => [propriedade?.proximaCultura, ...(propriedade?.culturasHistorico ?? [])]
+    .filter((c) => c && c !== 'Nenhum' && c !== 'Ainda não decidi');
+
+// Culturas do ZARC que correspondem a um nome ("Milho" → Milho 1ª Safra, Milho 2ª Safra...).
+const culturasCitadas = (municipio: Municipio, alvo: string) =>
+    Object.keys(municipio.j).filter((c) => palavrasDaCultura(c).some((p: string) => contem(alvo, p)));
+
+// "anterior" é a pergunta anterior, para continuações como "e para soja?". A cultura da
+// pergunta atual tem prioridade: em "E alface, quando planto?" depois de falar de feijão,
+// o quadro é o da alface.
+export async function epocaDePlantio(propriedade: any, texto: string, anterior = ''): Promise<EpocaDePlantio | null> {
+    const filtro = filtroDoMunicipio(propriedade);
+    if (!filtro) return null;
+    const uf = String(propriedade.estado).trim().toUpperCase();
     const pergunta = normalizar(texto);
     const antes = normalizar(anterior);
     // "Como controlar nematoides no milho?" não precisa de datas: economiza tokens.
     if (!PERGUNTA_DE_EPOCA.test(`${pergunta} ${antes}`)) return null;
 
     try {
-        // Pelo código do IBGE quando o perfil tem (cidade escolhida na lista ou vinda do CEP);
-        // senão, pelo nome (perfis antigos e cidade informada pelo formulário do chat).
-        const codigo = String(propriedade?.codigoMunicipio ?? '');
-        const municipio = await ZarcMunicipio.findOne(/^\d{7}$/.test(codigo) ? { _id: codigo } : { uf, busca: cidade }).select('nome uf j').lean<{ nome: string; uf: string; j: Record<string, Entrada> }>();
+        const municipio = await ZarcMunicipio.findOne(filtro).select('nome uf j').lean<Municipio>();
         if (!municipio?.j) {
             // Sem isso, a IA concluía que "não há janela de soja no município". Se a coleção
             // ainda está vazia (antes da primeira importação), não há o que avisar.
@@ -74,8 +102,7 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
             };
         }
 
-        const culturas = Object.keys(municipio.j);
-        const citadas = (alvo: string) => culturas.filter((c) => palavrasDaCultura(c).some((p: string) => contem(alvo, p)));
+        const citadas = (alvo: string) => culturasCitadas(municipio, alvo);
 
         // Primeiro a pergunta atual; só sem cultura nela, a anterior; por fim, o perfil.
         let escolhidas: string[] = [];
@@ -89,9 +116,7 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
             if (escolhidas.length) break;
         }
         if (!escolhidas.length) {
-            const doPerfil = [propriedade?.proximaCultura, ...(propriedade?.culturasHistorico ?? [])]
-                .filter((c) => c && c !== 'Nenhum' && c !== 'Ainda não decidi');
-            escolhidas = [...new Set(doPerfil.flatMap((c) => citadas(normalizar(c))))];
+            escolhidas = [...new Set(culturasDoPerfil(propriedade).flatMap((c) => citadas(normalizar(c))))];
         }
         if (!escolhidas.length) return null;
 
@@ -117,6 +142,73 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
             paraIA: `Município: ${municipio.nome}/${municipio.uf}; ${solo}.\n${linhas.map((l) => `- ${l}`).join('\n')}`,
             local: `${municipio.nome}/${municipio.uf} · ${solo}`,
             linhas,
+        };
+    } catch (err) {
+        console.warn('ZARC indisponível:', err);
+        return null;
+    }
+}
+
+// --- Calendário do Painel: as janelas de todas as culturas do perfil, decêndio a decêndio ---
+
+// riscos: 36 decêndios (0 = plantio não indicado); null = não indicado neste tipo de solo.
+export type LinhaDoCalendario = { cultura: string; manejo: 'sequeiro' | 'irrigado'; riscos: number[] | null; proxima: boolean };
+export type CalendarioDePlantio =
+    | { encontrado: true; codigoMunicipio: string; local: string; solo: string | null; linhas: LinhaDoCalendario[]; semZarc: string[] }
+    | { encontrado: false; local: string };
+
+const LINHAS_NO_CALENDARIO = 6;
+const VARIACOES_POR_CULTURA = 2;
+
+// Ordem das variações de uma cultura do perfil: o mesmo nome, depois as safras (Milho 1ª
+// Safra, Milho 2ª Safra), depois o resto (Feijão Caupi, Milho consorciado com Braquiária).
+// Sem isso, "Feijão" ocupava metade do calendário e a soja ficava de fora.
+function ordemDaVariacao(nomeDoPerfil: string, cultura: string) {
+    const n = normalizar(cultura);
+    if (n === normalizar(nomeDoPerfil)) return 0;
+    return /^\S+ \d\S* safra$/.test(n) ? 1 : 2;
+}
+
+export async function calendarioDePlantio(propriedade: any): Promise<CalendarioDePlantio | null> {
+    const filtro = filtroDoMunicipio(propriedade);
+    if (!filtro) return null;
+    try {
+        const municipio = await ZarcMunicipio.findOne(filtro).select('nome uf j').lean<Municipio>();
+        if (!municipio?.j) {
+            if (!(await ZarcMunicipio.estimatedDocumentCount())) return null;
+            return { encontrado: false, local: `${String(propriedade.cidade).trim()}/${String(propriedade.estado).trim().toUpperCase()}` };
+        }
+
+        const irriga = Boolean(propriedade?.irrigacao) && propriedade.irrigacao !== 'Não irrigo';
+        const grupo = GRUPO_DO_PERFIL[String(propriedade?.tipoSolo ?? '') as keyof typeof GRUPO_DO_PERFIL];
+        const proxima = normalizar(propriedade?.proximaCultura ?? '');
+
+        // A próxima cultura primeiro; cada cultura do perfil traz até duas variações do ZARC.
+        const linhas: LinhaDoCalendario[] = [];
+        const semZarc: string[] = [];
+        for (const nome of new Set(culturasDoPerfil(propriedade))) {
+            const doZarc = culturasCitadas(municipio, normalizar(nome))
+                .sort((a, b) => ordemDaVariacao(nome, a) - ordemDaVariacao(nome, b) || a.length - b.length);
+            if (!doZarc.length) semZarc.push(nome);
+            for (const c of doZarc.filter((x) => !linhas.some((l) => l.cultura === x)).slice(0, VARIACOES_POR_CULTURA)) {
+                const entrada = municipio.j[c];
+                const manejo = (irriga && entrada.i) || !entrada.s ? 'i' : 's';
+                const janelas = entrada[manejo];
+                linhas.push({
+                    cultura: c,
+                    manejo: manejo === 'i' ? 'irrigado' : 'sequeiro',
+                    riscos: janelas ? riscosDaJanela(janelas, grupo) : null,
+                    proxima: normalizar(nome) === proxima,
+                });
+            }
+        }
+        return {
+            encontrado: true,
+            codigoMunicipio: municipio._id,
+            local: `${municipio.nome}/${municipio.uf}`,
+            solo: grupo ? NOME_DO_GRUPO[grupo as keyof typeof NOME_DO_GRUPO] : null,
+            linhas: linhas.slice(0, LINHAS_NO_CALENDARIO),
+            semZarc,
         };
     } catch (err) {
         console.warn('ZARC indisponível:', err);

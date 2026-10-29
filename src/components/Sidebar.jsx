@@ -7,6 +7,7 @@ import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
 import styles from './Sidebar.module.css';
 
 const LINKS = [
+    { href: '/painel', icone: '🏠', rotulo: 'Início' },
     { href: '/chatbot', icone: '🤖', rotulo: 'Assistente AI' },
     { href: '/perfil-propriedade', icone: '🌾', rotulo: 'Meu Cultivo' },
     { href: '/conta', icone: '👤', rotulo: 'Minha Conta' },

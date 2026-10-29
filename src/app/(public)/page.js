@@ -39,7 +39,7 @@ const PERGUNTAS = [
 
 export default async function Inicio() {
   const logado = await usuarioLogado();
-  const principal = logado ? { href: "/chatbot", texto: "Abrir o CultivAI" } : { href: "/cadastro", texto: "Criar conta grátis" };
+  const principal = logado ? { href: "/painel", texto: "Abrir o CultivAI" } : { href: "/cadastro", texto: "Criar conta grátis" };
 
   return (
     <div className={styles.pagina}>

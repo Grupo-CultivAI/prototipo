@@ -56,7 +56,7 @@ export default function FormularioLogin({ contaExcluida = false }) {
         return;
       }
       try { sessionStorage.removeItem(CHAVE_EMAIL_CADASTRADO) } catch { }
-      router.replace("/chatbot");
+      router.replace("/painel");
     } catch (err) {
       console.error(err);
       falhar("Não foi possível conectar. Confira sua internet e tente de novo.");

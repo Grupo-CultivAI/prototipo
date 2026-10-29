@@ -50,8 +50,8 @@ export function melhorRisco(...listas) {
 
 const ULTIMO_DIA = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const doisDigitos = (n) => String(n).padStart(2, '0');
-const inicioDoDecendio = (d) => `${doisDigitos([1, 11, 21][(d - 1) % 3])}/${doisDigitos(Math.floor((d - 1) / 3) + 1)}`;
-const fimDoDecendio = (d) => {
+export const inicioDoDecendio = (d) => `${doisDigitos([1, 11, 21][(d - 1) % 3])}/${doisDigitos(Math.floor((d - 1) / 3) + 1)}`;
+export const fimDoDecendio = (d) => {
     const mes = Math.floor((d - 1) / 3);
     return `${doisDigitos([10, 20, ULTIMO_DIA[mes]][(d - 1) % 3])}/${doisDigitos(mes + 1)}`;
 };

@@ -25,13 +25,14 @@ src/
   proxy.ts                  → manda ao login quem abre uma página logada sem sessão válida (o "middleware" do Next 16)
   app/
     (public)/              → páginas públicas (usam Navbar)
-      page.js                 rota "/", redireciona para /login
-      login/                  entrar (quem já está logado vai direto ao chat)
+      page.js                 rota "/", página inicial (apresenta o CultivAI)
+      login/                  entrar (quem já está logado vai direto ao Painel)
       cadastro/               criar conta, com aceite do aviso de privacidade
       esqueci-senha/          pede o link de recuperação por email
       redefinir-senha/        senha nova pelo link do email (?codigo=...) ou troca com a senha atual
       privacidade/            aviso de privacidade (LGPD)
     (authed)/               → páginas autenticadas (usam Sidebar)
+      painel/                 tela de entrada depois do login: resumo da propriedade e do uso
       chatbot/                assistente de IA
       perfil-propriedade/     cadastro/edição dos dados da propriedade
       conta/                  dados da conta do usuário
@@ -84,12 +85,23 @@ docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados man
 A raiz do site (`/`, `src/app/(public)/page.js`) apresenta o CultivAI a quem chega pela primeira vez: o que ele faz, por que fazer rotação de culturas, como funciona em 3 passos, dúvidas frequentes, sobre o projeto e o botão "Fale conosco" (email do projeto, pex.ifsp@gmail.com). As ilustrações são SVG próprios, em `public/inicio/`. Quem já entrou vê "Abrir o CultivAI" no lugar de "Criar conta". O cabeçalho mostra os links das seções na página inicial, em telas largas.
 
 ### Autenticação
-A rota raiz `/` redireciona sempre para `/login`. Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder. "Sair da Conta" chama `/api/auth/logout`, que apaga o cookie pelo servidor.
+Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o envia em um cookie `authToken` (httpOnly), e a tela abre o Painel (`/painel`). Todas as rotas de API autenticadas (`llm`, `chat/history`, `propriedade`, `user`) leem esse cookie e validam o token antes de responder. "Sair da Conta" chama `/api/auth/logout`, que apaga o cookie pelo servidor.
 
 - **Cadastro:** senha de no mínimo 8 caracteres e aceite do aviso de privacidade (`/privacidade`), cuja data fica gravada. O email é gravado sem espaços e em minúsculas.
 - **Tentativas:** 5 logins errados para o mesmo email, ou 20 para o mesmo IP, em 15 minutos, bloqueiam novas tentativas até o fim da janela. A coleção `tentativaacessos` se apaga sozinha (índice TTL).
 - **Esqueci a senha:** `/esqueci-senha` envia um link com um código aleatório, válido por 30 minutos e de uso único; o banco guarda só o hash do código. A resposta é a mesma exista a conta ou não, para não revelar quem usa o CultivAI. Sem SMTP configurado, em desenvolvimento o link aparece no terminal do `npm run dev`; em produção a tela avisa que a recuperação ainda não está ativa.
 - **Telas de conta:** erros aparecem dentro do formulário e levam o foco ao campo a corrigir; os campos têm rótulo ligado, `autocomplete` para o gerenciador de senhas e botão de mostrar a senha.
+
+### Painel
+A tela de entrada depois do login (`/painel`, `src/app/(authed)/painel/`), para a pessoa não cair direto no chat sem contexto. É renderizada no servidor, lendo o banco direto, e mostra:
+
+- **Números:** culturas cadastradas (e a próxima), perguntas restantes no dia (com a barra do limite), conversas e perguntas feitas, e quanto do perfil está preenchido.
+- **Mapa da propriedade:** o Brasil com o estado destacado e um ponto na cidade, mais a ficha da área (solo, tamanho, irrigação, sistema de plantio). Os contornos dos estados e o ponto central de cada município vêm das malhas do IBGE, gerados por `node scripts/gerar-mapa-brasil.mjs` em `public/mapa/brasil.svg` (os estados, como imagem) e `src/lib/dados/mapa-brasil.json` (contorno de cada estado e centro de cada município). O perfil sem código do IBGE usa o do ZARC, achado pelo nome.
+- **Época de plantio (ZARC):** a faixa do ano de cada cultura do perfil (a próxima primeiro, até duas variações por cultura e seis linhas), em decêndios, com o risco por cor, a marca de hoje e a frase "Época de plantio agora, até 31/12" ou "A janela abre em 01/01" (`calendarioDePlantio` em `src/lib/zarc.ts`).
+- **Previsão do tempo** dos próximos 5 dias (`getForecastDays` em `src/lib/weather.ts`, a mesma consulta do chat). Carrega à parte (Suspense), para não segurar a tela.
+- **Rotação** (culturas dos últimos anos e a próxima), **conversas recentes** e **sugestões de pergunta**. Os links abrem o chat com `?conversa=` (a conversa escolhida) ou `?pergunta=` (a pergunta fica pronta no campo; só é enviada se a pessoa quiser).
+
+Sem cidade e sem culturas cadastradas, o Painel abre com um convite para o Meu Cultivo, explicando o que passa a aparecer; os cartões vazios mostram o que falta e o calendário mostra um exemplo.
 
 ### Perfil da propriedade
 Formulário multi-seção (`/perfil-propriedade`) com dados de localização, solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.

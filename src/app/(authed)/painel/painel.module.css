@@ -1,0 +1,729 @@
+/* Painel (src/app/(authed)/painel/page.js) */
+.painel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    color: var(--text-primary);
+}
+
+.painel h1,
+.painel h2 {
+    font-family: var(--font-title), sans-serif;
+    color: var(--primary-dark);
+}
+
+.painel a {
+    color: var(--primary-dark);
+}
+
+/* --- Cabeçalho --- */
+.cabecalho {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cabecalho h1 {
+    font-size: clamp(1.7rem, 4vw, 2.4rem);
+    line-height: 1.15;
+}
+
+.subtitulo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    color: var(--text-secondary);
+}
+
+.data::first-letter {
+    text-transform: uppercase;
+}
+
+.botaoPrincipal,
+.botaoClaro {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.3rem;
+    border-radius: 999px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.painel .botaoPrincipal {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.25);
+}
+
+.painel .botaoPrincipal:hover,
+.painel .botaoPrincipal:focus-visible {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* --- Sem cadastro: chamada para o Meu Cultivo --- */
+.boasVindas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 2rem;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--primary-dark), #0B6B45);
+    color: #fff;
+}
+
+.painel .boasVindas h2 {
+    color: #fff;
+    font-size: clamp(1.3rem, 3vw, 1.7rem);
+    margin-bottom: 0.6rem;
+}
+
+.painel .boasVindas p {
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.5;
+    max-width: 40rem;
+}
+
+.boasVindas ul {
+    display: grid;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem;
+    list-style: none;
+}
+
+.boasVindas li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    line-height: 1.4;
+}
+
+.boasVindas li svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: #86EFAC;
+}
+
+.botoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.painel .botaoClaro {
+    background: #fff;
+    color: var(--primary-dark);
+}
+
+.painel .botaoClaro:hover,
+.painel .botaoClaro:focus-visible {
+    background: #E6F6EC;
+    transform: translateY(-2px);
+}
+
+.painel .linkClaro {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.boasVindasIcone {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* Perfil incompleto */
+.lembrete {
+    padding: 0.8rem 1rem;
+    border-left: 3px solid var(--primary);
+    border-radius: 12px;
+    background: rgba(22, 163, 74, 0.06);
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.lembrete a {
+    font-weight: 700;
+}
+
+/* --- Números --- */
+.numeros {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    list-style: none;
+}
+
+.numero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.numeroIcone {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 10px;
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--primary);
+}
+
+.numero strong {
+    font-family: var(--font-title), sans-serif;
+    font-size: 1.9rem;
+    line-height: 1.1;
+    color: var(--primary-dark);
+}
+
+.numeroRotulo {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.numeroDetalhe {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.barra {
+    display: block;
+    height: 6px;
+    margin: 0.35rem 0 0.15rem;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.barra span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+}
+
+/* --- Cartões --- */
+.grade {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+.grade > * {
+    grid-column: span 6;
+}
+
+.grade > .cartaoMapa {
+    grid-column: span 5;
+}
+
+.grade > .cartaoCalendario {
+    grid-column: span 7;
+}
+
+.grade > .cartaoLargo {
+    grid-column: span 12;
+}
+
+.cartao {
+    min-width: 0;
+    padding: 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.cartaoTopo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.cartaoTopo h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.cartaoTopo h2 svg {
+    color: var(--primary);
+}
+
+.linkCartao {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.subtituloCartao {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.subtituloCartao:first-child {
+    margin-top: 0;
+}
+
+.vazio {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.vazio a {
+    font-weight: 600;
+}
+
+.nota {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+/* --- Mapa --- */
+.mapa {
+    position: relative;
+    width: min(100%, 340px);
+    margin: 0 auto 1rem;
+}
+
+.mapaBase,
+.mapaCamada {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.mapaCamada {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    overflow: visible;
+}
+
+.estadoDestaque {
+    fill: #A7DBB5;
+    stroke: var(--primary);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+}
+
+.ponto {
+    fill: var(--primary-dark);
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.pontoOnda {
+    fill: rgba(6, 64, 43, 0.25);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: onda 2s ease-out infinite;
+}
+
+@keyframes onda {
+    from { transform: scale(0.4); opacity: 1; }
+    to { transform: scale(1.4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pontoOnda {
+        animation: none;
+    }
+}
+
+.ficha {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1rem;
+}
+
+.ficha dt {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.ficha dd {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.ficha dd::first-letter {
+    text-transform: uppercase;
+}
+
+/* --- Calendário de plantio --- */
+.calendarioLocal {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.calendarioLista {
+    display: grid;
+    gap: 0.9rem;
+    list-style: none;
+}
+
+.calendarioLinha {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.meses {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    margin-bottom: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.cultura {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+
+.detalhe {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.selo {
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--primary-dark);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.faixa {
+    display: grid;
+    grid-template-columns: repeat(36, minmax(0, 1fr));
+    gap: 2px;
+}
+
+.celula {
+    position: relative;
+    height: 18px;
+    border-radius: 3px;
+}
+
+/* Verde mais escuro = menor risco de perder a lavoura por clima */
+.risco20 { background: #15803D; }
+.risco30 { background: #4FB06D; }
+.risco40 { background: #A7DBB5; }
+.risco0 { background: #ECEFED; }
+
+.hoje {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-primary);
+    z-index: 1;
+}
+
+.situacao {
+    margin-top: 0.3rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.situacaoAgora {
+    color: #15803D;
+    font-weight: 600;
+}
+
+.legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.legenda span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.amostra {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.amostraHoje {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--text-primary);
+}
+
+/* --- Previsão --- */
+.previsao {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+    list-style: none;
+}
+
+.previsao li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.9rem 0.5rem;
+    border-radius: 14px;
+    background: var(--bg);
+    text-align: center;
+}
+
+.previsao .diaHoje {
+    background: rgba(22, 163, 74, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.35);
+}
+
+.diaNome {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.diaData {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.diaIcone {
+    margin: 0.4rem 0;
+    color: var(--primary-dark);
+}
+
+.diaTemp {
+    font-weight: 600;
+}
+
+.diaChuva {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* --- Rotação --- */
+.rotacao {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+}
+
+.rotacao li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    font-size: 0.9rem;
+}
+
+.rotacao .rotacaoProxima {
+    border-color: var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.rotacao + .vazio {
+    margin-top: 1rem;
+}
+
+/* --- Assistente --- */
+.conversas,
+.sugestoes {
+    display: grid;
+    gap: 0.4rem;
+    list-style: none;
+}
+
+.conversas a {
+    display: flex;
+    flex-direction: column;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    background: var(--bg);
+    text-decoration: none;
+}
+
+.conversas a:hover,
+.conversas a:focus-visible {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+.conversaTitulo {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.conversaDetalhe {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.sugestoes a {
+    display: block;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--primary);
+    border-radius: 14px;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.sugestoes a:hover,
+.sugestoes a:focus-visible {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+/* --- Telas menores --- */
+@media (max-width: 1100px) {
+    .numeros {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grade > *,
+    .grade > .cartaoMapa,
+    .grade > .cartaoCalendario {
+        grid-column: span 12;
+    }
+}
+
+@media (max-width: 768px) {
+    .painel {
+        gap: 1rem;
+    }
+
+    .boasVindas {
+        padding: 1.4rem;
+    }
+
+    .boasVindasIcone {
+        display: none;
+    }
+
+    .numeros {
+        gap: 0.6rem;
+    }
+
+    .numero {
+        padding: 0.9rem;
+    }
+
+    .numero strong {
+        font-size: 1.5rem;
+    }
+
+    .cartao {
+        padding: 1.1rem;
+    }
+
+    /* A cultura em cima da faixa: lado a lado, a faixa ficava estreita demais */
+    .calendarioLinha {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.3rem;
+    }
+
+    .calendarioLinha > span:empty {
+        display: none;
+    }
+
+    .celula {
+        height: 16px;
+    }
+
+    .faixa {
+        gap: 1px;
+    }
+
+    /* Um dia por linha: em colunas, o quinto dia ficava cortado */
+    .previsao {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .previsao li {
+        display: grid;
+        grid-template-columns: 3.2rem 2.8rem 2rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+
+    .diaIcone {
+        margin: 0;
+    }
+
+    .diaTemp {
+        white-space: nowrap;
+    }
+
+    .diaChuva {
+        text-align: right;
+        line-height: 1.25;
+    }
+
+    .diaChuva small {
+        display: block;
+    }
+
+    .diaChuva small span {
+        display: none;
+    }
+}
+
+/* Exemplo do calendário, para quem ainda não cadastrou a cidade */
+.exemplo {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    opacity: 0.75;
+}
+
+.exemplo > p {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
