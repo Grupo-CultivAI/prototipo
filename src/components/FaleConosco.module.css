@@ -1,0 +1,25 @@
+/* Botão flutuante "Fale conosco" das telas públicas (components/FaleConosco.jsx) */
+.botao {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    background: var(--primary-dark);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.botao:hover,
+.botao:focus-visible {
+    background: var(--primary);
+    transform: translateY(-2px);
+}

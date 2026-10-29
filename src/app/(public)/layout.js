@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import FaleConosco from "@/components/FaleConosco";
 
 export default function PublicLayout({ children }) {
     return (
@@ -7,6 +8,7 @@ export default function PublicLayout({ children }) {
             <main>
                 {children}
             </main>
+            <FaleConosco />
         </>
     );
 }
