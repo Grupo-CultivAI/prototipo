@@ -5,7 +5,7 @@ Protótipo web de um **assistente agrícola baseado em IA**. O produtor rural se
 ## Stack tecnológica
 
 - **Framework**: [Next.js 16](https://nextjs.org) (App Router) + React 19
-- **Linguagem**: JavaScript, com TypeScript em alguns módulos (`llm`, `perfil-propriedade`, schemas de validação)
+- **Linguagem**: JavaScript, com TypeScript em alguns módulos (`llm`, formulário de Meus Cultivos, schemas de validação)
 - **Estilos**: Tailwind CSS 4, CSS Modules e variáveis globais em `src/styles/variables.css`
 - **Formulários**: `react-hook-form` + `zod`
 - **Autenticação**: `bcryptjs` (hash de senha) + `jose` (JWT em cookie httpOnly)
@@ -34,7 +34,8 @@ src/
     (authed)/               → páginas autenticadas (usam Sidebar)
       painel/                 tela de entrada depois do login: resumo da propriedade e do uso
       chatbot/                assistente de IA
-      perfil-propriedade/     cadastro/edição dos dados da propriedade
+      meus-cultivos/          lista dos cultivos (áreas) do produtor; novo/ e [id]/ abrem o formulário
+      perfil-propriedade/     endereço antigo: redireciona para /meus-cultivos
       conta/                  dados da conta do usuário
     api/
       auth/
@@ -47,7 +48,7 @@ src/
       chat/avaliacao/         POST → 👍/👎 do produtor numa resposta
       conversas/              GET → lista de conversas · POST → "Nova conversa" (a anterior fica guardada)
       llm/                    POST → autentica, aplica rate limit e orquestra o RAG (Pinecone + Groq)
-      propriedade/            GET/POST → perfil da propriedade; DELETE → "Apagar dados da propriedade"
+      cultivos/               GET → lista; POST → novo cultivo. [id]: GET, PATCH (só os campos enviados), DELETE
       user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
   components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario
   lib/
@@ -55,7 +56,7 @@ src/
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
     documentos.json           catálogo dos PDFs da base: arquivo → título mostrado ao produtor (e link, quando houver)
     limites.ts                limite de perguntas por minuto e por dia (usado pelo chat e pelo contador)
-    perfilSchema.ts           regras do Meu Cultivo (campos, opções, tamanhos), usadas pela tela e pela rota /api/propriedade
+    perfilSchema.ts           regras de cada cultivo (campos, opções, tamanhos), usadas pelo formulário e pelas rotas /api/cultivos
     conversas.ts              conversa atual de cada pessoa e migração do histórico antigo
     senha.js                  regra de senha (mínimo de 8) e padronização do email
     tentativas.ts             limite de tentativas de login e de pedidos de recuperação
@@ -95,18 +96,24 @@ Depois do login, o backend gera um JWT (`jose`, HS256, expira em 7 dias) e o env
 ### Painel
 A tela de entrada depois do login (`/painel`, `src/app/(authed)/painel/`), para a pessoa não cair direto no chat sem contexto. É renderizada no servidor, lendo o banco direto, e mostra:
 
-- **Números:** culturas cadastradas (e a próxima), perguntas restantes no dia (com a barra do limite), conversas e perguntas feitas, e quanto do perfil está preenchido.
-- **Mapa da propriedade:** o Brasil com o estado destacado e um ponto na cidade, mais a ficha da área (solo, tamanho, irrigação, sistema de plantio). Os contornos dos estados e o ponto central de cada município vêm das malhas do IBGE, gerados por `node scripts/gerar-mapa-brasil.mjs` em `public/mapa/brasil.svg` (os estados, como imagem) e `src/lib/dados/mapa-brasil.json` (contorno de cada estado e centro de cada município). O perfil sem código do IBGE usa o do ZARC, achado pelo nome.
+- **Números:** cultivos cadastrados (e quantas culturas ao todo), perguntas restantes no dia (com a barra do limite), conversas e perguntas feitas, e quanto do perfil do cultivo escolhido está preenchido.
+- **Escolha do cultivo:** com mais de um, botões no topo escolhem qual aparece nos cartões abaixo (`?cultivo=id`; sem ele, o primeiro).
+- **Mapa dos cultivos:** o Brasil com os estados destacados e um ponto em cada cidade (maior no cultivo escolhido), mais a ficha da área (solo, tamanho, irrigação, sistema de plantio). Os contornos dos estados e o ponto central de cada município vêm das malhas do IBGE, gerados por `node scripts/gerar-mapa-brasil.mjs` em `public/mapa/brasil.svg` (os estados, como imagem) e `src/lib/dados/mapa-brasil.json` (contorno de cada estado e centro de cada município). O perfil sem código do IBGE usa o do ZARC, achado pelo nome.
 - **Época de plantio (ZARC):** a faixa do ano de cada cultura do perfil (a próxima primeiro, até duas variações por cultura e seis linhas), em decêndios, com o risco por cor, a marca de hoje e a frase "Época de plantio agora, até 31/12" ou "A janela abre em 01/01" (`calendarioDePlantio` em `src/lib/zarc.ts`).
 - **Previsão do tempo** dos próximos 5 dias (`getForecastDays` em `src/lib/weather.ts`, a mesma consulta do chat). Carrega à parte (Suspense), para não segurar a tela.
-- **Rotação** (culturas dos últimos anos e a próxima), **conversas recentes** e **sugestões de pergunta**. Os links abrem o chat com `?conversa=` (a conversa escolhida) ou `?pergunta=` (a pergunta fica pronta no campo; só é enviada se a pessoa quiser).
+- **Rotação** (culturas dos últimos anos e a próxima), **conversas recentes** e **sugestões de pergunta**. Os links abrem o chat com `?conversa=` (a conversa escolhida) ou `?pergunta=` (a pergunta fica pronta no campo; só é enviada se a pessoa quiser), junto com `?cultivo=` (a conversa é sobre o cultivo escolhido).
 
-Sem cidade e sem culturas cadastradas, o Painel abre com um convite para o Meu Cultivo, explicando o que passa a aparecer; os cartões vazios mostram o que falta e o calendário mostra um exemplo.
+Sem nenhum cultivo cadastrado, o Painel abre com um convite para Meus Cultivos, explicando o que passa a aparecer; os cartões vazios mostram o que falta e o calendário mostra um exemplo.
 
-### Perfil da propriedade
-Formulário multi-seção (`/perfil-propriedade`) com dados de localização, solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos.
+### Meus Cultivos
+Cada produtor pode cadastrar várias áreas (um sítio, um talhão, um lote), cada uma com cidade, solo e culturas próprias. Até 30/10/2026 era um perfil único por conta ("Meu Cultivo").
 
-**Localização:** o CEP preenche estado e cidade pela [ViaCEP](https://viacep.com.br), que também devolve o código do IBGE. Sem CEP, o produtor escolhe o estado e busca a cidade numa lista (`src/components/BuscaCidade.jsx`): ela filtra pelo estado, ignora acentos e só aceita cidades da lista. A lista fica em `public/municipios/<UF>.json` (5.571 municípios), gerada da API de localidades do IBGE por `node scripts/gerar-municipios.mjs`. O perfil guarda o código do IBGE (`codigoMunicipio`), e o ZARC busca o município por ele; perfis antigos, com o nome digitado, ganham o código ao abrir o Meu Cultivo, se o nome bater com o da lista.
+- **Lista** (`/meus-cultivos`): um cartão por cultivo, com nome, cidade, tamanho, solo, irrigação, culturas (a próxima em destaque), a época de plantio do ZARC de hoje ("Feijão: época de plantio agora, até 31/12" ou "a janela abre em 01/01", `src/lib/janelaDePlantio.js`), quanto do perfil está preenchido e quantas conversas houve sobre ele. Ações: editar, **perguntar sobre este cultivo** (abre o chat com `?cultivo=id`), ver no Painel e excluir (com confirmação; as conversas sobre ele continuam, como conversas gerais).
+- **Formulário** (`/meus-cultivos/novo` e `/meus-cultivos/[id]`, `FormularioCultivo.tsx`): nome do cultivo (obrigatório) e os blocos de localização, solo, histórico e manejo (culturas, sistema de plantio, irrigação), problemas enfrentados, próxima cultura e objetivos. "Salvar e pedir análise à IA" abre o chat sobre o cultivo e envia a primeira pergunta.
+- **No chat:** cada conversa é sobre um cultivo (`Conversa.propriedadeId`), escolhido no topo ("Sobre: ..."), ou geral. O perfil que vai para a IA é o desse cultivo (`cultivoDaConversa` em `src/lib/cultivos.ts`). Conversa sem cultivo de quem tem um só usa esse; de quem tem vários, a IA recebe a lista de nomes e pergunta de qual se trata, quando a resposta depende da área. Trocar o cultivo numa conversa que já tem perguntas começa outra, para os contextos não se misturarem. O dado pedido pelo formulário do chat é gravado no cultivo da conversa (ou num cultivo novo, para quem ainda não tem).
+- **Banco:** a coleção continua `propriedades` (modelo `Propriedade`), agora com `nome` e sem o índice único em `userId`. Os perfis existentes viraram o primeiro cultivo de cada conta; sem nome, aparecem como "Cultivo em <cidade>". No banco que já existia, o índice único precisa sair uma vez: `node scripts/migrar-cultivos.mjs --confirmar` (sem `--confirmar`, só mostra o que faria). Até lá, cadastrar o segundo cultivo dá erro, com aviso na tela.
+
+**Localização:** o CEP preenche estado e cidade pela [ViaCEP](https://viacep.com.br), que também devolve o código do IBGE. Sem CEP, o produtor escolhe o estado e busca a cidade numa lista (`src/components/BuscaCidade.jsx`): ela filtra pelo estado, ignora acentos e só aceita cidades da lista. A lista fica em `public/municipios/<UF>.json` (5.571 municípios), gerada da API de localidades do IBGE por `node scripts/gerar-municipios.mjs`. O perfil guarda o código do IBGE (`codigoMunicipio`), e o ZARC busca o município por ele; perfis antigos, com o nome digitado, ganham o código ao abrir o formulário do cultivo, se o nome bater com o da lista.
 
 - As culturas são opções clicáveis, com campo para acrescentar outra; `src/lib/perfil.js` padroniza a grafia, para "milho" e "Milho" não virarem duas culturas.
 - "Não sei" é resposta válida no tipo de solo e no sistema de plantio, e a IA é avisada de que o produtor não sabe.
@@ -130,7 +137,7 @@ Ao enviar uma mensagem em `/chatbot`, o endpoint `/api/llm`:
 
 Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do projeto, e entre os modelos do Gemini só o `gemini-3.5-flash-lite` respondeu de forma estável nos testes (desde 28/10/2026 a chave do projeto é recusada pelo Google, e na fila ele falha na hora e passa a vez): `gemini-3.5-flash` e `gemini-3.8-flash` davam "high demand" ou passavam de 25 s, e o `gemma-4` escrevia o próprio raciocínio na resposta.
 
-**Pedido de dados que faltam:** se o perfil não tem tipo de solo, localização ou culturas e a resposta depende disso, o modelo termina pedindo o dado com a marca `[PEDIR: código]` na última linha. A rota tira a marca do texto e devolve `tipo: 'coleta_dados'` com os campos do formulário, usando as mesmas opções do Meu Cultivo; o que o produtor responde é salvo no perfil. Só se pede o que falta, no máximo dois dados, e no máximo uma vez a cada 4 mensagens.
+**Pedido de dados que faltam:** se o perfil não tem tipo de solo, localização ou culturas e a resposta depende disso, o modelo termina pedindo o dado com a marca `[PEDIR: código]` na última linha. A rota tira a marca do texto e devolve `tipo: 'coleta_dados'` com os campos do formulário, usando as mesmas opções do formulário de Meus Cultivos; o que o produtor responde é salvo no cultivo da conversa. Só se pede o que falta, no máximo dois dados, e no máximo uma vez a cada 4 mensagens.
 
 Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em outro terminal):
 
@@ -149,7 +156,7 @@ O Zoneamento Agrícola de Risco Climático, do Ministério da Agricultura com a 
 
 - **Fonte:** a tábua de risco dos dados abertos do Ministério (CSV, licença CC-BY). A API da Embrapa (AgroAPI) só é gratuita por um mês, por isso não é usada.
 - **No banco:** a coleção `zarcmunicipios` tem um documento por município (5.573, ~25 MB), com a janela de cada cultura em formato compacto (`src/lib/zarc-formato.mjs`). Entram 74 culturas: as anuais de verão e de inverno (soja, milho, feijão, arroz, trigo, aveia...) e perenes e hortaliças zoneadas (mandioca, cebola, batata, alho nobre, tomate industrial, frutas, café...). As linhas "Produção" das perenes ficam de fora, porque não são época de plantio.
-- **No chat** (`src/lib/zarc.ts`): só em perguntas sobre plantio ou época. Entram as culturas citadas na pergunta, ou, sem cultura citada, a próxima cultura e as culturas do perfil, no solo e no manejo do perfil. Culturas que o ZARC não cobre (alface, couve, cenoura e outras hortaliças) recebem a frase "o ZARC não tem janela", e cidade que não bate com o IBGE recebe o pedido para conferir o nome no Meu Cultivo. A IA usa as datas no texto (com "🗓️"), e a tela mostra abaixo da resposta um quadro com a janela oficial, o que é o risco, a exigência do Proagro e a indicação do aplicativo gratuito Zarc Plantio Certo, da Embrapa. O quadro vem dos dados (`metadata.epoca`), não do texto da IA, então aparece mesmo se ela não citar o ZARC; em pergunta sobre quando plantar, aparece também sem dados do município. A cultura da pergunta atual tem prioridade sobre a da pergunta anterior.
+- **No chat** (`src/lib/zarc.ts`): só em perguntas sobre plantio ou época. Entram as culturas citadas na pergunta, ou, sem cultura citada, a próxima cultura e as culturas do perfil, no solo e no manejo do perfil. Culturas que o ZARC não cobre (alface, couve, cenoura e outras hortaliças) recebem a frase "o ZARC não tem janela", e cidade que não bate com o IBGE recebe o pedido para conferir o nome no Meus Cultivos. A IA usa as datas no texto (com "🗓️"), e a tela mostra abaixo da resposta um quadro com a janela oficial, o que é o risco, a exigência do Proagro e a indicação do aplicativo gratuito Zarc Plantio Certo, da Embrapa. O quadro vem dos dados (`metadata.epoca`), não do texto da IA, então aparece mesmo se ela não citar o ZARC; em pergunta sobre quando plantar, aparece também sem dados do município. A cultura da pergunta atual tem prioridade sobre a da pergunta anterior.
 - **Aproximações:** o ZARC usa seis classes de água disponível no solo (AD1 a AD6), e o perfil só tem arenoso/argiloso/siltoso/misto; as classes foram agrupadas de duas em duas. Entre os ciclos de cultivar, fica o de menor risco em cada período.
 
 Importação (o banco do `.env.local` é o da produção; uns 700 MB de download, cerca de 1 minuto e ~500 MB de memória):

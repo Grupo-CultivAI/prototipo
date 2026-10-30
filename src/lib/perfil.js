@@ -1,5 +1,5 @@
-// Itens do Meu Cultivo que mais mudam uma recomendação de rotação. A mesma lista alimenta o
-// indicador de perfil completo (Meu Cultivo) e o lembrete no início do chat.
+// Itens do cultivo (Meus Cultivos) que mais mudam uma recomendação de rotação. A mesma lista alimenta o
+// indicador de perfil completo (Meus Cultivos) e o lembrete no início do chat.
 export const ITENS_DO_PERFIL = [
     { chave: 'localizacao', rotulo: 'cidade e estado', preenchido: (p) => Boolean(p?.cidade && p?.estado) },
     { chave: 'solo', rotulo: 'tipo de solo', preenchido: (p) => Boolean(p?.tipoSolo) },
@@ -11,6 +11,15 @@ export const ITENS_DO_PERFIL = [
 ];
 
 export const itensFaltando = (p) => ITENS_DO_PERFIL.filter((i) => !i.preenchido(p));
+
+// Tamanho da área: o formulário grava só o número de hectares; perfis antigos têm texto ("12 hectares").
+export const tamanhoEmTexto = (t) => {
+    const texto = String(t ?? '').trim();
+    return /^\d+([.,]\d+)?$/.test(texto) ? `${texto} ha` : texto;
+};
+
+// Nome do cultivo para mostrar (Meus Cultivos). Os perfis de antes de 30/10/2026 não têm nome.
+export const nomeDoCultivo = (c) => c?.nome?.trim() || (c?.cidade ? `Cultivo em ${c.cidade}` : 'Meu cultivo');
 
 // Culturas como opções clicáveis: digitadas à mão, "milho", "Milho" e "milho " viravam
 // três culturas diferentes.

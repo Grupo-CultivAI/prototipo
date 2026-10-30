@@ -23,5 +23,5 @@ export async function proxy(req: NextRequest) {
 
 // Páginas logadas. O Next exige a lista escrita literalmente (nada calculado).
 export const config = {
-    matcher: ['/painel/:path*', '/chatbot/:path*', '/perfil-propriedade/:path*', '/conta/:path*'],
+    matcher: ['/painel/:path*', '/chatbot/:path*', '/meus-cultivos/:path*', '/perfil-propriedade/:path*', '/conta/:path*'],
 };

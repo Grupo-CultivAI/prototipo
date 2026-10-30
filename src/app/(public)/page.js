@@ -26,7 +26,7 @@ const RECURSOS = [
 
 const PASSOS = [
   { icone: UserPlus, titulo: "Crie sua conta", texto: "Só nome, email e senha. É gratuito." },
-  { icone: ClipboardList, titulo: "Conte sobre a sua área", texto: "No Meu Cultivo: cidade, tipo de solo e as culturas dos últimos anos. Leva poucos minutos." },
+  { icone: ClipboardList, titulo: "Conte sobre a sua área", texto: "Em Meus Cultivos, cadastre cada área: cidade, tipo de solo e as culturas dos últimos anos. Leva poucos minutos." },
   { icone: MessageCircle, titulo: "Pergunte", texto: "\"O que plantar depois do milho?\", \"Quando planto feijão?\". Escreva ou fale, do jeito que preferir." },
 ];
 
@@ -34,7 +34,7 @@ const PERGUNTAS = [
   { p: "O CultivAI é pago?", r: "Não. É gratuito, sem anúncios. Cada pessoa pode fazer até 40 perguntas por dia." },
   { p: "Preciso entender de tecnologia?", r: "Não. Funciona no navegador do celular ou do computador, como uma conversa." },
   { p: "As respostas substituem a assistência técnica?", r: "Não. O CultivAI é uma ferramenta de apoio à tomada de decisão: ajuda a planejar e tirar dúvidas, mas não substitui os profissionais da área. Decisões importantes devem ser confirmadas com a assistência técnica, como a Emater, ou com um engenheiro agrônomo." },
-  { p: "O que acontece com os meus dados?", r: "Os dados da sua propriedade servem só para personalizar as respostas. Você pode corrigir ou apagar tudo quando quiser, e excluir a conta a qualquer momento." },
+  { p: "O que acontece com os meus dados?", r: "Os dados dos seus cultivos servem só para personalizar as respostas. Você pode corrigir ou apagar tudo quando quiser, e excluir a conta a qualquer momento." },
 ];
 
 export default async function Inicio() {

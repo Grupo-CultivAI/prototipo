@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 
-export default function DynamicForm({ data, onSubmit, onSkip, submittedData }) {
+// salvar: grava o dado no cultivo da conversa (o chat sabe qual é).
+export default function DynamicForm({ data, onSubmit, onSkip, submittedData, salvar }) {
     const [formData, setFormData] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -12,27 +13,19 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Campos "lista" (ex.: culturas) são gravados no perfil como lista, igual ao Meu Cultivo
+        // Campos "lista" (ex.: culturas) são gravados no cultivo como lista, igual a Meus Cultivos
         const paraSalvar = { ...formData };
         for (const campo of data?.campos_necessarios || []) {
             if (campo.tipo === 'lista' && typeof paraSalvar[campo.chave] === 'string') {
                 paraSalvar[campo.chave] = paraSalvar[campo.chave].split(',').map(c => c.trim()).filter(Boolean);
             }
         }
+        // A conversa segue mesmo se a gravação falhar: a resposta usa o que a pessoa informou.
         try {
-            const response = await fetch('/api/propriedade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(paraSalvar)
-            });
-            if (response.ok) {
-                onSubmit(formData);
-            } else {
-                onSubmit(formData);
-            }
+            await salvar?.(paraSalvar);
         } catch (error) {
-            onSubmit(formData);
         } finally {
+            onSubmit(formData);
             setIsSubmitting(false);
         }
     };

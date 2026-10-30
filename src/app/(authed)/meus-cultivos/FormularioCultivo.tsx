@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, Sprout, History, Target, ChevronDown, ChevronUp, Droplets, FlaskConical, AlertCircle, Info } from 'lucide-react';
+import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft } from 'lucide-react';
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, normalizarCultura, semRepetir, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
@@ -12,7 +13,7 @@ import BuscaCidade from '@/components/BuscaCidade';
 const SEM_PROBLEMAS = 'Nenhum';
 
 const VALORES_INICIAIS: PerfilFormulario = {
-    tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', codigoMunicipio: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
+    nome: '', tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', codigoMunicipio: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
     drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
     usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
     proximaCultura: '', observacoes: ''
@@ -63,32 +64,33 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
     );
 }
 
-export default function PerfilPropriedade() {
+// Formulário de um cultivo de Meus Cultivos: sem id, cadastra um novo (/meus-cultivos/novo);
+// com id, edita (/meus-cultivos/[id]).
+export default function FormularioCultivo({ id }: { id?: string }) {
     const router = useRouter();
     const [openSection, setOpenSection] = useState<string>('localizacao');
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [novaCultura, setNovaCultura] = useState('');
     const [confirmandoApagar, setConfirmandoApagar] = useState(false);
+    const [naoEncontrado, setNaoEncontrado] = useState(false);
 
     const [statusCep, setStatusCep] = useState('');
 
-    const { register, handleSubmit, setValue, watch, control, reset, formState: { errors, isSubmitted } } = useForm<PerfilFormulario, unknown, PerfilValidado>({
+    const { register, handleSubmit, setValue, control, formState: { errors, isSubmitted } } = useForm<PerfilFormulario, unknown, PerfilValidado>({
         resolver: zodResolver(formularioPerfilSchema),
         defaultValues: VALORES_INICIAIS
     });
 
-    // "Apagar dados da propriedade": some o perfil, a conta e as conversas continuam.
-    const apagarDados = async () => {
+    // Some o cultivo; a conta e as conversas continuam (as conversas sobre ele viram gerais).
+    const excluirCultivo = async () => {
         setSaving(true);
         try {
-            const res = await fetch('/api/propriedade', { method: 'DELETE' });
+            const res = await fetch(`/api/cultivos/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error();
-            reset(VALORES_INICIAIS);
-            setMessage('Dados da propriedade apagados.');
+            router.push('/meus-cultivos?excluido=1');
         } catch {
-            setMessage('Não foi possível apagar os dados. Tente de novo.');
-        } finally {
+            setMessage('Não foi possível excluir o cultivo. Tente de novo.');
             setSaving(false);
             setConfirmandoApagar(false);
         }
@@ -136,50 +138,51 @@ export default function PerfilPropriedade() {
     };
 
     useEffect(() => {
-        async function loadProfile() {
+        if (!id) return;
+        async function carregarCultivo() {
             try {
-                const res = await fetch('/api/propriedade');
+                const res = await fetch(`/api/cultivos/${id}`);
+                if (res.status === 404) { setNaoEncontrado(true); return; }
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.propriedade) {
-                        const p = data.propriedade;
-                        Object.keys(p).forEach(key => {
-                            if (p[key] !== undefined && key !== 'coordenadas') {
-                                setValue(key as any, p[key]);
-                            }
-                        });
-                        setValue('culturasHistorico', semRepetir(p.culturasHistorico));
-                    }
+                    const p = (await res.json()).cultivo;
+                    Object.keys(VALORES_INICIAIS).forEach((key) => {
+                        if (p[key] !== undefined && p[key] !== null) setValue(key as any, p[key]);
+                    });
+                    setValue('culturasHistorico', semRepetir(p.culturasHistorico));
                 }
             } catch (err) { }
         }
-        loadProfile();
-    }, [setValue]);
+        carregarCultivo();
+    }, [id, setValue]);
 
-    // pedirAnalise: o chat abre e já envia a primeira pergunta (gasta uma do limite diário).
+    // pedirAnalise: o chat abre sobre este cultivo e já envia a primeira pergunta (gasta uma do limite diário).
     const onSubmit = async (data: PerfilValidado, pedirAnalise: boolean) => {
         setSaving(true);
         setMessage('');
         try {
             const submissionData = { ...data, culturasHistorico: semRepetir(data.culturasHistorico) };
 
-            const res = await fetch('/api/propriedade', {
-                method: 'POST',
+            const res = await fetch(id ? `/api/cultivos/${id}` : '/api/cultivos', {
+                method: id ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(submissionData)
             });
-            if (res.ok && pedirAnalise) {
-                setMessage('Dados salvos! Abrindo o chat com uma primeira análise da sua área...');
+            const resposta = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setMessage(resposta.message || 'Não foi possível registrar as alterações.');
+                setSaving(false);
+                return;
+            }
+            const cultivoId = id ?? resposta.cultivo?._id;
+            if (pedirAnalise) {
+                setMessage('Dados salvos! Abrindo o chat com uma primeira análise deste cultivo...');
                 try { sessionStorage.setItem(CHAVE_PEDIR_ANALISE, '1'); } catch { }
-                setTimeout(() => router.push('/chatbot'), 1200);
-            } else if (res.ok) {
-                setMessage('Dados salvos.');
+                setTimeout(() => router.push(`/chatbot?cultivo=${cultivoId}`), 1200);
             } else {
-                setMessage('Não foi possível registrar as alterações.');
+                router.push('/meus-cultivos?salvo=1');
             }
         } catch (err) {
             setMessage('Sem resposta do servidor.');
-        } finally {
             setSaving(false);
         }
     };
@@ -192,12 +195,34 @@ export default function PerfilPropriedade() {
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
     const errorStyle = { color: '#EF4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
 
+    if (naoEncontrado) {
+        return (
+            <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
+                <Link href="/meus-cultivos" className={styles.voltar}><ArrowLeft size={16} aria-hidden="true" /> Meus Cultivos</Link>
+                <h1 className={styles.tituloPagina} style={{ fontWeight: '800', color: 'var(--primary-dark)' }}>Cultivo não encontrado</h1>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '0.8rem' }}>Ele pode ter sido excluído. Volte para Meus Cultivos para ver os seus cultivos.</p>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto', paddingBottom: '4rem' }}>
-            <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>Meu Cultivo</h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '3.5rem', fontSize: '1.1rem', maxWidth: '650px', lineHeight: '1.6' }}>
-                Complete os dados da sua área abaixo para que a Inteligência Artificial possa fornecer diagnósticos precisos e planos direcionados à sua realidade.
+            <Link href="/meus-cultivos" className={styles.voltar}><ArrowLeft size={16} aria-hidden="true" /> Meus Cultivos</Link>
+            <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>
+                {id ? (valores.nome?.trim() || 'Editar cultivo') : 'Novo cultivo'}
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', fontSize: '1.1rem', maxWidth: '650px', lineHeight: '1.6' }}>
+                Um cultivo é cada área que você planta: um sítio, um talhão, um lote. Quanto mais completo, mais as respostas do assistente levam em conta a realidade dessa área.
             </p>
+
+            <div className={styles.progressoPerfil}>
+                <label htmlFor="nome-cultivo" style={labelStyle}>Nome do cultivo *</label>
+                <input id="nome-cultivo" placeholder="Ex.: Sítio Boa Vista, talhão do fundo" maxLength={60} {...register('nome')} style={inputStyle} />
+                {errors.nome && <span style={errorStyle}>{errors.nome.message}</span>}
+                <span style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    É o nome que aparece na lista, no Painel e no chat, para você saber de qual área está falando.
+                </span>
+            </div>
 
             <div className={styles.progressoPerfil}>
                 <strong style={{ color: 'var(--primary-dark)' }}>
@@ -247,7 +272,7 @@ export default function PerfilPropriedade() {
                                 {errors.cidade && <span style={errorStyle}>{errors.cidade.message}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Tamanho da Propriedade (Hectares)</label>
+                                <label style={labelStyle}>Tamanho da área (hectares)</label>
                                 <input type="number" placeholder="Ex: 50" {...register('tamanho')} style={inputStyle} />
                             </div>
                         </div>
@@ -434,7 +459,7 @@ export default function PerfilPropriedade() {
                     <div className={styles.acoesFormulario}>
                         <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false))}
                             style={{ background: 'transparent', color: 'var(--primary-dark)', padding: '1.1rem 2rem', borderRadius: '100px', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '700', fontSize: '1rem', opacity: saving ? 0.7 : 1 }}>
-                            Só salvar
+                            {id ? 'Salvar' : 'Cadastrar'}
                         </button>
                         <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, true))}
                             style={{ background: 'var(--primary)', color: 'var(--white)', padding: '1.25rem 2.5rem', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1.05rem', transition: 'all 0.3s', opacity: saving ? 0.7 : 1, boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)' }}>
@@ -444,18 +469,18 @@ export default function PerfilPropriedade() {
                 </div>
             </form>
 
-            <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+            {id && <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                 {!confirmandoApagar ? (
                     <button type="button" onClick={() => setConfirmandoApagar(true)}
                         style={{ background: 'none', border: 'none', padding: 0, color: '#B91C1C', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem' }}>
-                        Apagar dados da propriedade
+                        Excluir este cultivo
                     </button>
                 ) : (
-                    <div role="group" aria-label="Confirmar exclusão dos dados da propriedade" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-                        <span>Apagar tudo o que foi preenchido no Meu Cultivo? Sua conta e suas conversas continuam.</span>
-                        <button type="button" onClick={apagarDados} disabled={saving}
+                    <div role="group" aria-label="Confirmar exclusão do cultivo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                        <span>Excluir este cultivo? Sua conta e suas conversas continuam.</span>
+                        <button type="button" onClick={excluirCultivo} disabled={saving}
                             style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: 'none', background: '#DC2626', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
-                            Apagar
+                            Excluir
                         </button>
                         <button type="button" onClick={() => setConfirmandoApagar(false)}
                             style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
@@ -463,7 +488,7 @@ export default function PerfilPropriedade() {
                         </button>
                     </div>
                 )}
-            </div>
+            </div>}
         </div>
     );
 }

@@ -12,7 +12,7 @@
 }
 
 /* O main é flex centralizado (globals.css): sem largura explícita, o contêiner encolhia até
-   o conteúdo, e o Meu Cultivo mudava de largura ao abrir e fechar cada bloco. */
+   o conteúdo, e o formulário do cultivo mudava de largura ao abrir e fechar cada bloco. */
 .container {
     width: 100%;
 }
@@ -126,7 +126,7 @@
     text-decoration: underline;
 }
 
-/* --- Busca de cidade no Meu Cultivo (components/BuscaCidade.jsx) --- */
+/* --- Busca de cidade no formulário do cultivo (components/BuscaCidade.jsx) --- */
 .buscaCidade {
     position: relative;
 }
@@ -363,7 +363,7 @@
     text-decoration: underline;
 }
 
-/* --- Meu Cultivo: opções clicáveis (culturas, próxima cultura) --- */
+/* --- Formulário do cultivo: opções clicáveis (culturas, próxima cultura) --- */
 .opcoes {
     display: flex;
     flex-wrap: wrap;
@@ -386,7 +386,7 @@
     color: white;
 }
 
-/* Indicador de perfil completo, no topo do Meu Cultivo */
+/* Indicador de perfil completo, no topo do formulário do cultivo */
 .progressoPerfil {
     margin-bottom: 2rem;
     padding: 1rem 1.25rem;
@@ -691,4 +691,57 @@
         border: 1px solid #bbb !important;
         box-shadow: none !important;
     }
+}
+
+/* --- Meus Cultivos: link de volta para a lista, no topo do formulário --- */
+.voltar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    color: var(--primary-dark);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.voltar:hover {
+    text-decoration: underline;
+}
+
+/* --- Chat: de qual cultivo a conversa trata --- */
+.seletorCultivo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.seletorCultivo > svg {
+    color: var(--primary);
+}
+
+.seletorCultivo label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.seletorCultivo select {
+    max-width: 16rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--primary-dark);
+    font: inherit;
+    font-weight: 600;
+}
+
+.seletorCultivo a {
+    color: var(--primary-dark);
+    font-weight: 600;
 }

@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import ContadorPerguntas from "@/components/ContadorPerguntas";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
-import { itensFaltando, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
+import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
 // Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
 // fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
@@ -78,7 +78,7 @@ async function copiarTexto(texto) {
 // as mensagens de erro não têm id.
 const respostaGravada = (msg) => msg.sender === "bot" && /^[a-f0-9]{24}$/.test(String(msg.id));
 
-// Atalhos para a primeira pergunta, montados com o que o produtor contou no Meu Cultivo.
+// Atalhos para a primeira pergunta, montados com o que o produtor contou sobre o cultivo.
 function sugestoesDePergunta(p) {
   const cultura = (p?.culturasHistorico || []).find((c) => c && c !== "Nenhum");
   const lugar = p?.cidade ? ` em ${p.cidade}` : "";
@@ -92,7 +92,11 @@ function sugestoesDePergunta(p) {
   ];
 }
 
-const SAUDACAO = "Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?";
+// O cultivo da conversa. Sem cultivo e com um só cadastrado, a conversa é sobre ele (o servidor
+// faz o mesmo, em lib/cultivos.ts).
+const cultivoDe = (propriedadeId, lista) => propriedadeId ?? (lista.length === 1 ? lista[0]._id : null);
+
+const SAUDACAO ="Olá! Sou o CultivAI, seu assistente agrícola especializado. Como posso ajudar nas suas colheitas hoje?";
 const conversaNova = () => [{ id: crypto.randomUUID(), text: SAUDACAO, sender: "bot" }];
 
 // "hoje", "ontem" ou a data, para a lista de conversas.
@@ -156,7 +160,10 @@ export default function ChatCultivAI() {
   const router = useRouter();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [propriedade, setPropriedade] = useState(null);
+  // Meus Cultivos: a conversa é sobre um deles (o perfil dele vai para a IA) ou geral.
+  const [cultivos, setCultivos] = useState([]);
+  const [cultivoId, setCultivoId] = useState(null);
+  const propriedade = cultivos.find((c) => c._id === cultivoId) ?? null;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -186,9 +193,11 @@ export default function ChatCultivAI() {
       // Links do Painel: ?conversa= abre uma conversa recente; ?pergunta= deixa uma pergunta
       // sugerida pronta no campo (a pessoa decide se envia). Lidos antes de qualquer espera:
       // em desenvolvimento o efeito roda duas vezes, e a segunda ainda precisa encontrá-los.
+      // ?cultivo= (Meus Cultivos, "Perguntar sobre este cultivo") abre uma conversa sobre ele.
       const parametros = new URLSearchParams(window.location.search);
       const conversaDoLink = parametros.get("conversa");
       const perguntaDoLink = parametros.get("pergunta");
+      const cultivoDoLink = parametros.get("cultivo");
       try {
         const resUser = await fetch('/api/user');
         if (resUser.ok) {
@@ -199,18 +208,22 @@ export default function ChatCultivAI() {
           return;
         }
 
-        const resProp = await fetch('/api/propriedade');
-        if (resProp.ok) {
-          const dataP = await resProp.json();
-          setPropriedade(dataP.propriedade);
-        }
+        const resCultivos = await fetch('/api/cultivos');
+        const lista = resCultivos.ok ? (await resCultivos.json()).cultivos ?? [] : [];
+        setCultivos(lista);
 
-        const aberta = conversaDoLink || lerConversaAberta();
+        // A conversa vazia mais recente é reaproveitada (POST /api/conversas), então rodar duas
+        // vezes em desenvolvimento não cria duas conversas.
+        let aberta = conversaDoLink || lerConversaAberta();
+        if (cultivoDoLink && !conversaDoLink) {
+          const r = await fetch('/api/conversas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ propriedadeId: cultivoDoLink }) });
+          if (r.ok) aberta = (await r.json()).conversaId;
+        }
         const resHistory = await fetch(`/api/chat/history${aberta ? `?conversa=${encodeURIComponent(aberta)}` : ""}`);
         // Uma carga que ficou para trás (a página foi montada de novo, o que o React faz em
         // desenvolvimento) não pode sobrescrever a conversa nem consumir a marca de análise.
         if (!ativo) return;
-        if (conversaDoLink || perguntaDoLink) window.history.replaceState(null, "", "/chatbot");
+        if (conversaDoLink || perguntaDoLink || cultivoDoLink) window.history.replaceState(null, "", "/chatbot");
         if (perguntaDoLink) setInputValue(perguntaDoLink.slice(0, 500));
         if (resHistory.ok) {
           const dataH = await resHistory.json();
@@ -218,6 +231,7 @@ export default function ChatCultivAI() {
           if (typeof dataH.restantesHoje === "number") setRestantes(dataH.restantesHoje);
           if (typeof dataH.limiteDiario === "number") setLimiteDiario(dataH.limiteDiario);
           setConversaId(dataH.conversaId ?? null);
+          setCultivoId(cultivoDe(dataH.propriedadeId, lista));
           if (dataH.history && dataH.history.length > 0) {
             setMessages(dataH.history);
           } else {
@@ -225,7 +239,7 @@ export default function ChatCultivAI() {
           }
         }
 
-        // "Salvar e pedir análise" no Meu Cultivo: a primeira pergunta sai sozinha. A marca é
+        // "Salvar e pedir análise" no formulário do cultivo: a primeira pergunta sai sozinha. A marca é
         // removida antes de enviar, para não repetir ao recarregar.
         let pedirAnalise = false;
         try {
@@ -327,26 +341,33 @@ export default function ChatCultivAI() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.message);
       setConversaId(d.conversaId ?? null);
+      setCultivoId(cultivoDe(d.propriedadeId, cultivos));
       setMessages(d.history?.length ? d.history : conversaNova());
     } catch (err) {
       console.error("Erro ao abrir conversa", err);
     }
   };
 
-  // Começa do zero sem apagar nada: a conversa anterior fica guardada no banco.
-  const novaConversa = async () => {
+  // Começa do zero sem apagar nada: a conversa anterior fica guardada no banco. A nova é sobre
+  // o cultivo escolhido (o mesmo de agora, ou outro, pela escolha no topo); null = geral.
+  const novaConversa = async (sobre = cultivoId) => {
     try {
-      const r = await fetch('/api/conversas', { method: 'POST' });
+      const r = await fetch('/api/conversas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ propriedadeId: sobre }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message);
       setListaAberta(false);
       pararFala();
+      if (d.conversaId !== conversaId) setMessages(conversaNova());
       setConversaId(d.conversaId);
-      setMessages(conversaNova());
+      setCultivoId(sobre);
     } catch (err) {
       console.error("Erro ao abrir nova conversa", err);
     }
   };
+
+  // Trocar o cultivo no topo: a conversa vazia passa a ser sobre o outro; a que já tem perguntas
+  // fica guardada e começa uma nova, para o contexto de um cultivo não se misturar com o do outro.
+  const trocarCultivo = (id) => novaConversa(id || null);
 
   const apagarConversa = async () => {
     if (!confirm("Apagar esta conversa? As mensagens dela não poderão ser recuperadas.")) return;
@@ -356,6 +377,7 @@ export default function ChatCultivAI() {
       setListaAberta(false);
       pararFala();
       setConversaId(d.conversaId ?? null);
+      setCultivoId(cultivoDe(d.propriedadeId, cultivos));
       setMessages(conversaNova());
     } catch (err) {
       console.error("Erro ao apagar conversa", err);
@@ -433,12 +455,25 @@ export default function ChatCultivAI() {
   // A carga inicial roda antes desta linha existir; ela chama o envio por esta ref.
   useEffect(() => { enviarRef.current = handleSendMessage; });
 
+  // O formulário do chat grava o dado no cultivo da conversa; quem ainda não tem cultivo ganha um
+  // (e a conversa passa a ser sobre ele, já que é o único).
+  const salvarNoCultivo = async (dados) => {
+    const r = await fetch(cultivoId ? `/api/cultivos/${cultivoId}` : '/api/cultivos', {
+      method: cultivoId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados)
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.cultivo) return;
+    setCultivos((lista) => cultivoId ? lista.map((c) => (c._id === d.cultivo._id ? d.cultivo : c)) : [...lista, d.cultivo]);
+    setCultivoId(d.cultivo._id);
+  };
+
   const handleFormSubmit = async (formData, msgId, form) => {
     // Remove form from the bot message
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
 
     const newPropState = { ...propriedade, ...formData };
-    setPropriedade(newPropState);
 
     // Resumo com os rótulos do formulário ("Tipo de solo: Arenoso"), não as chaves do banco
     const resumo = {};
@@ -517,6 +552,22 @@ export default function ChatCultivAI() {
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
           {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
+          {/* De qual cultivo a conversa trata: o perfil dele vai para a IA */}
+          <div className={styles.seletorCultivo}>
+            <Sprout size={15} aria-hidden="true" />
+            {cultivos.length > 0 ? (
+              <label>
+                <span>Sobre:</span>
+                <select value={cultivoId ?? ""} onChange={(e) => trocarCultivo(e.target.value)}
+                  title="Se a conversa já tiver perguntas, trocar o cultivo começa uma conversa nova">
+                  {cultivos.map((c) => <option key={c._id} value={c._id}>{nomeDoCultivo(c)}</option>)}
+                  <option value="">Pergunta geral (nenhum cultivo)</option>
+                </select>
+              </label>
+            ) : (
+              <span>Conversa geral. <Link href="/meus-cultivos/novo">Cadastre um cultivo</Link> para respostas sobre a sua área.</span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button
@@ -530,7 +581,7 @@ export default function ChatCultivAI() {
             <span className={styles.rotuloBotao}>Conversas</span>
           </button>
           <button
-            onClick={novaConversa}
+            onClick={() => novaConversa()}
             title="Começar uma conversa nova. Esta fica guardada."
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
           >
@@ -581,7 +632,7 @@ export default function ChatCultivAI() {
                   <button type="button" onClick={() => abrirConversa(c.id)} aria-current={c.id === conversaId ? "true" : undefined}>
                     <span className={styles.tituloConversa}>{c.titulo}</span>
                     <span className={styles.detalheConversa}>
-                      {quando(c.ultimaMensagemEm)} · {c.perguntas} {c.perguntas === 1 ? "pergunta" : "perguntas"}
+                      {quando(c.ultimaMensagemEm)} · {c.perguntas} {c.perguntas === 1 ? "pergunta" : "perguntas"}{c.cultivo ? ` · ${c.cultivo}` : ""}
                     </span>
                   </button>
                 </li>
@@ -653,6 +704,7 @@ export default function ChatCultivAI() {
               {msg.form && (
                 <DynamicForm 
                   data={msg.form} 
+                  salvar={salvarNoCultivo}
                   onSubmit={(data) => handleFormSubmit(data, msg.id, msg.form)}
                   onSkip={() => handleFormSkip(msg.id)} 
                 />
@@ -689,12 +741,18 @@ export default function ChatCultivAI() {
             </div>
           </div>
         ))}
-        {conversaVazia && faltando.length > 0 && (
+        {conversaVazia && (propriedade ? faltando.length > 0 : true) && (
           <div className={styles.lembretePerfil}>
-            <Lightbulb size={16} aria-hidden="true" className={styles.iconeLembrete} /> {propriedade
-              ? `Para respostas mais certeiras, complete no Meu Cultivo: ${faltando.slice(0, 3).map((i) => i.rotulo).join(", ")}${faltando.length > 3 ? ` e mais ${faltando.length - 3}` : ""}.`
-              : "Preencha o Meu Cultivo para receber respostas pensadas para a sua área."}{" "}
-            <Link href="/perfil-propriedade">{propriedade ? "Completar perfil" : "Preencher agora"}</Link>
+            <Lightbulb size={16} aria-hidden="true" className={styles.iconeLembrete} /> {propriedade ? (
+              <>
+                Para respostas mais certeiras, complete o cultivo {nomeDoCultivo(propriedade)}: {faltando.slice(0, 3).map((i) => i.rotulo).join(", ")}{faltando.length > 3 ? ` e mais ${faltando.length - 3}` : ""}.{" "}
+                <Link href={`/meus-cultivos/${propriedade._id}`}>Completar cultivo</Link>
+              </>
+            ) : cultivos.length > 0 ? (
+              "Esta conversa é geral. Para falar de uma das suas áreas, escolha o cultivo no topo."
+            ) : (
+              <>Cadastre seu cultivo para receber respostas pensadas para a sua área. <Link href="/meus-cultivos/novo">Cadastrar agora</Link></>
+            )}
           </div>
         )}
         {conversaVazia && (

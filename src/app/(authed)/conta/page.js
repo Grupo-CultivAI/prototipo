@@ -113,7 +113,7 @@ export default function Conta() {
             <section className={styles.cartaoConta} style={{ marginTop: '2rem', background: 'var(--surface)', borderRadius: '24px', border: '1px solid rgba(220, 38, 38, 0.3)' }}>
                 <h2 style={{ fontSize: '1.2rem', color: '#B91C1C', marginBottom: '0.5rem' }}>Excluir minha conta</h2>
                 <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                    Apaga a sua conta e tudo o que está guardado nela: os dados do Meu Cultivo, as conversas e as avaliações. Não dá para desfazer.
+                    Apaga a sua conta e tudo o que está guardado nela: os seus cultivos, as conversas e as avaliações. Não dá para desfazer.
                 </p>
                 {!excluindo ? (
                     <button type="button" onClick={() => setExcluindo(true)}

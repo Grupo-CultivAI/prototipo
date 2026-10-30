@@ -12,7 +12,7 @@ import styles from './Sidebar.module.css';
 const LINKS = [
     { href: '/painel', icone: House, rotulo: 'Início' },
     { href: '/chatbot', icone: MessageCircle, rotulo: 'Assistente AI' },
-    { href: '/perfil-propriedade', icone: Sprout, rotulo: 'Meu Cultivo' },
+    { href: '/meus-cultivos', icone: Sprout, rotulo: 'Meus Cultivos' },
     { href: '/conta', icone: CircleUser, rotulo: 'Minha Conta' },
 ];
 
@@ -41,7 +41,7 @@ export default function Sidebar() {
 
             <nav className={styles.nav}>
                 {LINKS.map(({ href, icone: Icone, rotulo }) => (
-                    <Link key={href} href={href} className={`${styles.link} ${pathname === href ? styles.ativo : ''}`}>
+                    <Link key={href} href={href} className={`${styles.link} ${pathname === href || pathname.startsWith(`${href}/`) ? styles.ativo : ''}`}>
                         <Icone size={20} aria-hidden="true" className={styles.icone} /> <span className={styles.rotulo}>{rotulo}</span>
                     </Link>
                 ))}

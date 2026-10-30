@@ -55,7 +55,7 @@ export async function GET(req) {
             avaliacao: msg.metadata?.avaliacao
         }));
 
-        return NextResponse.json({ success: true, history: formattedHistory, restantesHoje, limiteDiario: LIMITE_POR_DIA, conversaId: conversa?._id ?? null });
+        return NextResponse.json({ success: true, history: formattedHistory, restantesHoje, limiteDiario: LIMITE_POR_DIA, conversaId: conversa?._id ?? null, propriedadeId: conversa?.propriedadeId ?? null });
     } catch (error) {
         console.error("Erro ao buscar histórico:", error);
         return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
@@ -80,9 +80,10 @@ export async function DELETE(req) {
         );
         await ChatMessage.deleteMany({ conversaId: conversa._id, $or: [{ sender: 'bot' }, { createdAt: { $lt: desde } }] });
         await Conversa.deleteOne({ _id: conversa._id });
-        const nova = await Conversa.create({ userId });
+        // A conversa nova continua sobre o mesmo cultivo
+        const nova = await Conversa.create({ userId, propriedadeId: conversa.propriedadeId ?? null });
 
-        return NextResponse.json({ success: true, message: 'Conversa apagada', conversaId: nova._id });
+        return NextResponse.json({ success: true, message: 'Conversa apagada', conversaId: nova._id, propriedadeId: nova.propriedadeId });
     } catch (error) {
         console.error("Erro ao apagar histórico:", error);
         return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });

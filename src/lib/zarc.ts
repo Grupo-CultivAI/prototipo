@@ -69,7 +69,20 @@ function filtroDoMunicipio(propriedade: any) {
     return /^\d{7}$/.test(codigo) ? { _id: codigo } : { uf, busca: cidade };
 }
 
-const culturasDoPerfil = (propriedade: any): string[] => [propriedade?.proximaCultura, ...(propriedade?.culturasHistorico ?? [])]
+// Código do IBGE do município do perfil: o gravado, ou o do ZARC achado pelo nome (perfis antigos).
+export async function codigoDoMunicipio(propriedade: any): Promise<string | null> {
+    const filtro = filtroDoMunicipio(propriedade);
+    if (!filtro) return null;
+    if ('_id' in filtro) return filtro._id ?? null;
+    try {
+        const municipio = await ZarcMunicipio.findOne(filtro).select('_id').lean<{ _id: string }>();
+        return municipio?._id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+const culturasDoPerfil =(propriedade: any): string[] => [propriedade?.proximaCultura, ...(propriedade?.culturasHistorico ?? [])]
     .filter((c) => c && c !== 'Nenhum' && c !== 'Ainda não decidi');
 
 // Culturas do ZARC que correspondem a um nome ("Milho" → Milho 1ª Safra, Milho 2ª Safra...).
@@ -96,9 +109,9 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
             if (!(await ZarcMunicipio.estimatedDocumentCount())) return null;
             const nome = `${String(propriedade.cidade).trim()}/${uf}`;
             return {
-                paraIA: `A cidade "${nome}" do perfil não foi encontrada entre os municípios do ZARC. Peça ao produtor para conferir o nome da cidade no Meu Cultivo; não diga que a cultura não tem janela.`,
+                paraIA: `A cidade "${nome}" do perfil não foi encontrada entre os municípios do ZARC. Peça ao produtor para conferir a cidade do cultivo em Meus Cultivos; não diga que a cultura não tem janela.`,
                 linhas: [],
-                aviso: `Não encontramos "${nome}" entre os municípios do ZARC. Confira o nome da cidade no Meu Cultivo.`,
+                aviso: `Não encontramos "${nome}" entre os municípios do ZARC. Confira a cidade do cultivo em Meus Cultivos.`,
             };
         }
 

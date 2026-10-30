@@ -1,0 +1,335 @@
+/* Meus Cultivos (src/app/(authed)/meus-cultivos/page.js) */
+.pagina {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-bottom: 2rem;
+    color: var(--text-primary);
+}
+
+.pagina h1,
+.pagina h2 {
+    font-family: var(--font-title), sans-serif;
+    color: var(--primary-dark);
+}
+
+/* --- Cabeçalho --- */
+.cabecalho {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cabecalho h1 {
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    line-height: 1.15;
+}
+
+.cabecalho p {
+    max-width: 38rem;
+    margin-top: 0.4rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.botaoPrincipal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.3rem;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.25);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.botaoPrincipal:hover,
+.botaoPrincipal:focus-visible {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.aviso {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--primary);
+    border-radius: 12px;
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* --- Sem cultivos --- */
+.vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    text-align: center;
+    color: var(--primary);
+}
+
+.vazio h2 {
+    font-size: 1.3rem;
+}
+
+.vazio p {
+    max-width: 34rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+/* --- Cartões --- */
+.lista {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    list-style: none;
+}
+
+.cartao {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-width: 0;
+    padding: 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.cartaoTopo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cartaoTopo h2 {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.local {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.detalhes {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.culturas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+}
+
+.culturas li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    font-size: 0.85rem;
+}
+
+.culturas .proxima {
+    border-color: var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.epoca {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.epoca svg {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    color: var(--primary);
+}
+
+.epoca ul {
+    display: grid;
+    gap: 0.15rem;
+    list-style: none;
+}
+
+.epoca strong {
+    color: var(--text-primary);
+}
+
+.epoca .agora {
+    color: #15803D;
+    font-weight: 600;
+}
+
+.perfil {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.barra {
+    display: block;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.barra span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+}
+
+/* --- Ações --- */
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+}
+
+.acao,
+.acaoPrincipal,
+.acaoPerigo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.acao:hover,
+.acao:focus-visible {
+    background: var(--bg);
+}
+
+.acaoPrincipal {
+    border-color: var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+}
+
+.acaoPrincipal:hover,
+.acaoPrincipal:focus-visible {
+    background: rgba(22, 163, 74, 0.16);
+}
+
+.acaoPerigo {
+    border-color: transparent;
+    color: #B91C1C;
+}
+
+.acaoPerigo:hover,
+.acaoPerigo:focus-visible {
+    background: #FEF2F2;
+}
+
+.conversas {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.confirmar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    font-size: 0.85rem;
+}
+
+.botaoPerigo {
+    padding: 0.5rem 0.85rem;
+    border: none;
+    border-radius: 10px;
+    background: #DC2626;
+    color: #fff;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.erro {
+    width: 100%;
+    color: #B91C1C;
+}
+
+@media (max-width: 900px) {
+    .lista {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .pagina {
+        gap: 1rem;
+    }
+
+    .cartao {
+        padding: 1.1rem;
+    }
+
+    .botaoPrincipal {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .conversas {
+        margin-left: 0;
+    }
+}

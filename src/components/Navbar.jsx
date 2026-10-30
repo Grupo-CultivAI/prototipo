@@ -23,7 +23,7 @@ export default function Navbar() {
 
   function redefinirFormulario() {
     localStorage.removeItem("cultivAI_user_input")
-    router.push("/perfil-propriedade")
+    router.push("/meus-cultivos")
     setMenuAberto(false)
   }
 
