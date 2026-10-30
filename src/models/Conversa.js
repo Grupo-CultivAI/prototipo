@@ -9,6 +9,13 @@ const ConversaSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    // O cultivo de que a conversa trata: o perfil dele vai para a IA. Sem ele, a conversa é geral
+    // (ou, se a pessoa tem um cultivo só, usa esse; ver lib/cultivos.ts).
+    propriedadeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Propriedade',
+        default: null
+    },
     // Tirado da primeira pergunta, sem chamar a IA
     titulo: { type: String, default: '' },
     perguntas: { type: Number, default: 0 },

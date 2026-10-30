@@ -5,10 +5,10 @@ import { Sprout, MessageCircle, MessagesSquare, ClipboardCheck, MapPin, Calendar
 import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import { LIMITE_POR_DIA, perguntasDeHoje } from '@/lib/limites';
-import { ITENS_DO_PERFIL, itensFaltando } from '@/lib/perfil';
-import { calendarioDePlantio } from '@/lib/zarc';
+import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto } from '@/lib/perfil';
+import { calendarioDePlantio, codigoDoMunicipio } from '@/lib/zarc';
+import { cultivosDoUsuario, nomeDoCultivo } from '@/lib/cultivos';
 import User from '@/models/User';
-import Propriedade from '@/models/Propriedade';
 import Conversa from '@/models/Conversa';
 import ChatMessage from '@/models/ChatMessage';
 import MapaPropriedade from './MapaPropriedade';
@@ -16,8 +16,9 @@ import CalendarioPlantio from './CalendarioPlantio';
 import Previsao from './Previsao';
 import styles from './painel.module.css';
 
-// Painel: a tela de entrada depois do login. Resume a propriedade (mapa, época de plantio,
-// chuva, rotação) e o uso do assistente, e leva ao Meu Cultivo quem ainda não cadastrou nada.
+// Painel: a tela de entrada depois do login. Mostra os cultivos no mapa e, do cultivo escolhido
+// (?cultivo=id; sem ele, o primeiro), a época de plantio, a chuva e a rotação, além do uso do
+// assistente. Leva a Meus Cultivos quem ainda não cadastrou nada.
 
 export const metadata = { title: 'Painel · CultivAI' };
 
@@ -44,7 +45,7 @@ const quando = (data) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/S
 // Atalhos para o chat: a pergunta fica pronta no campo, e a pessoa decide se envia.
 function perguntasSugeridas(p) {
     const lista = [];
-    // O Meu Cultivo guarda as culturas na ordem em que foram marcadas, não por ano.
+    // Meus Cultivos guarda as culturas na ordem em que foram marcadas, não por ano.
     const plantadas = (p?.culturasHistorico ?? []).filter((c) => !SEM_CULTURA.includes(c)).slice(0, 2).map((c) => c.toLowerCase());
     const proxima = SEM_CULTURA.includes(p?.proximaCultura) ? null : p?.proximaCultura;
     if (proxima) lista.push(`Quando é a melhor época para plantar ${proxima.toLowerCase()} na minha cidade?`);
@@ -54,7 +55,8 @@ function perguntasSugeridas(p) {
     return lista.slice(0, 3);
 }
 
-const linkPergunta = (texto) => `/chatbot?pergunta=${encodeURIComponent(texto)}`;
+// A conversa aberta pelo atalho é sobre o cultivo escolhido no Painel.
+const linkPergunta = (texto, cultivoId) => `/chatbot?pergunta=${encodeURIComponent(texto)}${cultivoId ? `&cultivo=${cultivoId}` : ''}`;
 
 function Cartao({ icone: Icone, titulo, acao, children, className = '' }) {
     return (
@@ -82,14 +84,15 @@ function Numero({ icone: Icone, valor, rotulo, detalhe, progresso }) {
     );
 }
 
-export default async function Painel() {
+export default async function Painel({ searchParams }) {
     const userId = await getUserIdFromToken();
     if (!userId) redirect('/login');
+    const { cultivo: escolhido } = await searchParams;
 
     await dbConnect();
-    const [user, propriedade, totalConversas, totalPerguntas, feitasHoje, recentes] = await Promise.all([
+    const [user, cultivos, totalConversas, totalPerguntas, feitasHoje, recentes] = await Promise.all([
         User.findById(userId).select('nome').lean(),
-        Propriedade.findOne({ userId }).lean(),
+        cultivosDoUsuario(userId),
         Conversa.countDocuments({ userId, perguntas: { $gt: 0 } }),
         ChatMessage.countDocuments({ userId, sender: 'user' }),
         perguntasDeHoje(userId),
@@ -99,15 +102,30 @@ export default async function Painel() {
     // Conta excluída com o cookie ainda válido (ver src/proxy.ts)
     if (!user) redirect('/login');
 
-    const p = propriedade ?? {};
+    const selecionado = cultivos.find((c) => String(c._id) === escolhido) ?? cultivos[0] ?? null;
+    const p = selecionado ?? {};
+    const idSelecionado = selecionado ? String(selecionado._id) : null;
+    const nome = selecionado ? nomeDoCultivo(selecionado) : null;
+    const editar = selecionado ? `/meus-cultivos/${idSelecionado}` : '/meus-cultivos/novo';
+    const totalCulturas = new Set(cultivos.flatMap((c) => (c.culturasHistorico ?? []).filter((x) => !SEM_CULTURA.includes(x)))).size;
     const culturas = (p.culturasHistorico ?? []).filter((c) => !SEM_CULTURA.includes(c));
     const proxima = SEM_CULTURA.includes(p.proximaCultura) ? null : p.proximaCultura || null;
     const temLocal = Boolean(p.cidade && p.estado);
-    const semCadastro = !temLocal && !culturas.length;
+    const semCadastro = cultivos.length === 0;
     const faltando = itensFaltando(p);
     const completo = (ITENS_DO_PERFIL.length - faltando.length) / ITENS_DO_PERFIL.length;
     const restantes = Math.max(0, LIMITE_POR_DIA - feitasHoje);
-    const calendario = temLocal ? await calendarioDePlantio(p) : null;
+    // O mapa mostra todos os cultivos; o código do IBGE dos perfis antigos vem do ZARC, pelo nome.
+    const [calendario, codigos] = await Promise.all([
+        temLocal ? calendarioDePlantio(p) : null,
+        Promise.all(cultivos.map(codigoDoMunicipio)),
+    ]);
+    const pontos = cultivos.map((c, i) => ({ c, codigo: codigos[i] })).filter(({ c }) => c.cidade && c.estado).map(({ c, codigo }) => ({
+        uf: String(c.estado).toUpperCase(),
+        codigo,
+        rotulo: `${nomeDoCultivo(c)} (${c.cidade}/${String(c.estado).toUpperCase()})`,
+        ativo: c === selecionado,
+    }));
     const local = temLocal ? `${p.cidade}/${String(p.estado).toUpperCase()}` : null;
     const primeiroNome = String(user.nome ?? '').trim().split(/\s+/)[0];
 
@@ -129,7 +147,7 @@ export default async function Painel() {
             {semCadastro ? (
                 <section className={styles.boasVindas}>
                     <div>
-                        <h2>Cadastre o seu cultivo para montar o seu painel</h2>
+                        <h2>Cadastre o seu primeiro cultivo para montar o seu painel</h2>
                         <p>Conte onde fica a sua área e o que você plantou nos últimos anos. Leva poucos minutos e, com isso, o CultivAI passa a mostrar aqui:</p>
                         <ul>
                             <li><CalendarDays size={18} aria-hidden="true" /> a época oficial de plantio (ZARC) de cada cultura na sua cidade;</li>
@@ -137,7 +155,7 @@ export default async function Painel() {
                             <li><Repeat size={18} aria-hidden="true" /> a sua rotação de culturas, e respostas do assistente feitas para a sua terra.</li>
                         </ul>
                         <div className={styles.botoes}>
-                            <Link href="/perfil-propriedade" className={styles.botaoClaro}>Cadastrar meu cultivo <ArrowRight size={18} aria-hidden="true" /></Link>
+                            <Link href="/meus-cultivos/novo" className={styles.botaoClaro}>Cadastrar meu cultivo <ArrowRight size={18} aria-hidden="true" /></Link>
                             <Link href="/chatbot" className={styles.linkClaro}>Ou faça uma pergunta agora</Link>
                         </div>
                     </div>
@@ -145,49 +163,59 @@ export default async function Painel() {
                 </section>
             ) : faltando.length > 0 && (
                 <p className={styles.lembrete}>
-                    Seu perfil está {Math.round(completo * 100)}% completo. Falta informar: {faltando.map((i) => i.rotulo).join(', ')}.{' '}
-                    <Link href="/perfil-propriedade">Completar no Meu Cultivo</Link>
+                    O cultivo {nome} está {Math.round(completo * 100)}% completo. Falta informar: {faltando.map((i) => i.rotulo).join(', ')}.{' '}
+                    <Link href={editar}>Completar o cultivo</Link>
                 </p>
             )}
 
             <ul className={styles.numeros}>
-                <Numero icone={Sprout} valor={culturas.length} rotulo={culturas.length === 1 ? 'cultura cadastrada' : 'culturas cadastradas'}
-                    detalhe={proxima ? `Próxima: ${proxima}` : culturas.length ? 'Próxima cultura não definida' : 'Nenhuma ainda'} />
+                <Numero icone={Sprout} valor={cultivos.length} rotulo={cultivos.length === 1 ? 'cultivo cadastrado' : 'cultivos cadastrados'}
+                    detalhe={cultivos.length ? `${totalCulturas} ${totalCulturas === 1 ? 'cultura' : 'culturas'} ao todo` : 'Nenhum ainda'} />
                 <Numero icone={MessageCircle} valor={`${restantes} de ${LIMITE_POR_DIA}`} rotulo="perguntas restantes hoje"
                     progresso={restantes / LIMITE_POR_DIA} detalhe="Renova à meia-noite" />
                 <Numero icone={MessagesSquare} valor={totalConversas} rotulo={totalConversas === 1 ? 'conversa' : 'conversas'}
                     detalhe={`${totalPerguntas} ${totalPerguntas === 1 ? 'pergunta feita' : 'perguntas feitas'} ao todo`} />
-                <Numero icone={ClipboardCheck} valor={`${Math.round(completo * 100)}%`} rotulo="do perfil preenchido"
+                <Numero icone={ClipboardCheck} valor={`${Math.round(completo * 100)}%`} rotulo={nome ? `do perfil de ${nome}` : 'do perfil preenchido'}
                     progresso={completo} detalhe={faltando.length ? `Faltam ${faltando.length} ${faltando.length === 1 ? 'item' : 'itens'}` : 'Tudo preenchido'} />
             </ul>
 
+            {cultivos.length > 1 && (
+                <nav className={styles.seletor} aria-label="Escolher o cultivo">
+                    <span>Mostrando:</span>
+                    {cultivos.map((c) => (
+                        <Link key={String(c._id)} href={`/painel?cultivo=${c._id}`} aria-current={c === selecionado ? 'true' : undefined}>
+                            {nomeDoCultivo(c)}
+                        </Link>
+                    ))}
+                </nav>
+            )}
+
             <div className={styles.grade}>
-                <Cartao icone={MapPin} titulo="Sua propriedade" className={styles.cartaoMapa}
-                    acao={<Link href="/perfil-propriedade" className={styles.linkCartao}>{temLocal ? 'Editar' : 'Informar'}</Link>}>
-                    <MapaPropriedade uf={temLocal ? String(p.estado).toUpperCase() : null}
-                        codigoMunicipio={/^\d{7}$/.test(p.codigoMunicipio ?? '') ? p.codigoMunicipio : calendario?.codigoMunicipio}
-                        rotulo={local} />
+                <Cartao icone={MapPin} titulo={cultivos.length > 1 ? 'Seus cultivos' : 'Sua propriedade'} className={styles.cartaoMapa}
+                    acao={<Link href={editar} className={styles.linkCartao}>{temLocal ? 'Editar' : 'Informar'}</Link>}>
+                    <MapaPropriedade pontos={pontos} />
+                    {nome && <h3 className={styles.subtituloCartao}>{nome}</h3>}
                     {temLocal ? (
                         <dl className={styles.ficha}>
                             <div><dt>Local</dt><dd>{local}</dd></div>
-                            {p.tamanho && <div><dt>Tamanho</dt><dd>{p.tamanho}</dd></div>}
+                            {p.tamanho && <div><dt>Tamanho</dt><dd>{tamanhoEmTexto(p.tamanho)}</dd></div>}
                             {p.tipoSolo && <div><dt>Solo</dt><dd>{p.tipoSolo === 'nao_sei' ? 'não sei' : p.tipoSolo}</dd></div>}
                             {p.irrigacao && <div><dt>Irrigação</dt><dd>{p.irrigacao}</dd></div>}
                             {p.sistemaPlantio && <div><dt>Plantio</dt><dd>{p.sistemaPlantio}</dd></div>}
                         </dl>
                     ) : (
                         <p className={styles.vazio}>
-                            Informe a cidade da sua área para ela aparecer no mapa. <Link href="/perfil-propriedade">Ir para o Meu Cultivo</Link>
+                            Informe a cidade da sua área para ela aparecer no mapa. <Link href={editar}>{selecionado ? 'Editar o cultivo' : 'Cadastrar um cultivo'}</Link>
                         </p>
                     )}
                 </Cartao>
 
-                <Cartao icone={CalendarDays} titulo="Época de plantio (ZARC)" className={styles.cartaoCalendario}>
+                <Cartao icone={CalendarDays} titulo={nome && cultivos.length > 1 ? `Época de plantio (ZARC) · ${nome}` : 'Época de plantio (ZARC)'} className={styles.cartaoCalendario}>
                     {!temLocal ? (
                         <>
                             <p className={styles.vazio}>
                                 Com a cidade e as culturas cadastradas, aqui aparece o calendário oficial de plantio do Ministério da Agricultura
-                                para cada cultura, com o risco de perda por clima. <Link href="/perfil-propriedade">Cadastrar</Link>
+                                para cada cultura, com o risco de perda por clima. <Link href={editar}>{selecionado ? 'Informar a cidade' : 'Cadastrar'}</Link>
                             </p>
                             <div className={styles.exemplo} aria-label="Exemplo de calendário">
                                 <p>Exemplo</p>
@@ -198,14 +226,14 @@ export default async function Painel() {
                         <p className={styles.vazio}>O calendário de plantio não está disponível agora. Tente de novo mais tarde.</p>
                     ) : !calendario.encontrado ? (
                         <p className={styles.vazio}>
-                            Não encontramos {calendario.local} entre os municípios do ZARC. <Link href="/perfil-propriedade">Confira a cidade no Meu Cultivo</Link>
+                            Não encontramos {calendario.local} entre os municípios do ZARC. <Link href={editar}>Confira a cidade do cultivo</Link>
                         </p>
                     ) : !calendario.linhas.length ? (
                         <p className={styles.vazio}>
                             {culturas.length || proxima
                                 ? `O ZARC não tem calendário para ${[proxima, ...culturas].filter(Boolean).join(', ')}.`
-                                : 'Escolha as culturas no Meu Cultivo para ver as janelas de plantio.'}{' '}
-                            <Link href="/perfil-propriedade">Meu Cultivo</Link>
+                                : 'Escolha as culturas do cultivo para ver as janelas de plantio.'}{' '}
+                            <Link href={editar}>Editar o cultivo</Link>
                         </p>
                     ) : (
                         <>
@@ -231,8 +259,8 @@ export default async function Painel() {
                     </Cartao>
                 )}
 
-                <Cartao icone={Repeat} titulo="Sua rotação"
-                    acao={<Link href="/perfil-propriedade" className={styles.linkCartao}>Editar</Link>}>
+                <Cartao icone={Repeat} titulo={nome && cultivos.length > 1 ? `Rotação · ${nome}` : 'Sua rotação'}
+                    acao={<Link href={editar} className={styles.linkCartao}>Editar</Link>}>
                     {culturas.length || proxima ? (
                         <>
                             {culturas.length > 0 && (
@@ -251,15 +279,15 @@ export default async function Painel() {
                                     </ul>
                                 </>
                             )}
-                            {!proxima && <p className={styles.vazio}>Ainda não sabe o que plantar depois? <Link href={linkPergunta('Que rotação de culturas você recomenda para a minha área?')}>Peça uma sugestão ao assistente</Link></p>}
+                            {!proxima && <p className={styles.vazio}>Ainda não sabe o que plantar depois? <Link href={linkPergunta('Que rotação de culturas você recomenda para a minha área?', idSelecionado)}>Peça uma sugestão ao assistente</Link></p>}
                         </>
                     ) : (
-                        <p className={styles.vazio}>Cadastre as culturas dos últimos anos para acompanhar a sua rotação. <Link href="/perfil-propriedade">Cadastrar</Link></p>
+                        <p className={styles.vazio}>Cadastre as culturas dos últimos anos para acompanhar a sua rotação. <Link href={editar}>{selecionado ? 'Editar o cultivo' : 'Cadastrar'}</Link></p>
                     )}
                 </Cartao>
 
                 <Cartao icone={MessagesSquare} titulo="Assistente"
-                    acao={<Link href="/chatbot" className={styles.linkCartao}>Abrir</Link>}>
+                    acao={<Link href={idSelecionado ? `/chatbot?cultivo=${idSelecionado}` : '/chatbot'} className={styles.linkCartao}>Abrir</Link>}>
                     {recentes.length > 0 && (
                         <>
                             <h3 className={styles.subtituloCartao}>Continue de onde parou</h3>
@@ -280,7 +308,7 @@ export default async function Painel() {
                     <h3 className={styles.subtituloCartao}>Sugestões de pergunta</h3>
                     <ul className={styles.sugestoes}>
                         {perguntasSugeridas(p).map((texto) => (
-                            <li key={texto}><Link href={linkPergunta(texto)}>{texto}</Link></li>
+                            <li key={texto}><Link href={linkPergunta(texto, idSelecionado)}>{texto}</Link></li>
                         ))}
                     </ul>
                 </Cartao>

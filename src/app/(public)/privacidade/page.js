@@ -18,7 +18,7 @@ const secoes = [
     titulo: "Quais dados guardamos",
     lista: [
       "Conta: nome, email e senha. A senha é guardada criptografada; nem a equipe consegue lê-la.",
-      "Meu Cultivo: o que você preencher sobre a propriedade, como cidade, tipo de solo, culturas, irrigação e objetivos.",
+      "Meus Cultivos: o que você preencher sobre cada área, como nome, cidade, tipo de solo, culturas, irrigação e objetivos.",
       "Conversas: as perguntas que você faz, as respostas do CultivAI e as avaliações 👍/👎 que você der.",
       "Data em que você aceitou este aviso.",
     ],
@@ -35,7 +35,7 @@ const secoes = [
     titulo: "Com quem os dados são compartilhados",
     texto: ["Para funcionar, o CultivAI usa serviços de outras empresas, algumas fora do Brasil. Cada uma recebe só o necessário:"],
     lista: [
-      "Groq (inteligência artificial que escreve as respostas): recebe a sua pergunta, as mensagens anteriores da conversa e um resumo do seu Meu Cultivo. Não recebe seu nome nem seu email.",
+      "Groq (inteligência artificial que escreve as respostas): recebe a sua pergunta, as mensagens anteriores da conversa e um resumo do cultivo da conversa. Não recebe seu nome nem seu email.",
       "Google Gemini: recebe o texto da pergunta, para encontrar os trechos da Embrapa relacionados.",
       "OpenWeather: recebe só o nome da sua cidade, para informar o clima atual.",
       "MongoDB Atlas (banco de dados, em servidores em São Paulo) e Vercel (hospedagem do site): guardam e entregam os dados do aplicativo.",
@@ -48,9 +48,9 @@ const secoes = [
   {
     titulo: "Seus direitos",
     lista: [
-      "Corrigir ou apagar os dados da propriedade: edite o Meu Cultivo a qualquer momento, ou use \"Apagar dados da propriedade\" no fim da página.",
+      "Corrigir ou apagar os dados dos seus cultivos: em Meus Cultivos, edite ou exclua cada cultivo a qualquer momento.",
       "Apagar conversas: use o botão \"Apagar conversa\" no chat. As perguntas das últimas 24 horas ficam registradas por um dia, sem o texto, só para controlar o limite diário de perguntas.",
-      "Excluir a conta: em Minha Conta, use \"Excluir minha conta\". Tudo o que está guardado nela é apagado na hora: conta, Meu Cultivo, conversas e avaliações.",
+      "Excluir a conta: em Minha Conta, use \"Excluir minha conta\". Tudo o que está guardado nela é apagado na hora: conta, cultivos, conversas e avaliações.",
       `Pedir uma cópia dos seus dados: escreva para ${CONTATO}, o email do projeto.`,
     ],
   },

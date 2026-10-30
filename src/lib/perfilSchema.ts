@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-// Um esquema só para o Meu Cultivo: a tela valida com ele e a rota /api/propriedade também.
+// Um esquema só para cada cultivo de Meus Cultivos: a tela valida com ele e as rotas
+// /api/cultivos também.
 // Antes a rota gravava o que recebesse (qualquer campo, de qualquer tamanho), e o perfil
 // entra no prompt da IA. Campos fora do esquema são descartados pelo zod.
 
@@ -18,6 +19,7 @@ const numeroOpcional = (min: number, max: number, mensagem: string) =>
     ) as z.ZodType<number | null, unknown>;
 
 export const perfilSchema = z.object({
+    nome: texto(60),
     tamanho: texto(20),
     estado: z.enum([...ESTADOS, ''], OPCAO_INVALIDA),
     cidade: texto(80),
@@ -43,9 +45,10 @@ export const perfilSchema = z.object({
 // Na rota, tudo é opcional: o formulário do chat manda só o dado pedido (ex.: { tipoSolo }).
 export const perfilParcialSchema = perfilSchema.partial();
 
-// Na tela do Meu Cultivo, estado e cidade são obrigatórios, e a cidade vem da lista do IBGE
-// (texto livre não bate com o ZARC: "Uberlandia", "Campinas - SP"...).
+// No formulário do cultivo, nome, estado e cidade são obrigatórios, e a cidade vem da lista do
+// IBGE (texto livre não bate com o ZARC: "Uberlandia", "Campinas - SP"...).
 export const formularioPerfilSchema = perfilSchema.extend({
+    nome: texto(60).min(1, 'Dê um nome ao cultivo.'),
     estado: z.enum(ESTADOS, { error: 'Estado é obrigatório.' }),
     cidade: texto(80).min(1, 'Cidade é obrigatória.'),
 }).refine((p) => /^\d{7}$/.test(p.codigoMunicipio), { path: ['cidade'], message: 'Escolha a cidade na lista.' });

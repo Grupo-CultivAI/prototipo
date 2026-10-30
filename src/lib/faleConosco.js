@@ -12,7 +12,8 @@ const NOME_DA_TELA = {
   "/privacidade": "Privacidade",
   "/painel": "Início (painel)",
   "/chatbot": "Assistente (chat)",
-  "/perfil-propriedade": "Meu Cultivo",
+  "/meus-cultivos": "Meus Cultivos",
+  "/meus-cultivos/novo": "Novo cultivo",
   "/conta": "Minha Conta",
 };
 
@@ -21,7 +22,7 @@ const DICA_DA_TELA = {
 };
 
 export function linkFaleConosco(caminho) {
-  const tela = NOME_DA_TELA[caminho] ?? caminho;
+  const tela = NOME_DA_TELA[caminho] ?? (caminho?.startsWith("/meus-cultivos/") ? "Editar cultivo" : caminho);
   const assunto = `CultivAI: contato pela tela "${tela}"`;
   const corpo = `Olá, equipe do CultivAI.\n\nTela: ${tela} (${caminho})\n\n${DICA_DA_TELA[caminho] ?? ""}O que aconteceu:\n\n`;
   return `mailto:${EMAIL_DO_PROJETO}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;

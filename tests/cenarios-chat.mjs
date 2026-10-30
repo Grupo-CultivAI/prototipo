@@ -47,7 +47,7 @@ function registrar(cenario, verificacoes, r) {
 try {
     // 1. Pergunta do tema, com perfil preenchido
     const a = await novoUsuario('tema');
-    await fetch(`${BASE}/api/propriedade`, {
+    await fetch(`${BASE}/api/cultivos`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: a },
         body: JSON.stringify({ estado: 'MS', cidade: 'Dourados', tipoSolo: 'arenoso', culturasHistorico: ['soja', 'milho'], problemasRecentes: ['Pragas'], objetivos: ['Recuperar solo'] }),
     });
@@ -94,7 +94,7 @@ try {
     // acontecer é a marca [PEDIR: ...] chegar ao produtor, pedir o que já está no perfil ou
     // insistir na pergunta seguinte.
     const e = await novoUsuario('pedido');
-    await fetch(`${BASE}/api/propriedade`, {
+    await fetch(`${BASE}/api/cultivos`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: e },
         body: JSON.stringify({ tipoSolo: 'argiloso', culturasHistorico: ['milho'] }),
     });

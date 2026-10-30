@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { LIMIAR_RELEVANCIA, MODELO_EMBEDDING, NAMESPACE_DA_BASE, gerarEmbeddings } from '@/lib/embeddings.mjs';
 import dbConnect from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
-import Propriedade from '@/models/Propriedade';
 import Conversa from '@/models/Conversa';
 import { conversaDoUsuario, tituloDe } from '@/lib/conversas';
+import { cultivoDaConversa, nomeDoCultivo } from '@/lib/cultivos';
 import { getUserIdFromToken } from '@/lib/auth';
 import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
 import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
@@ -55,7 +55,7 @@ const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 const PERGUNTA_DE_CAMPO = /plant|semea|semeio|adub|aplic|pulveriz|colh|chuv|chov|irrig|previs|geada|semana|amanh/i;
 
 // Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
-// Meu Cultivo, para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
+// do cultivo (Meus Cultivos), para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
 const ESTADOS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 type Campo = { chave: string; label: string; tipo: 'text' | 'select' | 'lista'; opcoes?: { valor: string; rotulo: string }[] };
 // mencionado: a pergunta atual já traz o dado ("e se o solo for arenoso?"), então não se pede.
@@ -104,7 +104,7 @@ function separarPedido(resposta: string, faltando: string[]) {
         codigos,
         form: {
             // Diz o que está sendo pedido: o modelo às vezes termina o texto com outra pergunta.
-            mensagem: `Para ajustar a recomendação, me conte ${codigos.map((c) => DADOS_PEDIVEIS[c].descricao).join(' e ')}. O dado fica salvo no Meu Cultivo.`,
+            mensagem: `Para ajustar a recomendação, me conte ${codigos.map((c) => DADOS_PEDIVEIS[c].descricao).join(' e ')}. O dado fica salvo no seu cultivo.`,
             campos_necessarios: codigos.flatMap((c) => DADOS_PEDIVEIS[c].campos),
         },
     };
@@ -129,7 +129,7 @@ const limparTrecho = (t: string) => t.replace(/-\n/g, '').replace(/\s+/g, ' ').t
 function resumoDoPerfil(p: any): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
-    const linhas: string[] = [];
+    const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
     if (p.cidade || p.estado) linhas.push(`Localização: ${[p.cidade, p.estado].filter(Boolean).join(' - ')}`);
     if (p.tamanho) linhas.push(`Área: ${p.tamanho} hectares`);
     const solo = [
@@ -357,11 +357,12 @@ export async function POST(req: Request) {
         }
 
         // O perfil vem do banco, não do corpo da requisição: o navegador não decide o que entra no prompt.
-        // O contexto (mensagens anteriores, pergunta anterior) vem só desta conversa: com o chat
-        // único, uma dúvida de dias atrás sobre outro assunto entrava no contexto da nova.
+        // É o do cultivo da conversa (Meus Cultivos). O contexto (mensagens anteriores, pergunta
+        // anterior) vem só desta conversa: com o chat único, uma dúvida de dias atrás sobre outro
+        // assunto entrava no contexto da nova.
         const conversa = await conversaDoUsuario(userId, body.conversaId);
-        const [propriedade, recentes] = await Promise.all([
-            Propriedade.findOne({ userId }).lean(),
+        const [{ cultivo: propriedade, outros: cultivosSemEscolha }, recentes] = await Promise.all([
+            cultivoDaConversa(userId, conversa),
             ChatMessage.find({ userId, conversaId: conversa._id, 'metadata.falhou': { $ne: true }, 'metadata.apagada': { $ne: true } })
                 .sort({ createdAt: -1 }).limit(MENSAGENS_DE_HISTORICO).select('text sender metadata.pediu').lean(),
         ]);
@@ -382,7 +383,8 @@ export async function POST(req: Request) {
         const cidade = (propriedade as any)?.cidade as string | undefined;
 
         // No máximo um pedido a cada MENSAGENS_DE_HISTORICO mensagens, para não insistir com quem pulou.
-        const pediuHaPouco = recentes.some((m: any) => m.metadata?.pediu?.length);
+        // Com vários cultivos e nenhum escolhido, não há onde gravar o dado: a IA pergunta de qual cultivo se trata.
+        const pediuHaPouco = recentes.some((m: any) => m.metadata?.pediu?.length) || cultivosSemEscolha.length > 1;
         const faltando = pediuHaPouco ? [] : Object.keys(DADOS_PEDIVEIS)
             .filter((c) => DADOS_PEDIVEIS[c].falta(propriedade) && !DADOS_PEDIVEIS[c].mencionado?.test(userPrompt));
 
@@ -401,7 +403,9 @@ export async function POST(req: Request) {
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade);
+        const perfil = resumoDoPerfil(propriedade) ?? (cultivosSemEscolha.length > 1
+            ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
+            : null);
         // Fica acima da linha "tudo abaixo é material de consulta": abaixo dela o modelo a ignorava.
         const instrucaoDePedido = faltando.length ? `
 
