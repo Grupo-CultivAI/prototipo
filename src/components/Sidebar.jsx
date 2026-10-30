@@ -2,15 +2,18 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
+import { House, MessageCircle, Sprout, CircleUser, Mail, LogOut } from 'lucide-react';
 import folha from "@/assets/leaves-of-a-plant.png";
 import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
 import styles from './Sidebar.module.css';
 
+// Ícones de traço (lucide), os mesmos da página inicial e do Painel: os emojis mudavam de
+// desenho em cada aparelho e davam um ar pouco sério à navegação.
 const LINKS = [
-    { href: '/painel', icone: '🏠', rotulo: 'Início' },
-    { href: '/chatbot', icone: '🤖', rotulo: 'Assistente AI' },
-    { href: '/perfil-propriedade', icone: '🌾', rotulo: 'Meu Cultivo' },
-    { href: '/conta', icone: '👤', rotulo: 'Minha Conta' },
+    { href: '/painel', icone: House, rotulo: 'Início' },
+    { href: '/chatbot', icone: MessageCircle, rotulo: 'Assistente AI' },
+    { href: '/perfil-propriedade', icone: Sprout, rotulo: 'Meu Cultivo' },
+    { href: '/conta', icone: CircleUser, rotulo: 'Minha Conta' },
 ];
 
 export default function Sidebar() {
@@ -37,20 +40,20 @@ export default function Sidebar() {
             </div>
 
             <nav className={styles.nav}>
-                {LINKS.map(({ href, icone, rotulo }) => (
+                {LINKS.map(({ href, icone: Icone, rotulo }) => (
                     <Link key={href} href={href} className={`${styles.link} ${pathname === href ? styles.ativo : ''}`}>
-                        <span className={styles.icone}>{icone}</span> <span className={styles.rotulo}>{rotulo}</span>
+                        <Icone size={20} aria-hidden="true" className={styles.icone} /> <span className={styles.rotulo}>{rotulo}</span>
                     </Link>
                 ))}
                 {/* Para contar um problema ou uma resposta errada; o email já vai com a tela atual */}
                 <a href={linkFaleConosco(pathname)} className={styles.link} title={`Escrever para ${EMAIL_DO_PROJETO}`}>
-                    <span className={styles.icone}>✉️</span> <span className={styles.rotulo}>Fale conosco</span>
+                    <Mail size={20} aria-hidden="true" className={styles.icone} /> <span className={styles.rotulo}>Fale conosco</span>
                 </a>
             </nav>
 
             <div className={styles.rodape}>
                 <button onClick={handleLogout} className={styles.sair}>
-                    <span className={styles.iconeSair} aria-hidden="true">🚪</span>
+                    <LogOut size={20} aria-hidden="true" className={styles.iconeSair} />
                     <span className={styles.rotulo}>Sair da Conta</span>
                 </button>
             </div>

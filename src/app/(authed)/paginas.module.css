@@ -101,8 +101,11 @@
     white-space: normal;
 }
 
+/* Título com ícone: o ícone fica na primeira linha e não encolhe quando o título quebra */
 .fontesTitulo {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
     margin-bottom: 0.3rem;
     font-weight: 600;
     color: var(--primary-dark);
@@ -183,6 +186,31 @@
     font-size: 0.85rem;
     font-weight: 400;
     line-height: 1.45;
+}
+
+.fontesTitulo svg {
+    flex-shrink: 0;
+    margin-top: 0.15em;
+}
+
+.iconeAviso,
+.iconeLembrete,
+.iconeNota {
+    display: inline-block;
+    margin-right: 0.15rem;
+    vertical-align: -0.15em;
+}
+
+.iconeAviso {
+    color: rgb(217, 119, 6);
+}
+
+.iconeLembrete {
+    color: var(--primary);
+}
+
+.iconeNota {
+    color: var(--text-secondary);
 }
 
 .quadroZarc {
