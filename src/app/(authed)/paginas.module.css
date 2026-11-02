@@ -39,11 +39,90 @@
     height: calc(100vh - 6rem);
 }
 
+/* Título e ações na primeira linha; contador e cultivo embaixo do título */
 .chatCabecalho {
+    display: grid;
+    /* O título tem espaço garantido; se faltar, as ações quebram linha */
+    grid-template-columns: minmax(24rem, 1fr) auto;
+    grid-template-areas: "titulo acoes" "info info";
+    align-items: center;
+    gap: 0.4rem 1rem;
     padding: 1.5rem 2rem;
     margin-bottom: 1.5rem;
+}
+
+.chatCabecalho .chatInfo {
+    display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.2rem 1.5rem;
+}
+
+.chatInfo .seletorCultivo {
+    margin-top: 0;
+}
+
+.chatTituloBloco {
+    grid-area: titulo;
+}
+
+.chatInfo {
+    grid-area: info;
+}
+
+.chatAcoes {
+    grid-area: acoes;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    align-items: center;
+}
+
+.soCelular {
+    display: none;
+}
+
+.menuMais {
+    position: relative;
+}
+
+.menuMaisLista {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    right: 0;
+    display: grid;
+    min-width: 15rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+}
+
+.menuMaisLista button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menuMaisLista button:hover {
+    background: var(--bg);
+}
+
+.menuMaisLista .menuMaisPerigo {
+    color: var(--erro);
 }
 
 .chatTitulo {
@@ -565,8 +644,23 @@
     }
 
     .chatCabecalho {
-        padding: 1rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 0.75rem 1rem;
         margin-bottom: 0.75rem;
+    }
+
+    .chatAcoes {
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    /* Os botões do topo têm estilo próprio no código; aqui só somem */
+    .soComputador {
+        display: none !important;
+    }
+
+    .soCelular {
+        display: block;
     }
 
     .chatTitulo {

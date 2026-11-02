@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import ContadorPerguntas from "@/components/ContadorPerguntas";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, Ellipsis, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -189,6 +189,17 @@ export default function ChatCultivAI() {
   // Texto lido pelo leitor de tela quando a resposta chega (região escondida, aria-live).
   // Na lista inteira, ele releria as mensagens a cada mudança.
   const [anuncio, setAnuncio] = useState("");
+  // Menu "Mais" do topo no celular (Imprimir, Apagar): fecha com toque fora ou Esc
+  const [menuAberto, setMenuAberto] = useState(false);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!menuAberto) return;
+    const fora = (e) => { if (!menuRef.current?.contains(e.target)) setMenuAberto(false); };
+    const esc = (e) => { if (e.key === "Escape") { setMenuAberto(false); menuRef.current?.querySelector("button")?.focus(); } };
+    document.addEventListener("pointerdown", fora);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
+  }, [menuAberto]);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -589,10 +600,14 @@ export default function ChatCultivAI() {
 
   return (
     <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent' }}>
-      <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      {/* Topo em grade: título e ações numa linha; contador e cultivo na de baixo (no celular,
+          ocupava um quarto da tela em quatro linhas) */}
+      <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+        <div className={styles.chatTituloBloco}>
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
+        </div>
+        <div className={styles.chatInfo}>
           {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
           {/* De qual cultivo a conversa trata: o perfil dele vai para a IA */}
           <div className={styles.seletorCultivo}>
@@ -611,10 +626,11 @@ export default function ChatCultivAI() {
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div className={styles.chatAcoes}>
           <button
             onClick={alternarLista}
             title="Ver as conversas anteriores"
+            aria-label="Conversas anteriores"
             aria-expanded={listaAberta}
             aria-controls="lista-conversas"
             className={`${styles.botaoCabecalho} ${listaAberta ? styles.botaoCabecalhoAtivo : ""}`}
@@ -625,14 +641,17 @@ export default function ChatCultivAI() {
           <button
             onClick={() => novaConversa()}
             title="Começar uma conversa nova. Esta fica guardada."
+            aria-label="Nova conversa"
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <MessageSquarePlus size={16} />
             <span className={styles.rotuloBotao}>Nova conversa</span>
           </button>
+          {/* No celular, Apagar e Imprimir ficam no menu "Mais", longe de "Nova conversa" */}
           <button
             onClick={apagarConversa}
             title="Apagar esta conversa"
+            className={styles.soComputador}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'var(--erro)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
@@ -643,15 +662,33 @@ export default function ChatCultivAI() {
           <button
             onClick={() => window.print()}
             title="Imprimir ou salvar a conversa em PDF"
+            className={styles.soComputador}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <Printer size={16} />
             <span className={styles.rotuloBotao}>Imprimir</span>
           </button>
+          <div className={`${styles.menuMais} ${styles.soCelular}`} ref={menuRef}>
+            <button type="button" className={styles.botaoCabecalho} onClick={() => setMenuAberto((v) => !v)}
+              aria-label="Mais opções" aria-expanded={menuAberto} aria-controls="menu-mais">
+              <Ellipsis size={16} aria-hidden="true" />
+            </button>
+            {menuAberto && (
+              <div id="menu-mais" className={styles.menuMaisLista}>
+                <button type="button" onClick={() => { setMenuAberto(false); window.print(); }}>
+                  <Printer size={16} aria-hidden="true" /> Imprimir ou salvar em PDF
+                </button>
+                <button type="button" className={styles.menuMaisPerigo} onClick={() => { setMenuAberto(false); apagarConversa(); }}>
+                  <Trash2 size={16} aria-hidden="true" /> Apagar esta conversa
+                </button>
+              </div>
+            )}
+          </div>
           {/* Ferramenta da equipe: só no npm run dev. Na Vercel, NODE_ENV é "production". */}
           {process.env.NODE_ENV === 'development' && (
             <button
               onClick={copyHistory}
+              className={styles.soComputador}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}
