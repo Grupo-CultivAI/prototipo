@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
+import { Trash2, KeyRound, LogOut } from 'lucide-react';
 import Input from '@/components/Input';
+import BotaoSair from '@/components/BotaoSair';
 import AvisoFormulario from '@/components/AvisoFormulario';
 import styles from '../paginas.module.css';
 
@@ -86,26 +88,28 @@ export default function Conta() {
                     </div>
                 </div>
 
-                <div className={styles.grade2} style={{ gap: '2.5rem' }}>
+                {/* Texto, e não caixas: pareciam campos editáveis, mas não respondiam ao toque.
+                    O "ID de Registro Único" saiu: era um dado técnico, sem uso para o produtor. */}
+                <dl className={styles.grade2} style={{ gap: '1.5rem 2.5rem', margin: 0 }}>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Nome Completo</label>
-                        <div style={{ fontSize: '1.15rem', fontWeight: '500', color: 'var(--text-primary)', padding: '1.25rem', background: '#FDFDFD', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                            {user.nome}
-                        </div>
+                        <dt style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600' }}>Nome</dt>
+                        <dd style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{user.nome}</dd>
                     </div>
-
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>E-mail de Cadastro</label>
-                        <div style={{ fontSize: '1.15rem', fontWeight: '500', color: 'var(--text-primary)', padding: '1.25rem', background: '#FDFDFD', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                            {user.email}
-                        </div>
+                        <dt style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600' }}>Email de cadastro</dt>
+                        <dd style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{user.email}</dd>
                     </div>
-                </div>
+                </dl>
 
-                <div style={{ marginTop: '3rem', paddingTop: '2.5rem', borderTop: '1px solid var(--border)' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center' }}>
-                        ID de Registro Único: <span style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '4px 8px', borderRadius: '4px' }}>{user._id}</span>
-                    </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2.5rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+                    <Link href={`/redefinir-senha?email=${encodeURIComponent(user.email)}&voltar=/conta`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: '10px', border: '1px solid var(--primary)', color: 'var(--primary-dark)', fontWeight: 600, textDecoration: 'none' }}>
+                        <KeyRound size={18} aria-hidden="true" /> Trocar senha
+                    </Link>
+                    {/* No celular, este é o lugar do "Sair" (saiu da navegação do rodapé) */}
+                    <BotaoSair className={styles.botaoSairConta}>
+                        <LogOut size={18} aria-hidden="true" /> Sair da conta
+                    </BotaoSair>
                 </div>
             </div>
 

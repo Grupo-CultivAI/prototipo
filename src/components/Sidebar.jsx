@@ -1,10 +1,11 @@
 "use client"
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { House, MessageCircle, Sprout, CircleUser, Mail, LogOut } from 'lucide-react';
 import folha from "@/assets/leaves-of-a-plant.png";
 import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
+import BotaoSair from './BotaoSair';
 import styles from './Sidebar.module.css';
 
 // Ícones de traço (lucide), os mesmos da página inicial e do Painel: os emojis mudavam de
@@ -17,18 +18,7 @@ const LINKS = [
 ];
 
 export default function Sidebar() {
-    const router = useRouter();
     const pathname = usePathname();
-
-    // O cookie de sessão é httpOnly: só o servidor consegue apagá-lo (ver /api/auth/logout).
-    const handleLogout = async () => {
-        try {
-            await fetch("/api/auth/logout", { method: "POST" });
-        } finally {
-            router.replace("/login");
-            router.refresh();
-        }
-    };
 
     return (
         <aside className={styles.sidebar}>
@@ -51,11 +41,12 @@ export default function Sidebar() {
                 </a>
             </nav>
 
+            {/* No celular some (fica em Minha Conta): ver Sidebar.module.css */}
             <div className={styles.rodape}>
-                <button onClick={handleLogout} className={styles.sair}>
+                <BotaoSair className={styles.sair}>
                     <LogOut size={20} aria-hidden="true" className={styles.iconeSair} />
                     <span className={styles.rotulo}>Sair da Conta</span>
-                </button>
+                </BotaoSair>
             </div>
         </aside>
     );

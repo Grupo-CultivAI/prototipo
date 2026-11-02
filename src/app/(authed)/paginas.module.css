@@ -39,11 +39,90 @@
     height: calc(100vh - 6rem);
 }
 
+/* Título e ações na primeira linha; contador e cultivo embaixo do título */
 .chatCabecalho {
+    display: grid;
+    /* O título tem espaço garantido; se faltar, as ações quebram linha */
+    grid-template-columns: minmax(24rem, 1fr) auto;
+    grid-template-areas: "titulo acoes" "info info";
+    align-items: center;
+    gap: 0.4rem 1rem;
     padding: 1.5rem 2rem;
     margin-bottom: 1.5rem;
+}
+
+.chatCabecalho .chatInfo {
+    display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.2rem 1.5rem;
+}
+
+.chatInfo .seletorCultivo {
+    margin-top: 0;
+}
+
+.chatTituloBloco {
+    grid-area: titulo;
+}
+
+.chatInfo {
+    grid-area: info;
+}
+
+.chatAcoes {
+    grid-area: acoes;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    align-items: center;
+}
+
+.soCelular {
+    display: none;
+}
+
+.menuMais {
+    position: relative;
+}
+
+.menuMaisLista {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    right: 0;
+    display: grid;
+    min-width: 15rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+}
+
+.menuMaisLista button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menuMaisLista button:hover {
+    background: var(--bg);
+}
+
+.menuMaisLista .menuMaisPerigo {
+    color: var(--erro);
 }
 
 .chatTitulo {
@@ -308,20 +387,36 @@
     gap: 0.25rem;
 }
 
+/* Cor cheia: com 70% de transparência, "Salvar como plano" parecia desabilitado */
 .acoesMensagem button {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0.3rem;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0.7;
 }
 
 .acoesMensagem button:hover {
-    opacity: 1;
     border-color: var(--border);
+    color: var(--text-primary);
+}
+
+/* No celular, alvos de 40px (eram 27px): mais fácil de acertar com o dedo */
+@media (max-width: 768px) {
+    .acoesMensagem {
+        flex-wrap: wrap;
+    }
+
+    .acoesMensagem button {
+        min-width: 40px;
+        min-height: 40px;
+    }
 }
 
 .acoesMensagem .avaliada {
@@ -565,8 +660,23 @@
     }
 
     .chatCabecalho {
-        padding: 1rem;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 0.75rem 1rem;
         margin-bottom: 0.75rem;
+    }
+
+    .chatAcoes {
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    /* Os botões do topo têm estilo próprio no código; aqui só somem */
+    .soComputador {
+        display: none !important;
+    }
+
+    .soCelular {
+        display: block;
     }
 
     .chatTitulo {
@@ -864,4 +974,95 @@
 
 .avisoPlanoErro {
     color: #B91C1C;
+}
+
+/* Texto só para o leitor de tela (fora da vista, mas lido) */
+.somenteLeitor {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* --- Minha Conta: "Sair da conta" (no celular, é o único lugar dele) --- */
+.botaoSairConta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.25rem;
+    border: 1px solid #FECACA;
+    border-radius: 10px;
+    background: #FEF2F2;
+    color: var(--erro);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.botaoSairConta:hover {
+    background: #FEE2E2;
+}
+
+/* --- Formulário do cultivo: situação de cada bloco, no cabeçalho --- */
+.situacaoBloco {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.situacaoBloco[data-tipo="ok"] {
+    color: var(--primary-dark);
+}
+
+.situacaoBloco[data-tipo="falta"] {
+    color: #92400E;
+}
+
+.situacaoBloco[data-tipo="erro"] {
+    color: var(--erro);
+    box-shadow: inset 0 0 0 1px #FECACA;
+}
+
+/* Botões de salvar presos ao pé da tela; no celular, logo acima da navegação do rodapé */
+.barraSalvar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-bottom: 1rem;
+    background: var(--bg);
+}
+
+@media (max-width: 768px), (max-height: 500px) {
+    /* A navegação do rodapé tem ~77px; o estilo no código dá 1,5rem de folga em cima, que no
+       celular deixava a barra alta demais */
+    .barraSalvar {
+        bottom: calc(4.6rem + env(safe-area-inset-bottom)); /* um pouco por baixo da navegação, sem fresta */
+        margin: 0 -0.75rem !important;
+        padding: 0.6rem 0.75rem !important;
+        gap: 0.5rem !important;
+        box-shadow: 0 -6px 12px rgba(6, 64, 43, 0.06);
+    }
+
+    .barraSalvar > div:empty {
+        display: none;
+    }
+
+    .barraSalvar button {
+        flex: 1;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
 }

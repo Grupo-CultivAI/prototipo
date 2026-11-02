@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X } from 'lucide-react';
+import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X, Check, AlertCircle } from 'lucide-react';
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, PERIODOS_DA_SAFRA, normalizarCultura, semRepetir, nomeDoCultivo, rotuloDaSafra, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
@@ -33,6 +33,10 @@ const BLOCO_DO_CAMPO: Record<string, string> = {
     culturasHistorico: 'historico', safras: 'historico', tempoCulturaAtual: 'historico', usoFertilizantes: 'historico', sistemaPlantio: 'historico', irrigacao: 'historico', problemasRecentes: 'historico',
     proximaCultura: 'objetivo', objetivos: 'objetivo', observacoes: 'objetivo',
     plano: 'plano',
+};
+// Itens importantes do perfil (ITENS_DO_PERFIL) que ficam em cada bloco
+const ITENS_DO_BLOCO: Record<string, string[]> = {
+    localizacao: ['localizacao'], solo: ['solo'], historico: ['culturas', 'sistema', 'irrigacao'], objetivo: ['proxima', 'objetivos'],
 };
 const TITULO_DO_BLOCO: Record<string, string> = {
     localizacao: '1. Localização e Clima', solo: '2. Solo', historico: '3. Histórico e Manejo da Área', objetivo: '4. Próxima Safra e Objetivos', plano: '5. Plano de rotação',
@@ -68,8 +72,10 @@ const Opcoes = ({ opcoes, marcadas, alternar, rotuloId }: any) => (
 // Cabeçalho de cada bloco do formulário. Fica fora da página: definido dentro dela, o React
 // o recriava a cada tecla digitada. É um botão dentro do título (padrão de bloco sanfonado),
 // e não uma div clicável, para abrir também pelo teclado e pelo leitor de tela.
-function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description }: {
-    id: string; aberta: boolean; aoAlternar: (id: string) => void; icon: React.ElementType; title: string; description: string;
+// situacao: "Completo", "Faltam 2", "Corrigir"... no cabeçalho, para ver o que falta sem abrir cada bloco.
+type Situacao = { texto: string; tipo: 'ok' | 'falta' | 'erro' | 'neutro' };
+function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description, situacao }: {
+    id: string; aberta: boolean; aoAlternar: (id: string) => void; icon: React.ElementType; title: string; description: string; situacao?: Situacao;
 }) {
     return (
         <h3 id={`secao-${id}`} style={{ margin: 0 }}>
@@ -89,7 +95,16 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
                         <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.95)' : 'var(--text-secondary)' }}>{description}</span>
                     </span>
                 </span>
-                {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                    {situacao && (
+                        <span className={styles.situacaoBloco} data-tipo={situacao.tipo}>
+                            {situacao.tipo === 'ok' && <Check size={14} aria-hidden="true" />}
+                            {situacao.tipo === 'erro' && <AlertCircle size={14} aria-hidden="true" />}
+                            {situacao.texto}
+                        </span>
+                    )}
+                    {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
+                </span>
             </button>
         </h3>
     );
@@ -276,6 +291,16 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
         }, 60);
     };
 
+    const situacaoDo = (bloco: string): Situacao => {
+        if (Object.keys(errors).some((campo) => BLOCO_DO_CAMPO[campo] === bloco)) return { tipo: 'erro', texto: 'Corrigir' };
+        if (bloco === 'plano') {
+            const n = valores.plano?.etapas?.length ?? 0;
+            return n ? { tipo: 'ok', texto: `${n} ${n === 1 ? 'etapa' : 'etapas'}` } : { tipo: 'neutro', texto: 'Opcional' };
+        }
+        const falta = ITENS_DO_BLOCO[bloco].filter((chave) => faltando.some((f) => f.chave === chave)).length;
+        return falta ? { tipo: 'falta', texto: falta === 1 ? 'Falta 1' : `Faltam ${falta}` } : { tipo: 'ok', texto: 'Completo' };
+    };
+
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? '' : section);
     };
@@ -336,7 +361,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 1. LOCALIZAÇÃO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao aberta={openSection === 'localizacao'} aoAlternar={toggleSection} id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
+                    <CabecalhoSecao situacao={situacaoDo('localizacao')} aberta={openSection === 'localizacao'} aoAlternar={toggleSection} id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
                     {openSection === 'localizacao' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -385,7 +410,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 2. SOLO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
+                    <CabecalhoSecao situacao={situacaoDo('solo')} aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
                     {openSection === 'solo' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div>
@@ -436,7 +461,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 3. HISTÓRICO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao aberta={openSection === 'historico'} aoAlternar={toggleSection} id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
+                    <CabecalhoSecao situacao={situacaoDo('historico')} aberta={openSection === 'historico'} aoAlternar={toggleSection} id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
                     {openSection === 'historico' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -547,7 +572,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 4. OBJETIVOS --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao aberta={openSection === 'objetivo'} aoAlternar={toggleSection} id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
+                    <CabecalhoSecao situacao={situacaoDo('objetivo')} aberta={openSection === 'objetivo'} aoAlternar={toggleSection} id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
                     {openSection === 'objetivo' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>
@@ -582,7 +607,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 5. PLANO DE ROTAÇÃO --- */}
                 <div id="plano" style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao aberta={openSection === 'plano'} aoAlternar={toggleSection} id="plano" icon={ListChecks} title="5. Plano de rotação" description="A sequência que você quer seguir nas próximas safras." />
+                    <CabecalhoSecao situacao={situacaoDo('plano')} aberta={openSection === 'plano'} aoAlternar={toggleSection} id="plano" icon={ListChecks} title="5. Plano de rotação" description="A sequência que você quer seguir nas próximas safras." />
                     {openSection === 'plano' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {etapas.fields.length === 0 && (
@@ -614,8 +639,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     {CULTURAS_COMUNS.map((c) => <option key={c} value={c} />)}
                 </datalist>
 
-                {/* --- SUBMIT --- */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                {/* --- SUBMIT: preso ao pé da tela, para salvar sem rolar o formulário inteiro --- */}
+                <div className={styles.barraSalvar} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
                     <div role={messageErro ? 'alert' : 'status'} style={{ color: messageErro ? 'var(--erro)' : 'var(--primary-dark)', fontWeight: '600', fontSize: '1.1rem' }}>
                         {message}
                     </div>
