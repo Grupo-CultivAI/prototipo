@@ -181,6 +181,11 @@ export default function ChatCultivAI() {
   const [conversas, setConversas] = useState(null);
   const [listaAberta, setListaAberta] = useState(false);
   const [ouvindo, setOuvindo] = useState(false);
+  // Uma pergunta por vez: enquanto a resposta não chega, o envio fica bloqueado. Sem isso, duas
+  // perguntas seguidas gastavam o limite do dia e as respostas chegavam fora de ordem. A ref
+  // segura dois toques rápidos, antes de o estado chegar à tela.
+  const [aguardando, setAguardando] = useState(false);
+  const aguardandoRef = useRef(false);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -401,6 +406,8 @@ export default function ChatCultivAI() {
     }));
 
     setMessages((prev) => [...prev, { id: loadingId, text: "Pensando...", sender: "bot" }]);
+    aguardandoRef.current = true;
+    setAguardando(true);
 
     try {
       const response = await fetch("/api/llm", {
@@ -445,11 +452,14 @@ export default function ChatCultivAI() {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca, semBase } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
+    } finally {
+      aguardandoRef.current = false;
+      setAguardando(false);
     }
   };
 
   const handleSendMessage = async (texto = inputValue) => {
-    if (texto.trim() === "") return;
+    if (texto.trim() === "" || aguardandoRef.current) return;
 
     reconhecimentoRef.current?.stop();
     const question = texto;
@@ -477,6 +487,7 @@ export default function ChatCultivAI() {
   };
 
   const handleFormSubmit = async (formData, msgId, form) => {
+    if (aguardandoRef.current) return;
     // Remove form from the bot message
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
 
@@ -503,6 +514,7 @@ export default function ChatCultivAI() {
   };
 
   const handleFormSkip = async (msgId) => {
+    if (aguardandoRef.current) return;
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
     const followUp = "Prefiro não informar agora. Responda com o que já sabe.";
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: followUp, sender: "user" }]);
@@ -795,7 +807,7 @@ export default function ChatCultivAI() {
         {conversaVazia && (
           <div className={styles.sugestoes}>
             {sugestoesDePergunta(propriedade).map((s) => (
-              <button key={s} type="button" onClick={() => handleSendMessage(s)}>{s}</button>
+              <button key={s} type="button" onClick={() => handleSendMessage(s)} disabled={aguardando}>{s}</button>
             ))}
           </div>
         )}
@@ -825,12 +837,14 @@ export default function ChatCultivAI() {
         )}
         <button
           onClick={() => handleSendMessage()}
+          disabled={aguardando}
+          aria-busy={aguardando}
           className={styles.botaoEnviar}
-          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)' }}
-          onMouseOver={(e) => { e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
+          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: aguardando ? 'wait' : 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)', opacity: aguardando ? 0.75 : 1 }}
+          onMouseOver={(e) => { if (aguardando) return; e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
           onMouseOut={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = 'var(--primary)'; }}
         >
-          Enviar
+          {aguardando ? 'Aguarde...' : 'Enviar'}
         </button>
       </div>
     </div>
