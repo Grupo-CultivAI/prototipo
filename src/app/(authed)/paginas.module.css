@@ -125,6 +125,68 @@
     color: var(--erro);
 }
 
+/* Confirmação de "Apagar conversa", na própria tela (como em Meus Cultivos e Minha Conta) */
+.confirmarApagar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    padding: 0.9rem 1.25rem;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: 16px;
+    background: #FEF2F2;
+}
+
+.confirmarApagar p {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.confirmarApagar p svg {
+    flex-shrink: 0;
+}
+
+.confirmarApagar > div {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.confirmarApagar button {
+    min-height: 2.75rem;
+    padding: 0 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirmarApagar .botaoApagar {
+    border-color: transparent;
+    background: var(--erro);
+    color: var(--white);
+}
+
+.confirmarApagar button:disabled {
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.confirmarApagar .erroApagar {
+    width: 100%;
+    color: var(--erro);
+    font-weight: 600;
+}
+
 .chatTitulo {
     font-size: 1.8rem;
 }
@@ -157,22 +219,63 @@
     margin-bottom: 0.25rem;
 }
 
+/* --altura-campo: altura de uma linha do campo; os botões ficam com ela e, quando o campo
+   cresce, continuam alinhados embaixo, junto da última linha. */
 .chatEntrada {
+    --altura-campo: 3rem;
+    align-items: flex-end;
     padding: 1rem;
+    border-radius: 100px;
+}
+
+.chatEntrada[data-varias-linhas="true"] {
+    border-radius: 24px;
 }
 
 /* O campo de texto fica dentro da "pílula": quem mostra o foco do teclado é ela inteira. */
-.chatEntrada:has(input:focus-visible) {
+.chatEntrada:has(textarea:focus-visible) {
     outline: 3px solid var(--primary-dark);
     outline-offset: 2px;
 }
 
 .campoTexto {
+    display: block;
+    min-height: var(--altura-campo);
+    max-height: calc(5 * 1.4rem + 1.6rem);
     padding: 0.8rem 1.5rem;
+    font-family: inherit;
+    line-height: 1.4rem;
+    resize: none;
+    overflow-y: auto;
+}
+
+/* O texto de exemplo numa linha só: quebrado, ele fazia o campo vazio ficar alto */
+.campoTexto::placeholder {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .botaoEnviar {
     padding: 0 2rem;
+}
+
+.chatEntrada .botaoEnviar,
+.chatEntrada .botaoVoz {
+    flex-shrink: 0;
+    height: var(--altura-campo);
+}
+
+.contadorCaracteres {
+    margin: 0 1rem 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+.contadorCaracteres[data-no-limite="true"] {
+    color: var(--erro);
+    font-weight: 600;
 }
 
 /* --- Fontes consultadas, abaixo da resposta --- */
@@ -620,6 +723,83 @@
     50% { opacity: 0.6; }
 }
 
+/* --- Esperas: pontos enquanto a IA responde e esboço da tela enquanto o chat abre --- */
+.pensando {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+}
+
+.pontos {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.pontos span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: quicar 1.2s ease-in-out infinite;
+}
+
+.pontos span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.pontos span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes quicar {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-4px); opacity: 1; }
+}
+
+.esqueleto {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.chatEntrada.esqueleto {
+    border-radius: 100px;
+}
+
+.esqueletoLinha,
+.esqueletoBalao {
+    display: block;
+    height: 1rem;
+    border-radius: 8px;
+    background: #E5EAE7;
+    animation: brilhar 1.4s ease-in-out infinite;
+}
+
+.esqueletoBalao {
+    height: 3.5rem;
+    border-radius: 20px;
+}
+
+@keyframes brilhar {
+    50% { opacity: 0.5; }
+}
+
+/* Quem pediu menos movimento no aparelho vê as esperas paradas (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+    .pontos span,
+    .esqueletoLinha,
+    .esqueletoBalao,
+    .botaoVoz.ouvindo {
+        animation: none;
+    }
+
+    .pontos span {
+        opacity: 1;
+    }
+}
+
 /* Celular em pé (largura) ou deitado (altura): navegação no rodapé. */
 @media (max-width: 768px), (max-height: 500px) {
     /* dvh, e não vh: vh conta a tela como se as barras do navegador estivessem
@@ -694,8 +874,13 @@
         margin-bottom: 0.75rem;
     }
 
-    .listaConversas {
+    .listaConversas,
+    .confirmarApagar {
         margin-bottom: 0.75rem;
+    }
+
+    .confirmarApagar {
+        padding: 0.75rem;
     }
 
     .bolha {
@@ -746,10 +931,12 @@
     }
 
     .chatEntrada {
+        --altura-campo: 2.4rem;
         padding: 0.25rem;
     }
 
     .campoTexto {
+        max-height: calc(3 * 1.4rem + 1rem);
         padding: 0.5rem 1rem;
     }
 
@@ -782,7 +969,9 @@
     .chatSubtitulo,
     .contador,
     .chatEntrada,
+    .contadorCaracteres,
     .listaConversas,
+    .confirmarApagar,
     .sugestoes,
     .acoesMensagem,
     .balao form {
