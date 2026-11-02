@@ -15,6 +15,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Foco visível para quem navega pelo teclado (WCAG 2.4.7). :focus-visible não aparece no
+   clique do mouse nem no toque, só no Tab. Componentes com foco próprio (Input, botões das
+   telas de conta) sobrescrevem esta regra no CSS deles. */
+:focus-visible {
+  outline: 3px solid var(--primary-dark);
+  outline-offset: 2px;
+}
+
 /* Scrollbar Style */
 ::-webkit-scrollbar {
   width: 8px;
