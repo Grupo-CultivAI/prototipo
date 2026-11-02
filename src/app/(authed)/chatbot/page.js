@@ -200,6 +200,17 @@ export default function ChatCultivAI() {
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [menuAberto]);
+  // "Apagar conversa" confirma na própria tela, como as exclusões de Meus Cultivos e Minha Conta
+  // (antes era a janela do navegador). O foco vai para "Cancelar" e, ao fechar, volta ao botão
+  // que abriu a confirmação.
+  const [confirmandoApagar, setConfirmandoApagar] = useState(false);
+  const [apagando, setApagando] = useState(false);
+  const [erroApagar, setErroApagar] = useState("");
+  const origemApagarRef = useRef(null);
+  const cancelarApagarRef = useRef(null);
+  useEffect(() => {
+    if (confirmandoApagar) cancelarApagarRef.current?.focus();
+  }, [confirmandoApagar]);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -395,18 +406,36 @@ export default function ChatCultivAI() {
   // fica guardada e começa uma nova, para o contexto de um cultivo não se misturar com o do outro.
   const trocarCultivo = (id) => novaConversa(id || null);
 
+  const pedirApagar = (origem) => {
+    origemApagarRef.current = origem;
+    setErroApagar("");
+    setConfirmandoApagar(true);
+  };
+
+  const fecharConfirmacao = () => {
+    setConfirmandoApagar(false);
+    origemApagarRef.current?.focus();
+  };
+
   const apagarConversa = async () => {
-    if (!confirm("Apagar esta conversa? As mensagens dela não poderão ser recuperadas.")) return;
+    setApagando(true);
+    setErroApagar("");
     try {
       const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' });
       const d = await r.json();
+      if (!r.ok) throw new Error(d.message);
       setListaAberta(false);
       pararFala();
       setConversaId(d.conversaId ?? null);
       setCultivoId(cultivoDe(d.propriedadeId, cultivos));
       setMessages(conversaNova());
+      setAnuncio("Conversa apagada.");
+      fecharConfirmacao();
     } catch (err) {
       console.error("Erro ao apagar conversa", err);
+      setErroApagar("Não deu para apagar agora. Confira a internet e tente de novo.");
+    } finally {
+      setApagando(false);
     }
   };
 
@@ -649,8 +678,9 @@ export default function ChatCultivAI() {
           </button>
           {/* No celular, Apagar e Imprimir ficam no menu "Mais", longe de "Nova conversa" */}
           <button
-            onClick={apagarConversa}
+            onClick={(e) => pedirApagar(e.currentTarget)}
             title="Apagar esta conversa"
+            aria-expanded={confirmandoApagar}
             className={styles.soComputador}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'var(--erro)'; }}
@@ -678,7 +708,7 @@ export default function ChatCultivAI() {
                 <button type="button" onClick={() => { setMenuAberto(false); window.print(); }}>
                   <Printer size={16} aria-hidden="true" /> Imprimir ou salvar em PDF
                 </button>
-                <button type="button" className={styles.menuMaisPerigo} onClick={() => { setMenuAberto(false); apagarConversa(); }}>
+                <button type="button" className={styles.menuMaisPerigo} onClick={() => { setMenuAberto(false); pedirApagar(menuRef.current?.querySelector("button")); }}>
                   <Trash2 size={16} aria-hidden="true" /> Apagar esta conversa
                 </button>
               </div>
@@ -697,6 +727,22 @@ export default function ChatCultivAI() {
           )}
         </div>
       </div>
+
+      {confirmandoApagar && (
+        <div role="group" aria-labelledby="pergunta-apagar" className={styles.confirmarApagar}
+          onKeyDown={(e) => { if (e.key === "Escape" && !apagando) fecharConfirmacao(); }}>
+          <p id="pergunta-apagar">
+            <Trash2 size={16} aria-hidden="true" /> Apagar esta conversa? As mensagens dela não poderão ser recuperadas.
+          </p>
+          <div>
+            <button type="button" className={styles.botaoApagar} onClick={apagarConversa} disabled={apagando}>
+              {apagando ? "Apagando..." : "Apagar"}
+            </button>
+            <button type="button" ref={cancelarApagarRef} onClick={fecharConfirmacao} disabled={apagando}>Cancelar</button>
+          </div>
+          {erroApagar && <p role="alert" className={styles.erroApagar}>{erroApagar}</p>}
+        </div>
+      )}
 
       {listaAberta && (
         <nav id="lista-conversas" aria-label="Conversas anteriores" className={styles.listaConversas}>
