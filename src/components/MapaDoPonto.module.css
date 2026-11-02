@@ -1,0 +1,66 @@
+/* Mapa do formulário do cultivo (components/MapaDoPonto.jsx) */
+.caixa {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.mapa {
+    height: 300px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    /* Fica abaixo da navegação fixa do celular (z-index 50) */
+    z-index: 0;
+}
+
+/* Marcador sem imagem: os ícones padrão do Leaflet se perdem no empacotamento. Dentro de
+   .mapa, para vencer o fundo branco que o Leaflet dá a .leaflet-div-icon. */
+.mapa .marcador {
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: var(--primary-dark);
+    box-shadow: 0 0 0 2px var(--primary-dark), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.botao,
+.botaoSecundario {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.botao {
+    border: 1px solid var(--primary);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--primary-dark);
+}
+
+.botaoSecundario {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.status {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .mapa {
+        height: 240px;
+    }
+}

@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import mongoose from 'mongoose';
-import { Plus, MapPin, Pencil, MessageCircle, LayoutDashboard, CalendarDays, Sprout, CircleCheck } from 'lucide-react';
+import { Plus, MapPin, Pencil, Copy, MessageCircle, LayoutDashboard, CalendarDays, Sprout, CircleCheck, History, ListChecks } from 'lucide-react';
 import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import { cultivosDoUsuario, nomeDoCultivo, LIMITE_DE_CULTIVOS } from '@/lib/cultivos';
 import { calendarioDePlantio } from '@/lib/zarc';
-import { situacaoDaJanela } from '@/lib/janelaDePlantio';
-import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto } from '@/lib/perfil';
+import { emDias, situacaoDaJanela } from '@/lib/janelaDePlantio';
+import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto, ordenarSafras, rotuloDaSafra, proximaEtapa } from '@/lib/perfil';
+import { DIAS_PARA_AVISAR_FECHAMENTO } from '@/lib/avisos';
 import Conversa from '@/models/Conversa';
 import ExcluirCultivo from './ExcluirCultivo';
 import styles from './cultivos.module.css';
@@ -32,7 +33,9 @@ async function epocaDoCultivo(cultivo) {
     return {
         linhas: calendario.linhas.slice(0, LINHAS_DE_EPOCA).map((l) => {
             const s = situacaoDaJanela(l.riscos);
-            return { cultura: l.cultura, agora: s.agora, texto: s.texto.charAt(0).toLowerCase() + s.texto.slice(1) };
+            const fechaLogo = s.agora && s.fechaEmDias != null && s.fechaEmDias <= DIAS_PARA_AVISAR_FECHAMENTO;
+            const texto = s.texto.charAt(0).toLowerCase() + s.texto.slice(1) + (fechaLogo ? `. Fecha ${emDias(s.fechaEmDias)}!` : '');
+            return { cultura: l.cultura, agora: s.agora, fechaLogo, texto };
         }),
     };
 }
@@ -93,6 +96,9 @@ export default async function MeusCultivos({ searchParams }) {
                         const completo = Math.round(((ITENS_DO_PERFIL.length - faltando.length) / ITENS_DO_PERFIL.length) * 100);
                         const totalConversas = conversasDe.get(id) ?? 0;
                         const epoca = epocas[i];
+                        const ultimaSafra = ordenarSafras(c.safras).at(-1);
+                        const etapa = proximaEtapa(c.plano);
+                        const etapasFeitas = (c.plano?.etapas ?? []).filter((e) => e.feita).length;
                         const detalhes = [
                             c.tamanho && tamanhoEmTexto(c.tamanho),
                             SOLO[c.tipoSolo],
@@ -122,13 +128,29 @@ export default async function MeusCultivos({ searchParams }) {
                                     </ul>
                                 )}
 
+                                {(ultimaSafra || c.plano?.etapas?.length > 0) && (
+                                    <ul className={styles.extras}>
+                                        {ultimaSafra && (
+                                            <li><History size={15} aria-hidden="true" /> Última safra: <strong>{ultimaSafra.cultura}</strong> ({rotuloDaSafra(ultimaSafra)})</li>
+                                        )}
+                                        {c.plano?.etapas?.length > 0 && (
+                                            <li>
+                                                <ListChecks size={15} aria-hidden="true" />
+                                                {etapa
+                                                    ? <>Plano: próxima etapa <strong>{etapa.cultura}</strong>{etapa.quando ? ` (${etapa.quando})` : ''} · {etapasFeitas} de {c.plano.etapas.length} feitas</>
+                                                    : 'Plano de rotação concluído'}
+                                            </li>
+                                        )}
+                                    </ul>
+                                )}
+
                                 {epoca && (
                                     <div className={styles.epoca}>
                                         <CalendarDays size={16} aria-hidden="true" />
                                         {epoca.aviso ? <span>{epoca.aviso}</span> : (
                                             <ul>
                                                 {epoca.linhas.map((l) => (
-                                                    <li key={l.cultura} className={l.agora ? styles.agora : undefined}><strong>{l.cultura}:</strong> {l.texto}</li>
+                                                    <li key={l.cultura} className={l.fechaLogo ? styles.fechaLogo : l.agora ? styles.agora : undefined}><strong>{l.cultura}:</strong> {l.texto}</li>
                                                 ))}
                                             </ul>
                                         )}
@@ -147,6 +169,11 @@ export default async function MeusCultivos({ searchParams }) {
                                     <Link href={`/painel?cultivo=${id}`} className={styles.acao}>
                                         <LayoutDashboard size={16} aria-hidden="true" /> Ver no Painel
                                     </Link>
+                                    {cultivos.length < LIMITE_DE_CULTIVOS && (
+                                        <Link href={`/meus-cultivos/novo?copiar=${id}`} className={styles.acao} title="Novo cultivo com a mesma localização, solo e manejo">
+                                            <Copy size={16} aria-hidden="true" /> Duplicar
+                                        </Link>
+                                    )}
                                     <span className={styles.conversas}>{totalConversas} {totalConversas === 1 ? 'conversa' : 'conversas'}</span>
                                     <ExcluirCultivo id={id} nome={nome} />
                                 </div>

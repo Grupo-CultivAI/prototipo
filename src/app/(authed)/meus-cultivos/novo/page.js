@@ -2,6 +2,8 @@ import FormularioCultivo from '../FormularioCultivo';
 
 export const metadata = { title: 'Novo cultivo · CultivAI' };
 
-export default function NovoCultivo() {
-    return <FormularioCultivo />;
+// ?copiar=id: "Duplicar" no cartão de Meus Cultivos.
+export default async function NovoCultivo({ searchParams }) {
+    const { copiar } = await searchParams;
+    return <FormularioCultivo copiarDe={typeof copiar === 'string' ? copiar : undefined} />;
 }

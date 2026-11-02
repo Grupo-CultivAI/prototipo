@@ -2,13 +2,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useForm, useWatch, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft } from 'lucide-react';
+import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X } from 'lucide-react';
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
-import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, normalizarCultura, semRepetir, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
+import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, PERIODOS_DA_SAFRA, normalizarCultura, semRepetir, nomeDoCultivo, rotuloDaSafra, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
 import BuscaCidade from '@/components/BuscaCidade';
+import MapaDoPonto from '@/components/MapaDoPonto';
 
 const SEM_PROBLEMAS = 'Nenhum';
 
@@ -16,8 +17,13 @@ const VALORES_INICIAIS: PerfilFormulario = {
     nome: '', tamanho: '', estado: '' as PerfilFormulario['estado'], cidade: '', codigoMunicipio: '', cep: '', tipoSolo: '', phSolo: null, materiaOrganica: '',
     drenagem: '', analiseSolo: false, culturasHistorico: [], tempoCulturaAtual: null,
     usoFertilizantes: '', sistemaPlantio: '', irrigacao: '', problemasRecentes: [], objetivos: [],
-    proximaCultura: '', observacoes: ''
+    proximaCultura: '', observacoes: '', safras: [], coordenadas: null, plano: null
 };
+// Anos para a linha do tempo das safras: do próximo até dez anos atrás.
+const ANO_ATUAL = new Date().getFullYear();
+const ANOS = Array.from({ length: 12 }, (_, i) => ANO_ATUAL + 1 - i);
+// Ao duplicar um cultivo (talhão vizinho), vêm estes campos; culturas e plano não.
+const CAMPOS_COPIADOS = ['estado', 'cidade', 'codigoMunicipio', 'cep', 'tipoSolo', 'phSolo', 'materiaOrganica', 'drenagem', 'analiseSolo', 'usoFertilizantes', 'sistemaPlantio', 'irrigacao', 'objetivos'];
 const AINDA_NAO_DECIDI = 'Ainda não decidi';
 
 // Botões que marcam e desmarcam, no lugar de texto separado por vírgula.
@@ -66,7 +72,8 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
 
 // Formulário de um cultivo de Meus Cultivos: sem id, cadastra um novo (/meus-cultivos/novo);
 // com id, edita (/meus-cultivos/[id]).
-export default function FormularioCultivo({ id }: { id?: string }) {
+export default function FormularioCultivo({ id, copiarDe }: { id?: string; copiarDe?: string }) {
+    const [nomeDaOrigem, setNomeDaOrigem] = useState('');
     const router = useRouter();
     const [openSection, setOpenSection] = useState<string>('localizacao');
     const [saving, setSaving] = useState(false);
@@ -98,6 +105,21 @@ export default function FormularioCultivo({ id }: { id?: string }) {
 
     // useWatch, e não watch(): o watch() não é compatível com o otimizador do React.
     const valores = useWatch({ control });
+    const safras = useFieldArray({ control, name: 'safras' });
+    const etapas = useFieldArray({ control, name: 'plano.etapas' as const });
+
+    // Centro do município escolhido, para o mapa do ponto abrir na cidade.
+    // Guardado com o código: trocar de cidade invalida o centro anterior sem precisar limpá-lo.
+    const [centroBuscado, setCentroBuscado] = useState<{ codigo: string; lat: number; lng: number } | null>(null);
+    const centro = centroBuscado && centroBuscado.codigo === valores.codigoMunicipio ? centroBuscado : null;
+    useEffect(() => {
+        const codigo = valores.codigoMunicipio;
+        if (!codigo || !/^\d{7}$/.test(codigo)) return;
+        let atual = true;
+        fetch(`/api/municipios/${codigo}`).then((r) => (r.ok ? r.json() : null))
+            .then((c) => { if (atual && c) setCentroBuscado({ codigo, ...c }); }).catch(() => {});
+        return () => { atual = false; };
+    }, [valores.codigoMunicipio]);
     const faltando = itensFaltando(valores);
 
     const definirCidade = useCallback(({ nome, codigo }: { nome: string; codigo: string }) => {
@@ -137,30 +159,43 @@ export default function FormularioCultivo({ id }: { id?: string }) {
         }
     };
 
+    // Editar: carrega o cultivo. Duplicar (copiarDe): traz só o que vale para uma área vizinha
+    // (local, solo, manejo e objetivos); culturas, safras e plano ficam em branco.
     useEffect(() => {
-        if (!id) return;
+        const origem = id ?? copiarDe;
+        if (!origem) return;
         async function carregarCultivo() {
             try {
-                const res = await fetch(`/api/cultivos/${id}`);
-                if (res.status === 404) { setNaoEncontrado(true); return; }
+                const res = await fetch(`/api/cultivos/${origem}`);
+                if (res.status === 404) { if (id) setNaoEncontrado(true); return; }
                 if (res.ok) {
                     const p = (await res.json()).cultivo;
-                    Object.keys(VALORES_INICIAIS).forEach((key) => {
+                    const campos = id ? Object.keys(VALORES_INICIAIS) : CAMPOS_COPIADOS;
+                    campos.forEach((key) => {
                         if (p[key] !== undefined && p[key] !== null) setValue(key as any, p[key]);
                     });
-                    setValue('culturasHistorico', semRepetir(p.culturasHistorico));
+                    // Sem ponto, o banco guarda { lat: null, lng: null }
+                    setValue('coordenadas', id && p.coordenadas?.lat != null ? { lat: p.coordenadas.lat, lng: p.coordenadas.lng } : null);
+                    if (id) setValue('culturasHistorico', semRepetir(p.culturasHistorico));
+                    // A lista de etapas (useFieldArray) só se atualiza pelo próprio nome, não pelo de "plano"
+                    if (id) setValue('plano.etapas', (p.plano?.etapas ?? []).map((e: any) => ({ quando: e.quando ?? '', cultura: e.cultura ?? '', objetivo: e.objetivo ?? '', feita: Boolean(e.feita) })));
+                    else {
+                        setNomeDaOrigem(nomeDoCultivo(p));
+                        setValue('nome', `${nomeDoCultivo(p)} (cópia)`.slice(0, 60));
+                    }
                 }
             } catch (err) { }
         }
         carregarCultivo();
-    }, [id, setValue]);
+    }, [id, copiarDe, setValue]);
 
     // pedirAnalise: o chat abre sobre este cultivo e já envia a primeira pergunta (gasta uma do limite diário).
     const onSubmit = async (data: PerfilValidado, pedirAnalise: boolean) => {
         setSaving(true);
         setMessage('');
         try {
-            const submissionData = { ...data, culturasHistorico: semRepetir(data.culturasHistorico) };
+            // As culturas das safras entram também nas "culturas dos últimos anos", que a IA e o ZARC usam.
+            const submissionData = { ...data, culturasHistorico: semRepetir([...data.culturasHistorico, ...(data.safras ?? []).map((s) => s.cultura)]) };
 
             const res = await fetch(id ? `/api/cultivos/${id}` : '/api/cultivos', {
                 method: id ? 'PATCH' : 'POST',
@@ -194,6 +229,8 @@ export default function FormularioCultivo({ id }: { id?: string }) {
     const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', outline: 'none', transition: 'border 0.2s' };
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
     const errorStyle = { color: '#EF4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
+    const dicaStyle = { display: 'block', marginBottom: '0.8rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' };
+    const inputCompacto = { ...inputStyle, padding: '0.75rem 0.9rem', minWidth: 0 };
 
     if (naoEncontrado) {
         return (
@@ -211,9 +248,14 @@ export default function FormularioCultivo({ id }: { id?: string }) {
             <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>
                 {id ? (valores.nome?.trim() || 'Editar cultivo') : 'Novo cultivo'}
             </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', fontSize: '1.1rem', maxWidth: '650px', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: nomeDaOrigem ? '1rem' : '2.5rem', fontSize: '1.1rem', maxWidth: '650px', lineHeight: '1.6' }}>
                 Um cultivo é cada área que você planta: um sítio, um talhão, um lote. Quanto mais completo, mais as respostas do assistente levam em conta a realidade dessa área.
             </p>
+            {nomeDaOrigem && (
+                <p className={styles.lembretePerfil} style={{ marginBottom: '2rem' }}>
+                    Cópia de {nomeDaOrigem}: vieram a localização, o solo, o manejo e os objetivos. Marque as culturas desta área e ajuste o que for diferente.
+                </p>
+            )}
 
             <div className={styles.progressoPerfil}>
                 <label htmlFor="nome-cultivo" style={labelStyle}>Nome do cultivo *</label>
@@ -274,6 +316,14 @@ export default function FormularioCultivo({ id }: { id?: string }) {
                             <div>
                                 <label style={labelStyle}>Tamanho da área (hectares)</label>
                                 <input type="number" placeholder="Ex: 50" {...register('tamanho')} style={inputStyle} />
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={labelStyle}>Ponto exato da área <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                                <span style={dicaStyle}>
+                                    Em município grande, o tempo no centro da cidade pode ser bem diferente do da sua área. Com o ponto marcado, a previsão do tempo usa o lugar exato.
+                                </span>
+                                <MapaDoPonto valor={valores.coordenadas?.lat != null ? (valores.coordenadas as { lat: number; lng: number }) : null} centro={centro}
+                                    aoMudar={(p: { lat: number; lng: number } | null) => setValue('coordenadas', p, { shouldDirty: true })} />
                             </div>
                         </div>
                     )}
@@ -412,6 +462,31 @@ export default function FormularioCultivo({ id }: { id?: string }) {
                                     }} />
                                 </div>
                             </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={labelStyle}>Linha do tempo das safras <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                                <span style={dicaStyle}>O que foi plantado em cada safra. Assim o assistente e o Painel mostram a rotação de verdade, na ordem.</span>
+                                {safras.fields.map((campo, i) => (
+                                    <div key={campo.id}>
+                                        <div className={styles.linhaSafra}>
+                                            <select {...register(`safras.${i}.periodo`)} style={inputCompacto} aria-label="Período da safra">
+                                                {PERIODOS_DA_SAFRA.map((p) => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
+                                            </select>
+                                            <select {...register(`safras.${i}.ano`, { valueAsNumber: true })} style={inputCompacto} aria-label="Ano do plantio">
+                                                {ANOS.map((ano) => <option key={ano} value={ano}>{ano}</option>)}
+                                            </select>
+                                            <input list="culturas-sugeridas" placeholder="Cultura" {...register(`safras.${i}.cultura`)} style={inputCompacto} aria-label="Cultura plantada" />
+                                            <button type="button" onClick={() => safras.remove(i)} className={styles.botaoTirar} aria-label="Tirar esta safra"><X size={18} aria-hidden="true" /></button>
+                                        </div>
+                                        <span className={styles.rotuloSafra}>
+                                            {valores.safras?.[i]?.ano ? rotuloDaSafra({ ano: valores.safras[i].ano, periodo: valores.safras[i].periodo }) : ''}
+                                            {errors.safras?.[i]?.cultura && <span style={errorStyle}>{errors.safras[i]?.cultura?.message}</span>}
+                                        </span>
+                                    </div>
+                                ))}
+                                <button type="button" className={styles.opcao} onClick={() => safras.append({ cultura: '', ano: ANO_ATUAL, periodo: 'verao' })}>
+                                    <Plus size={16} aria-hidden="true" style={{ verticalAlign: '-3px' }} /> Acrescentar safra
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -450,6 +525,39 @@ export default function FormularioCultivo({ id }: { id?: string }) {
                     )}
                 </div>
 
+                {/* --- 5. PLANO DE ROTAÇÃO --- */}
+                <div id="plano" style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                    <CabecalhoSecao aberta={openSection === 'plano'} aoAlternar={toggleSection} id="plano" icon={ListChecks} title="5. Plano de rotação" description="A sequência que você quer seguir nas próximas safras." />
+                    {openSection === 'plano' && (
+                        <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {etapas.fields.length === 0 && (
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                    Ainda não há plano. No chat, peça ao assistente um plano de rotação para este cultivo e toque em &quot;Salvar como plano&quot; na resposta. Ou monte as etapas aqui.
+                                </p>
+                            )}
+                            {etapas.fields.map((campo, i) => (
+                                <div key={campo.id} className={styles.etapaPlano}>
+                                    <label className={styles.etapaFeita} title="Marque quando esta etapa já tiver sido plantada">
+                                        <input type="checkbox" {...register(`plano.etapas.${i}.feita`)} /> Feita
+                                    </label>
+                                    <input placeholder="Quando (ex.: Safra 2025/26)" {...register(`plano.etapas.${i}.quando`)} style={inputCompacto} aria-label="Quando" />
+                                    <input list="culturas-sugeridas" placeholder="Cultura" {...register(`plano.etapas.${i}.cultura`)} style={inputCompacto} aria-label="Cultura" />
+                                    <input placeholder="Para quê (ex.: fixar nitrogênio)" {...register(`plano.etapas.${i}.objetivo`)} style={inputCompacto} aria-label="Objetivo da etapa" />
+                                    <button type="button" onClick={() => etapas.remove(i)} className={styles.botaoTirar} aria-label="Tirar esta etapa"><X size={18} aria-hidden="true" /></button>
+                                    {errors.plano?.etapas?.[i]?.cultura && <span style={errorStyle}>{errors.plano.etapas[i]?.cultura?.message}</span>}
+                                </div>
+                            ))}
+                            <button type="button" className={styles.opcao} style={{ alignSelf: 'flex-start' }} onClick={() => etapas.append({ quando: '', cultura: '', objetivo: '', feita: false })}>
+                                <Plus size={16} aria-hidden="true" style={{ verticalAlign: '-3px' }} /> Acrescentar etapa
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Sugestões de cultura das safras e do plano (fica fora dos blocos, que abrem e fecham) */}
+                <datalist id="culturas-sugeridas">
+                    {CULTURAS_COMUNS.map((c) => <option key={c} value={c} />)}
+                </datalist>
 
                 {/* --- SUBMIT --- */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>

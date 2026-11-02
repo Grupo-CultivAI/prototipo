@@ -3,7 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import Propriedade from '@/models/Propriedade';
 import { perfilParcialSchema } from '@/lib/perfilSchema';
-import { LIMITE_DE_CULTIVOS, cultivosDoUsuario } from '@/lib/cultivos';
+import { LIMITE_DE_CULTIVOS, cultivosDoUsuario, dadosParaGravar } from '@/lib/cultivos';
 
 // Meus Cultivos: a lista (GET) e um cultivo novo (POST). Um cultivo por id em ./[id].
 
@@ -36,7 +36,7 @@ export async function POST(req) {
         if (await Propriedade.countDocuments({ userId }) >= LIMITE_DE_CULTIVOS) {
             return NextResponse.json({ message: `Você já tem ${LIMITE_DE_CULTIVOS} cultivos cadastrados. Apague um para cadastrar outro.` }, { status: 400 });
         }
-        const cultivo = await Propriedade.create({ ...resultado.data, userId });
+        const cultivo = await Propriedade.create({ ...dadosParaGravar(resultado.data), userId });
         return NextResponse.json({ success: true, cultivo }, { status: 201 });
     } catch (err) {
         // Banco de produção ainda com o índice antigo (um perfil por conta): ver scripts/migrar-cultivos.mjs

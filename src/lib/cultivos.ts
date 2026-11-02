@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Propriedade from '@/models/Propriedade';
 import Conversa from '@/models/Conversa';
+import { ordenarSafras } from '@/lib/perfil';
 
 // Meus Cultivos: cada produtor pode ter várias áreas, cada uma com cidade, solo e culturas
 // próprias. Funções do servidor (rotas da API, Painel, chat).
@@ -9,6 +10,26 @@ import Conversa from '@/models/Conversa';
 export const LIMITE_DE_CULTIVOS = 20;
 
 export { nomeDoCultivo } from '@/lib/perfil';
+
+// Ajustes antes de gravar (POST e PATCH de /api/cultivos). atual: o cultivo como está, no PATCH.
+// - Ponto do mapa apagado (null) vira { lat: null, lng: null }, que é como o banco guarda "sem ponto".
+// - Safras em ordem de plantio.
+// - Plano sem etapas vira null; com etapas, só elas mudam (fica guardado de qual resposta veio).
+export function dadosParaGravar(dados: Record<string, any>, atual?: any) {
+    const d: Record<string, any> = { ...dados };
+    if (d.coordenadas === null) d.coordenadas = { lat: null, lng: null };
+    if (d.safras) d.safras = ordenarSafras(d.safras);
+    if (d.plano !== undefined) {
+        if (!d.plano?.etapas?.length) d.plano = null;
+        else if (atual?.plano) {
+            d['plano.etapas'] = d.plano.etapas;
+            delete d.plano;
+        } else {
+            d.plano = { etapas: d.plano.etapas, criadoEm: new Date() };
+        }
+    }
+    return d;
+}
 
 export const cultivosDoUsuario = (userId: unknown) =>
     Propriedade.find({ userId }).sort({ createdAt: 1 }).lean<any[]>();

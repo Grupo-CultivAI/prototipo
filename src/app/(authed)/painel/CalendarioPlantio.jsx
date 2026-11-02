@@ -24,7 +24,7 @@ export default function CalendarioPlantio({ linhas }) {
             </div>
             <ul className={styles.calendarioLista}>
                 {linhas.map(({ cultura, manejo, riscos, proxima }) => {
-                    const { agora, texto } = situacao(riscos, hoje);
+                    const { agora, texto } = situacao(riscos);
                     return (
                         <li key={cultura} className={styles.calendarioLinha}>
                             <div className={styles.cultura}>

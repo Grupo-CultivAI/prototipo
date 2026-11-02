@@ -40,6 +40,24 @@ export const perfilSchema = z.object({
     objetivos: lista(10, 60),
     proximaCultura: texto(40),
     observacoes: texto(1000),
+    safras: z.array(z.object({
+        cultura: texto(40).min(1, 'Escolha a cultura.'),
+        ano: z.coerce.number({ error: 'Escolha o ano.' }).int().min(1990, 'Ano inválido.').max(2100, 'Ano inválido.'),
+        periodo: z.enum(['verao', 'inverno'], OPCAO_INVALIDA),
+    })).max(30, 'Registre no máximo 30 safras.'),
+    // Ponto marcado no mapa; o retângulo cobre o Brasil continental.
+    coordenadas: z.object({
+        lat: z.number().min(-34, 'Ponto fora do Brasil.').max(6, 'Ponto fora do Brasil.'),
+        lng: z.number().min(-74, 'Ponto fora do Brasil.').max(-28, 'Ponto fora do Brasil.'),
+    }).nullable(),
+    plano: z.object({
+        etapas: z.array(z.object({
+            quando: texto(60),
+            cultura: texto(60).min(1, 'Informe a cultura da etapa.'),
+            objetivo: texto(200),
+            feita: z.boolean(),
+        })).max(12, 'O plano pode ter no máximo 12 etapas.'),
+    }).nullable(),
 });
 
 // Na rota, tudo é opcional: o formulário do chat manda só o dado pedido (ex.: { tipoSolo }).

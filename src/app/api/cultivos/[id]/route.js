@@ -4,7 +4,7 @@ import { getUserIdFromToken } from '@/lib/auth';
 import Propriedade from '@/models/Propriedade';
 import Conversa from '@/models/Conversa';
 import { perfilParcialSchema } from '@/lib/perfilSchema';
-import { cultivoDoUsuario } from '@/lib/cultivos';
+import { cultivoDoUsuario, dadosParaGravar } from '@/lib/cultivos';
 
 // Um cultivo de Meus Cultivos: ler (GET), alterar (PATCH) e apagar (DELETE). Só o dono acessa;
 // para os outros, o cultivo "não existe" (404), sem revelar que o id é de alguém.
@@ -45,7 +45,7 @@ export async function PATCH(req, { params }) {
         await dbConnect();
         const atual = await cultivoDoUsuario(userId, (await params).id);
         if (!atual) return naoEncontrado();
-        const cultivo = await Propriedade.findOneAndUpdate({ _id: atual._id, userId }, { $set: dados }, { returnDocument: 'after' }).lean();
+        const cultivo = await Propriedade.findOneAndUpdate({ _id: atual._id, userId }, { $set: dadosParaGravar(dados, atual) }, { returnDocument: 'after' }).lean();
         return NextResponse.json({ success: true, cultivo });
     } catch (err) {
         console.error('Erro ao alterar cultivo:', err);

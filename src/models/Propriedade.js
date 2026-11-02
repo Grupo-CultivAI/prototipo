@@ -19,6 +19,7 @@ const PropriedadeSchema = new mongoose.Schema({
     cidade: { type: String, default: "" },
     codigoMunicipio: { type: String, default: "" }, // IBGE, 7 dígitos (lista do formulário ou CEP)
     cep: { type: String, default: "" },
+    // Ponto exato da área, marcado no mapa do formulário (opcional). Sem ele, vale o centro da cidade.
     coordenadas: {
         lat: { type: Number, default: null },
         lng: { type: Number, default: null }
@@ -31,6 +32,13 @@ const PropriedadeSchema = new mongoose.Schema({
     analiseSolo: { type: Boolean, default: false },
     // history
     culturasHistorico: { type: [String], default: [] },
+    // Linha do tempo: o que foi plantado em cada safra. ano = ano do plantio; periodo "verao" é a
+    // safra principal (plantio de set. a dez., ex.: Safra 2024/25) e "inverno" a safrinha ou
+    // cultura de inverno (plantio de jan. a jul.).
+    safras: {
+        type: [{ _id: false, cultura: String, ano: Number, periodo: { type: String, enum: ['verao', 'inverno'] } }],
+        default: []
+    },
     tempoCulturaAtual: { type: Number, default: null },
     usoFertilizantes: { type: String, enum: ["Baixo", "Médio", "Alto", ""], default: "" },
     sistemaPlantio: { type: String, enum: ["Plantio direto", "Convencional", "Cultivo mínimo", "Não sei", ""], default: "" },
@@ -39,7 +47,17 @@ const PropriedadeSchema = new mongoose.Schema({
     // objectives
     objetivos: { type: [String], default: [] },
     proximaCultura: { type: String, default: "" }, // "Ainda não decidi" também é resposta
-    observacoes: { type: String, default: "" }
+    observacoes: { type: String, default: "" },
+    // Plano de rotação salvo de uma resposta do assistente ("Salvar como plano", no chat) e
+    // ajustado pelo produtor. Cada etapa pode ser marcada como feita.
+    plano: {
+        type: {
+            etapas: [{ _id: false, quando: String, cultura: String, objetivo: String, feita: Boolean }],
+            mensagemId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatMessage' },
+            criadoEm: Date
+        },
+        default: null
+    }
 }, { timestamps: true });
 
 PropriedadeSchema.index({ userId: 1, createdAt: 1 });
