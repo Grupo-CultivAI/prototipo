@@ -75,7 +75,7 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
             <button type="button" onClick={() => aoAlternar(id)} aria-expanded={aberta} style={{
                 width: '100%', border: 'none', font: 'inherit', textAlign: 'left',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
-                background: aberta ? 'var(--primary-light)' : '#FDFDFD',
+                background: aberta ? 'var(--primary)' : '#FDFDFD',
                 borderBottom: aberta ? '1px solid var(--border)' : 'none',
                 transition: 'all 0.3s', borderRadius: aberta ? '16px 16px 0 0' : '16px', color: aberta ? 'white' : 'var(--text-primary)'
             }}>
@@ -85,7 +85,7 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
                     </span>
                     <span>
                         <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700 }}>{title}</span>
-                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>{description}</span>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.95)' : 'var(--text-secondary)' }}>{description}</span>
                     </span>
                 </span>
                 {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
@@ -281,7 +281,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
     const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', transition: 'border 0.2s' };
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
-    const errorStyle = { color: '#EF4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
+    const errorStyle = { color: 'var(--erro)', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
     const dicaStyle = { display: 'block', marginBottom: '0.8rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' };
     const inputCompacto = { ...inputStyle, padding: '0.75rem 0.9rem', minWidth: 0 };
 
@@ -614,7 +614,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- SUBMIT --- */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-                    <div role={messageErro ? 'alert' : 'status'} style={{ color: messageErro ? '#EF4444' : 'var(--primary-light)', fontWeight: '600', fontSize: '1.1rem' }}>
+                    <div role={messageErro ? 'alert' : 'status'} style={{ color: messageErro ? 'var(--erro)' : 'var(--primary-dark)', fontWeight: '600', fontSize: '1.1rem' }}>
                         {message}
                     </div>
                     <div className={styles.acoesFormulario}>
