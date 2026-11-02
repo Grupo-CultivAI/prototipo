@@ -60,7 +60,7 @@ export async function POST(req) {
             texto: `Olá, ${user.nome}!\n\nRecebemos um pedido para criar uma nova senha no CultivAI. Para continuar, abra o link abaixo (ele vale por ${VALIDADE_MIN} minutos):\n\n${link}\n\nSe não foi você, ignore este email: sua senha continua a mesma.`,
             html: `<p>Olá, ${user.nome.replace(/[<>&"]/g, '')}!</p>
 <p>Recebemos um pedido para criar uma nova senha no CultivAI. O link vale por ${VALIDADE_MIN} minutos:</p>
-<p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Criar nova senha</a></p>
+<p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#15803d;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Criar nova senha</a></p>
 <p>Se não foi você, ignore este email: sua senha continua a mesma.</p>`,
         });
         return NextResponse.json({ message: RESPOSTA });

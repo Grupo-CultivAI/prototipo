@@ -82,6 +82,12 @@
     padding: 1rem;
 }
 
+/* O campo de texto fica dentro da "pílula": quem mostra o foco do teclado é ela inteira. */
+.chatEntrada:has(input:focus-visible) {
+    outline: 3px solid var(--primary-dark);
+    outline-offset: 2px;
+}
+
 .campoTexto {
     padding: 0.8rem 1.5rem;
 }

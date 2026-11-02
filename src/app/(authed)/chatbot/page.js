@@ -181,6 +181,11 @@ export default function ChatCultivAI() {
   const [conversas, setConversas] = useState(null);
   const [listaAberta, setListaAberta] = useState(false);
   const [ouvindo, setOuvindo] = useState(false);
+  // Uma pergunta por vez: enquanto a resposta não chega, o envio fica bloqueado. Sem isso, duas
+  // perguntas seguidas gastavam o limite do dia e as respostas chegavam fora de ordem. A ref
+  // segura dois toques rápidos, antes de o estado chegar à tela.
+  const [aguardando, setAguardando] = useState(false);
+  const aguardandoRef = useRef(false);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -401,6 +406,8 @@ export default function ChatCultivAI() {
     }));
 
     setMessages((prev) => [...prev, { id: loadingId, text: "Pensando...", sender: "bot" }]);
+    aguardandoRef.current = true;
+    setAguardando(true);
 
     try {
       const response = await fetch("/api/llm", {
@@ -445,11 +452,14 @@ export default function ChatCultivAI() {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca, semBase } : msg));
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
+    } finally {
+      aguardandoRef.current = false;
+      setAguardando(false);
     }
   };
 
   const handleSendMessage = async (texto = inputValue) => {
-    if (texto.trim() === "") return;
+    if (texto.trim() === "" || aguardandoRef.current) return;
 
     reconhecimentoRef.current?.stop();
     const question = texto;
@@ -477,6 +487,7 @@ export default function ChatCultivAI() {
   };
 
   const handleFormSubmit = async (formData, msgId, form) => {
+    if (aguardandoRef.current) return;
     // Remove form from the bot message
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
 
@@ -503,6 +514,7 @@ export default function ChatCultivAI() {
   };
 
   const handleFormSkip = async (msgId) => {
+    if (aguardandoRef.current) return;
     setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, form: null } : msg));
     const followUp = "Prefiro não informar agora. Responda com o que já sabe.";
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: followUp, sender: "user" }]);
@@ -608,7 +620,7 @@ export default function ChatCultivAI() {
           <button
             onClick={() => novaConversa()}
             title="Começar uma conversa nova. Esta fica guardada."
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <MessageSquarePlus size={16} />
             <span className={styles.rotuloBotao}>Nova conversa</span>
@@ -616,8 +628,8 @@ export default function ChatCultivAI() {
           <button
             onClick={apagarConversa}
             title="Apagar esta conversa"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'rgb(239,68,68)'; }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'var(--erro)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
             <Trash2 size={16} />
@@ -626,7 +638,7 @@ export default function ChatCultivAI() {
           <button
             onClick={() => window.print()}
             title="Imprimir ou salvar a conversa em PDF"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <Printer size={16} />
             <span className={styles.rotuloBotao}>Imprimir</span>
@@ -635,7 +647,7 @@ export default function ChatCultivAI() {
           {process.env.NODE_ENV === 'development' && (
             <button
               onClick={copyHistory}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600', outline: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}
               <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar Log Debug'}</span>
@@ -795,7 +807,7 @@ export default function ChatCultivAI() {
         {conversaVazia && (
           <div className={styles.sugestoes}>
             {sugestoesDePergunta(propriedade).map((s) => (
-              <button key={s} type="button" onClick={() => handleSendMessage(s)}>{s}</button>
+              <button key={s} type="button" onClick={() => handleSendMessage(s)} disabled={aguardando}>{s}</button>
             ))}
           </div>
         )}
@@ -825,12 +837,14 @@ export default function ChatCultivAI() {
         )}
         <button
           onClick={() => handleSendMessage()}
+          disabled={aguardando}
+          aria-busy={aguardando}
           className={styles.botaoEnviar}
-          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)' }}
-          onMouseOver={(e) => { e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
+          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: aguardando ? 'wait' : 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)', opacity: aguardando ? 0.75 : 1 }}
+          onMouseOver={(e) => { if (aguardando) return; e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
           onMouseOut={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = 'var(--primary)'; }}
         >
-          Enviar
+          {aguardando ? 'Aguarde...' : 'Enviar'}
         </button>
       </div>
     </div>

@@ -26,6 +26,30 @@ const ANOS = Array.from({ length: 12 }, (_, i) => ANO_ATUAL + 1 - i);
 const CAMPOS_COPIADOS = ['estado', 'cidade', 'codigoMunicipio', 'cep', 'tipoSolo', 'phSolo', 'materiaOrganica', 'drenagem', 'analiseSolo', 'usoFertilizantes', 'sistemaPlantio', 'irrigacao', 'objetivos'];
 const AINDA_NAO_DECIDI = 'Ainda não decidi';
 
+// Em que bloco fica cada campo, na ordem da tela: para abrir o bloco do primeiro erro.
+const BLOCO_DO_CAMPO: Record<string, string> = {
+    estado: 'localizacao', cidade: 'localizacao', codigoMunicipio: 'localizacao', cep: 'localizacao', tamanho: 'localizacao', coordenadas: 'localizacao',
+    tipoSolo: 'solo', phSolo: 'solo', materiaOrganica: 'solo', drenagem: 'solo', analiseSolo: 'solo',
+    culturasHistorico: 'historico', safras: 'historico', tempoCulturaAtual: 'historico', usoFertilizantes: 'historico', sistemaPlantio: 'historico', irrigacao: 'historico', problemasRecentes: 'historico',
+    proximaCultura: 'objetivo', objetivos: 'objetivo', observacoes: 'objetivo',
+    plano: 'plano',
+};
+const TITULO_DO_BLOCO: Record<string, string> = {
+    localizacao: '1. Localização e Clima', solo: '2. Solo', historico: '3. Histórico e Manejo da Área', objetivo: '4. Próxima Safra e Objetivos', plano: '5. Plano de rotação',
+};
+// O erro de uma lista (safras, etapas do plano) fica dentro de cada item: pega a primeira mensagem.
+// "ref" (o elemento do campo) fica de fora: percorrê-lo entraria na árvore da página.
+function primeiraMensagem(erro: any, nivel = 0): string {
+    if (!erro || typeof erro !== 'object' || nivel > 3) return 'confira os dados.';
+    if (typeof erro.message === 'string' && erro.message) return erro.message;
+    for (const [chave, valor] of Object.entries(erro)) {
+        if (chave === 'ref') continue;
+        const m = primeiraMensagem(valor, nivel + 1);
+        if (m !== 'confira os dados.') return m;
+    }
+    return 'confira os dados.';
+}
+
 // Botões que marcam e desmarcam, no lugar de texto separado por vírgula.
 const Opcoes = ({ opcoes, marcadas, alternar }: any) => (
     <div className={styles.opcoes}>
@@ -47,11 +71,11 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
     id: string; aberta: boolean; aoAlternar: (id: string) => void; icon: React.ElementType; title: string; description: string;
 }) {
     return (
-        <h3 style={{ margin: 0 }}>
+        <h3 id={`secao-${id}`} style={{ margin: 0 }}>
             <button type="button" onClick={() => aoAlternar(id)} aria-expanded={aberta} style={{
                 width: '100%', border: 'none', font: 'inherit', textAlign: 'left',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
-                background: aberta ? 'var(--primary-light)' : '#FDFDFD',
+                background: aberta ? 'var(--primary)' : '#FDFDFD',
                 borderBottom: aberta ? '1px solid var(--border)' : 'none',
                 transition: 'all 0.3s', borderRadius: aberta ? '16px 16px 0 0' : '16px', color: aberta ? 'white' : 'var(--text-primary)'
             }}>
@@ -61,7 +85,7 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
                     </span>
                     <span>
                         <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700 }}>{title}</span>
-                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>{description}</span>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.95)' : 'var(--text-secondary)' }}>{description}</span>
                     </span>
                 </span>
                 {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
@@ -78,6 +102,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
     const [openSection, setOpenSection] = useState<string>('localizacao');
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [messageErro, setMessageErro] = useState(false);
     const [novaCultura, setNovaCultura] = useState('');
     const [confirmandoApagar, setConfirmandoApagar] = useState(false);
     const [naoEncontrado, setNaoEncontrado] = useState(false);
@@ -97,6 +122,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
             if (!res.ok) throw new Error();
             router.push('/meus-cultivos?excluido=1');
         } catch {
+            setMessageErro(true);
             setMessage('Não foi possível excluir o cultivo. Tente de novo.');
             setSaving(false);
             setConfirmandoApagar(false);
@@ -193,6 +219,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
     const onSubmit = async (data: PerfilValidado, pedirAnalise: boolean) => {
         setSaving(true);
         setMessage('');
+        setMessageErro(false);
         try {
             // As culturas das safras entram também nas "culturas dos últimos anos", que a IA e o ZARC usam.
             const submissionData = { ...data, culturasHistorico: semRepetir([...data.culturasHistorico, ...(data.safras ?? []).map((s) => s.cultura)]) };
@@ -204,6 +231,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
             });
             const resposta = await res.json().catch(() => ({}));
             if (!res.ok) {
+                setMessageErro(true);
                 setMessage(resposta.message || 'Não foi possível registrar as alterações.');
                 setSaving(false);
                 return;
@@ -217,18 +245,43 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 router.push('/meus-cultivos?salvo=1');
             }
         } catch (err) {
+            setMessageErro(true);
             setMessage('Sem resposta do servidor.');
             setSaving(false);
         }
+    };
+
+    // Validação falhou: o campo com erro podia estar num bloco fechado, e nada aparecia na tela.
+    // Abre o bloco do primeiro erro, rola até ele, dá foco ao campo e diz junto dos botões o que corrigir.
+    const abrirPrimeiroErro = (erros: Record<string, any>) => {
+        const campo = ['nome', ...Object.keys(BLOCO_DO_CAMPO)].find((c) => erros[c]);
+        if (!campo) return;
+        setMessageErro(true);
+        const mensagem = primeiraMensagem(erros[campo]);
+        if (campo === 'nome') {
+            setMessage(`Confira o nome do cultivo: ${mensagem}`);
+            document.getElementById('nome-cultivo')?.focus();
+            return;
+        }
+        const bloco = BLOCO_DO_CAMPO[campo];
+        setOpenSection(bloco);
+        setMessage(`Confira o bloco "${TITULO_DO_BLOCO[bloco]}": ${mensagem}`);
+        // Depois de o bloco abrir na tela
+        setTimeout(() => {
+            const secao = document.getElementById(`secao-${bloco}`)?.parentElement;
+            secao?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const alvo = secao?.querySelector(`[name="${campo}"]`) ?? secao?.querySelector('input:not([type="hidden"]), select, textarea');
+            (alvo as HTMLElement | null)?.focus({ preventScroll: true });
+        }, 60);
     };
 
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? '' : section);
     };
 
-    const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', outline: 'none', transition: 'border 0.2s' };
+    const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', transition: 'border 0.2s' };
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
-    const errorStyle = { color: '#EF4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
+    const errorStyle = { color: 'var(--erro)', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
     const dicaStyle = { display: 'block', marginBottom: '0.8rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' };
     const inputCompacto = { ...inputStyle, padding: '0.75rem 0.9rem', minWidth: 0 };
 
@@ -561,15 +614,15 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- SUBMIT --- */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ color: message.includes('Não foi possível') || message.includes('Sem resposta') ? '#EF4444' : 'var(--primary-light)', fontWeight: '600', fontSize: '1.1rem' }}>
+                    <div role={messageErro ? 'alert' : 'status'} style={{ color: messageErro ? 'var(--erro)' : 'var(--primary-dark)', fontWeight: '600', fontSize: '1.1rem' }}>
                         {message}
                     </div>
                     <div className={styles.acoesFormulario}>
-                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false))}
+                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}
                             style={{ background: 'transparent', color: 'var(--primary-dark)', padding: '1.1rem 2rem', borderRadius: '100px', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '700', fontSize: '1rem', opacity: saving ? 0.7 : 1 }}>
                             {id ? 'Salvar' : 'Cadastrar'}
                         </button>
-                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, true))}
+                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}
                             style={{ background: 'var(--primary)', color: 'var(--white)', padding: '1.25rem 2.5rem', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1.05rem', transition: 'all 0.3s', opacity: saving ? 0.7 : 1, boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)' }}>
                             {saving ? 'Salvando...' : 'Salvar e pedir análise à IA'}
                         </button>

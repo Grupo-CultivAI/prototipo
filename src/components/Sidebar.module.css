@@ -68,7 +68,7 @@
     width: 100%;
     padding: 1rem;
     background: #FEF2F2;
-    color: #EF4444;
+    color: var(--erro);
     border: 1px solid #FEE2E2;
     border-radius: 12px;
     cursor: pointer;
