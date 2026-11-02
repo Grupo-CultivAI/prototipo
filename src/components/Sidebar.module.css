@@ -133,10 +133,10 @@
         box-shadow: none;
     }
 
+    /* "Sair" saiu da navegação do celular: um toque sem querer tirava a pessoa do app, e uma
+       ação rara ocupava 22% da barra. No celular ele fica em Minha Conta. */
     .rodape {
-        margin-top: 0;
-        display: flex;
-        flex: 0 0 22%;
+        display: none;
     }
 
     .sair,

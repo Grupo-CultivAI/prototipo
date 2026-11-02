@@ -13,8 +13,12 @@ import styles from "../conta.module.css"
 // - /redefinir-senha: quem lembra a senha e quer trocá-la (email + senha atual + senha nova).
 function Formulario() {
   const router = useRouter()
-  const codigo = useSearchParams().get("codigo")
-  const [email, setEmail] = useState("")
+  const parametros = useSearchParams()
+  const codigo = parametros.get("codigo")
+  // Vindo de Minha Conta: o email já vem preenchido e, depois, a pessoa volta para lá.
+  // Só /conta é aceito, para o link não servir para mandar alguém a outro site.
+  const voltarParaConta = parametros.get("voltar") === "/conta"
+  const [email, setEmail] = useState(() => (codigo ? "" : parametros.get("email") ?? ""))
   const [senhaAtual, setSenhaAtual] = useState("")
   const [novaSenha, setNovaSenha] = useState("")
   const [confirmar, setConfirmar] = useState("")
@@ -55,7 +59,7 @@ function Formulario() {
         return
       }
       setPronto(true)
-      setTimeout(() => router.push("/login"), 1800)
+      setTimeout(() => router.push(voltarParaConta ? "/conta" : "/login"), 1800)
     } catch {
       falhar("Não foi possível conectar. Confira sua internet e tente de novo.")
     } finally {
@@ -70,7 +74,7 @@ function Formulario() {
       <div role="status" className={styles.confirmacao}>
         <CheckCircle2 size={72} color="var(--primary)" strokeWidth={1.75} style={{ marginBottom: "1rem" }} aria-hidden="true" />
         <h1 className={styles.titulo}>Senha alterada!</h1>
-        <p className={styles.subtitulo}>Levando você para o login...</p>
+        <p className={styles.subtitulo}>{voltarParaConta ? "Voltando para Minha Conta..." : "Levando você para o login..."}</p>
       </div>
     )
   }

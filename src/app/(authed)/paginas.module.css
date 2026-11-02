@@ -972,3 +972,22 @@
     white-space: nowrap;
     border: 0;
 }
+
+/* --- Minha Conta: "Sair da conta" (no celular, é o único lugar dele) --- */
+.botaoSairConta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.25rem;
+    border: 1px solid #FECACA;
+    border-radius: 10px;
+    background: #FEF2F2;
+    color: var(--erro);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.botaoSairConta:hover {
+    background: #FEE2E2;
+}
