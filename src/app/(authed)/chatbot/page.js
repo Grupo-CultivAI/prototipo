@@ -821,6 +821,8 @@ export default function ChatCultivAI() {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
           placeholder={ouvindo ? "Pode falar..." : "Digite sua dúvida..."}
+          aria-label="Sua pergunta para o assistente"
+          maxLength={1000}
           className={styles.campoTexto}
           style={{ flex: 1, minWidth: 0, borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />

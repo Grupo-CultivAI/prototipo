@@ -51,8 +51,9 @@ function primeiraMensagem(erro: any, nivel = 0): string {
 }
 
 // Botões que marcam e desmarcam, no lugar de texto separado por vírgula.
-const Opcoes = ({ opcoes, marcadas, alternar }: any) => (
-    <div className={styles.opcoes}>
+// rotuloId: o id do texto que dá nome ao grupo (lido pelo leitor de tela antes das opções)
+const Opcoes = ({ opcoes, marcadas, alternar, rotuloId }: any) => (
+    <div className={styles.opcoes} role="group" aria-labelledby={rotuloId}>
         {opcoes.map((o: string) => (
             <button key={o} type="button" aria-pressed={marcadas.includes(o)} onClick={() => alternar(o)}
                 className={`${styles.opcao} ${marcadas.includes(o) ? styles.opcaoMarcada : ''}`}>
@@ -270,7 +271,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
         setTimeout(() => {
             const secao = document.getElementById(`secao-${bloco}`)?.parentElement;
             secao?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            const alvo = secao?.querySelector(`[name="${campo}"]`) ?? secao?.querySelector('input:not([type="hidden"]), select, textarea');
+            const alvo = secao?.querySelector(`#campo-${campo}, [name="${campo}"]`) ?? secao?.querySelector('input:not([type="hidden"]), select, textarea');
             (alvo as HTMLElement | null)?.focus({ preventScroll: true });
         }, 60);
     };
@@ -312,8 +313,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
             <div className={styles.progressoPerfil}>
                 <label htmlFor="nome-cultivo" style={labelStyle}>Nome do cultivo *</label>
-                <input id="nome-cultivo" placeholder="Ex.: Sítio Boa Vista, talhão do fundo" maxLength={60} {...register('nome')} style={inputStyle} />
-                {errors.nome && <span style={errorStyle}>{errors.nome.message}</span>}
+                <input id="nome-cultivo" placeholder="Ex.: Sítio Boa Vista, talhão do fundo" maxLength={60} {...register('nome')} aria-invalid={errors.nome ? true : undefined} aria-describedby={errors.nome ? 'erro-nome' : undefined} style={inputStyle} />
+                {errors.nome && <span id="erro-nome" style={errorStyle}>{errors.nome.message}</span>}
                 <span style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                     É o nome que aparece na lista, no Painel e no chat, para você saber de qual área está falando.
                 </span>
@@ -347,31 +348,31 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </div>
                             </div>
                             <div>
-                                <label style={labelStyle}>CEP <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
-                                <input placeholder="00000-000" inputMode="numeric" maxLength={9} {...register('cep', { onChange: (e) => buscarCep(e.target.value) })} style={inputStyle} />
-                                {errors.cep && <span style={errorStyle}>{errors.cep.message}</span>}
+                                <label htmlFor="campo-cep" style={labelStyle}>CEP <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                                <input id="campo-cep" placeholder="00000-000" inputMode="numeric" maxLength={9} {...register('cep', { onChange: (e) => buscarCep(e.target.value) })} aria-invalid={errors.cep ? true : undefined} aria-describedby={errors.cep ? 'erro-cep' : undefined} style={inputStyle} />
+                                {errors.cep && <span id="erro-cep" style={errorStyle}>{errors.cep.message}</span>}
                                 {statusCep && <span className={styles.statusCep} role="status">{statusCep}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Estado *</label>
+                                <label htmlFor="campo-estado" style={labelStyle}>Estado *</label>
                                 {/* Trocar o estado à mão apaga a cidade, que era de outro estado */}
-                                <select {...register('estado', { onChange: () => escolherCidade({ nome: '', codigo: '' }) })} style={inputStyle}>
+                                <select id="campo-estado" {...register('estado', { onChange: () => escolherCidade({ nome: '', codigo: '' }) })} aria-invalid={errors.estado ? true : undefined} aria-describedby={errors.estado ? 'erro-estado' : undefined} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                                 </select>
-                                {errors.estado && <span style={errorStyle}>{errors.estado.message}</span>}
+                                {errors.estado && <span id="erro-estado" style={errorStyle}>{errors.estado.message}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Cidade *</label>
-                                <BuscaCidade uf={valores.estado} valor={valores.cidade} codigo={valores.codigoMunicipio} aoEscolher={escolherCidade} estilo={inputStyle} invalido={Boolean(errors.cidade)} />
-                                {errors.cidade && <span style={errorStyle}>{errors.cidade.message}</span>}
+                                <label htmlFor="campo-cidade" style={labelStyle}>Cidade *</label>
+                                <BuscaCidade idCampo="campo-cidade" descritoPor={errors.cidade ? 'erro-cidade' : undefined} uf={valores.estado} valor={valores.cidade} codigo={valores.codigoMunicipio} aoEscolher={escolherCidade} estilo={inputStyle} invalido={Boolean(errors.cidade)} />
+                                {errors.cidade && <span id="erro-cidade" style={errorStyle}>{errors.cidade.message}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Tamanho da área (hectares)</label>
-                                <input type="number" placeholder="Ex: 50" {...register('tamanho')} style={inputStyle} />
+                                <label htmlFor="campo-tamanho" style={labelStyle}>Tamanho da área (hectares)</label>
+                                <input id="campo-tamanho" type="number" placeholder="Ex: 50" {...register('tamanho')} style={inputStyle} />
                             </div>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={labelStyle}>Ponto exato da área <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                            <div style={{ gridColumn: '1 / -1' }} role="group" aria-labelledby="rotulo-ponto">
+                                <span id="rotulo-ponto" style={labelStyle}>Ponto exato da área <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></span>
                                 <span style={dicaStyle}>
                                     Em município grande, o tempo no centro da cidade pode ser bem diferente do da sua área. Com o ponto marcado, a previsão do tempo usa o lugar exato.
                                 </span>
@@ -388,8 +389,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     {openSection === 'solo' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div>
-                                <label style={labelStyle} title="Influencia diretamente na retenção de água e nutrientes.">Tipo de Solo ⓘ</label>
-                                <select {...register('tipoSolo')} style={inputStyle}>
+                                <label htmlFor="campo-tipoSolo" style={labelStyle}>Tipo de Solo</label>
+                                <select id="campo-tipoSolo" {...register('tipoSolo')} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="arenoso">Arenoso (Aquece rápido, escorrega água)</option>
                                     <option value="argiloso">Argiloso (Retém água e nutrientes)</option>
@@ -399,17 +400,17 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </select>
                                 {errors.tipoSolo && <span style={errorStyle}>{errors.tipoSolo.message}</span>}
                                 <span style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                                    Dica: aperte um punhado de terra úmida. Se esfarela, é arenoso; se forma uma &quot;cobrinha&quot; que dobra sem quebrar, é argiloso.
+                                    Influencia a retenção de água e nutrientes. Dica: aperte um punhado de terra úmida. Se esfarela, é arenoso; se forma uma &quot;cobrinha&quot; que dobra sem quebrar, é argiloso.
                                 </span>
                             </div>
                             <div>
-                                <label style={labelStyle}>pH do Solo <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(3.5 a 9)</span></label>
-                                <input type="number" step="0.1" placeholder="Ex: 6.5" {...register('phSolo')} style={inputStyle} />
-                                {errors.phSolo && <span style={errorStyle}>{errors.phSolo.message}</span>}
+                                <label htmlFor="campo-phSolo" style={labelStyle}>pH do Solo <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(3.5 a 9)</span></label>
+                                <input id="campo-phSolo" type="number" step="0.1" placeholder="Ex: 6.5" {...register('phSolo')} aria-invalid={errors.phSolo ? true : undefined} aria-describedby={errors.phSolo ? 'erro-phSolo' : undefined} style={inputStyle} />
+                                {errors.phSolo && <span id="erro-phSolo" style={errorStyle}>{errors.phSolo.message}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Matéria Orgânica</label>
-                                <select {...register('materiaOrganica')} style={inputStyle}>
+                                <label htmlFor="campo-materiaOrganica" style={labelStyle}>Matéria Orgânica</label>
+                                <select id="campo-materiaOrganica" {...register('materiaOrganica')} style={inputStyle}>
                                     <option value="">Não sei informar</option>
                                     <option value="Baixa">Baixa</option>
                                     <option value="Média">Média</option>
@@ -417,8 +418,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>Drenagem (Escoamento da água)</label>
-                                <select {...register('drenagem')} style={inputStyle}>
+                                <label htmlFor="campo-drenagem" style={labelStyle}>Drenagem (Escoamento da água)</label>
+                                <select id="campo-drenagem" {...register('drenagem')} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="Boa">Boa (Seca em tempo adequado)</option>
                                     <option value="Média">Média</option>
@@ -439,7 +440,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     {openSection === 'historico' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={labelStyle}>Culturas plantadas nos últimos anos <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(toque para marcar)</span></label>
+                                <span id="rotulo-culturas" style={labelStyle}>Culturas plantadas nos últimos anos <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(toque para marcar)</span></span>
                                 <Controller name="culturasHistorico" control={control} render={({ field }) => {
                                     const marcadas = field.value || [];
                                     const alternar = (c: string) => field.onChange(marcadas.includes(c) ? marcadas.filter((x: string) => x !== c) : [...marcadas, c]);
@@ -450,9 +451,9 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                     };
                                     return (
                                         <>
-                                            <Opcoes opcoes={semRepetir([...CULTURAS_COMUNS, ...marcadas])} marcadas={marcadas} alternar={alternar} />
+                                            <Opcoes rotuloId="rotulo-culturas" opcoes={semRepetir([...CULTURAS_COMUNS, ...marcadas])} marcadas={marcadas} alternar={alternar} />
                                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                                                <input value={novaCultura} onChange={(e) => setNovaCultura(e.target.value)} placeholder="Outra cultura"
+                                                <input value={novaCultura} onChange={(e) => setNovaCultura(e.target.value)} placeholder="Outra cultura" aria-label="Outra cultura, que não está na lista"
                                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }}
                                                     style={{ ...inputStyle, padding: '0.8rem 1rem', minWidth: 0 }} />
                                                 <button type="button" onClick={acrescentar} className={styles.opcao} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Acrescentar</button>
@@ -462,13 +463,13 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 }} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Tempo com as culturas atuais (anos)</label>
-                                <input type="number" placeholder="Ex: 3" {...register('tempoCulturaAtual')} style={inputStyle} />
-                                {errors.tempoCulturaAtual && <span style={errorStyle}>{errors.tempoCulturaAtual.message}</span>}
+                                <label htmlFor="campo-tempoCulturaAtual" style={labelStyle}>Tempo com as culturas atuais (anos)</label>
+                                <input id="campo-tempoCulturaAtual" type="number" placeholder="Ex: 3" {...register('tempoCulturaAtual')} aria-invalid={errors.tempoCulturaAtual ? true : undefined} aria-describedby={errors.tempoCulturaAtual ? 'erro-tempoCulturaAtual' : undefined} style={inputStyle} />
+                                {errors.tempoCulturaAtual && <span id="erro-tempoCulturaAtual" style={errorStyle}>{errors.tempoCulturaAtual.message}</span>}
                             </div>
                             <div>
-                                <label style={labelStyle}>Histórico de uso de fertilizantes</label>
-                                <select {...register('usoFertilizantes')} style={inputStyle}>
+                                <label htmlFor="campo-usoFertilizantes" style={labelStyle}>Histórico de uso de fertilizantes</label>
+                                <select id="campo-usoFertilizantes" {...register('usoFertilizantes')} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="Baixo">Baixo (Mais orgânico/natural)</option>
                                     <option value="Médio">Médio (Uso padrão da região)</option>
@@ -476,8 +477,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>Sistema de plantio</label>
-                                <select {...register('sistemaPlantio')} style={inputStyle}>
+                                <label htmlFor="campo-sistemaPlantio" style={labelStyle}>Sistema de plantio</label>
+                                <select id="campo-sistemaPlantio" {...register('sistemaPlantio')} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="Plantio direto">Plantio direto (sem revolver o solo, sobre a palha)</option>
                                     <option value="Convencional">Convencional (aração e gradagem)</option>
@@ -486,8 +487,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>Irrigação</label>
-                                <select {...register('irrigacao')} style={inputStyle}>
+                                <label htmlFor="campo-irrigacao" style={labelStyle}>Irrigação</label>
+                                <select id="campo-irrigacao" {...register('irrigacao')} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="Não irrigo">Não irrigo (só chuva)</option>
                                     <option value="Aspersão">Aspersão</option>
@@ -497,8 +498,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </select>
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={labelStyle}>Problemas recentes observados (múltipla escolha)</label>
-                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }}>
+                                <span id="rotulo-problemas" style={labelStyle}>Problemas recentes observados (múltipla escolha)</span>
+                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }} role="group" aria-labelledby="rotulo-problemas">
                                     {/* "Nenhum" exclui os demais, e marcar um problema desmarca "Nenhum". */}
                                     <Controller name="problemasRecentes" control={control} render={({ field }) => {
                                         const marcados = field.value || [];
@@ -515,8 +516,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                     }} />
                                 </div>
                             </div>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label style={labelStyle}>Linha do tempo das safras <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                            <div style={{ gridColumn: '1 / -1' }} role="group" aria-labelledby="rotulo-safras">
+                                <span id="rotulo-safras" style={labelStyle}>Linha do tempo das safras <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></span>
                                 <span style={dicaStyle}>O que foi plantado em cada safra. Assim o assistente e o Painel mostram a rotação de verdade, na ordem.</span>
                                 {safras.fields.map((campo, i) => (
                                     <div key={campo.id}>
@@ -550,9 +551,10 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     {openSection === 'objetivo' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>
-                                <label style={labelStyle}>O que pretende plantar na próxima safra?</label>
+                                <span id="rotulo-proxima" style={labelStyle}>O que pretende plantar na próxima safra?</span>
                                 <Controller name="proximaCultura" control={control} render={({ field }) => (
                                     <Opcoes
+                                        rotuloId="rotulo-proxima"
                                         opcoes={[...semRepetir([...CULTURAS_COMUNS, ...(field.value && field.value !== AINDA_NAO_DECIDI ? [field.value] : [])]), AINDA_NAO_DECIDI]}
                                         marcadas={field.value ? [field.value] : []}
                                         alternar={(c: string) => field.onChange(field.value === c ? '' : c)}
@@ -560,8 +562,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 )} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Metas Principais (múltipla escolha)</label>
-                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }}>
+                                <span id="rotulo-metas" style={labelStyle}>Metas Principais (múltipla escolha)</span>
+                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }} role="group" aria-labelledby="rotulo-metas">
                                     {['Aumentar produtividade', 'Recuperar solo', 'Reduzir custos', 'Diversificar produção', 'Transição para orgânico'].map(obj => (
                                         <label key={obj} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
                                             <input type="checkbox" value={obj} {...register('objetivos')} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
@@ -571,8 +573,8 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 </div>
                             </div>
                             <div>
-                                <label style={labelStyle}>Observações Adicionais <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
-                                <textarea rows={4} placeholder="Conte mais sobre sua área se desejar..." {...register('observacoes')} style={{ ...inputStyle, resize: 'vertical' }}></textarea>
+                                <label htmlFor="campo-observacoes" style={labelStyle}>Observações Adicionais <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
+                                <textarea id="campo-observacoes" rows={4} placeholder="Conte mais sobre sua área se desejar..." {...register('observacoes')} style={{ ...inputStyle, resize: 'vertical' }}></textarea>
                             </div>
                         </div>
                     )}
