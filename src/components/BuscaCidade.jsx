@@ -21,7 +21,9 @@ const semAcento = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, ""
 const NA_LISTA = 50;
 const VAZIA = [];
 
-export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo, invalido }) {
+// idCampo: o id do campo, para o <label htmlFor> do formulário apontar para ele.
+// descritoPor: id da mensagem de erro, lida pelo leitor de tela junto com o campo.
+export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo, invalido, idCampo, descritoPor }) {
   const id = useId();
   const [municipios, setMunicipios] = useState({ uf: null, lista: [], erro: false });
   // null = mostrando a cidade escolhida; texto = o produtor está digitando
@@ -91,6 +93,8 @@ export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo, inv
   return (
     <div className={styles.buscaCidade}>
       <input
+        id={idCampo}
+        aria-describedby={descritoPor}
         type="text"
         role="combobox"
         aria-autocomplete="list"
