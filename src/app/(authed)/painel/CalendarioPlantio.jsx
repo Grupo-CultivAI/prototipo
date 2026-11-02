@@ -6,9 +6,9 @@ import styles from './painel.module.css';
 // períodos de 10 dias) e a marca de hoje. Verde mais escuro = menor risco de perder a lavoura.
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const NIVEIS = [
-    { risco: 20, classe: 'risco20', rotulo: 'Risco 20%' },
+    { risco: 20, classe: 'risco20', rotulo: 'Risco 20% (o menor)' },
     { risco: 30, classe: 'risco30', rotulo: 'Risco 30%' },
-    { risco: 40, classe: 'risco40', rotulo: 'Risco 40%' },
+    { risco: 40, classe: 'risco40', rotulo: 'Risco 40% (o maior)' },
 ];
 const classeDoRisco = (r) => styles[NIVEIS.find((n) => n.risco === r)?.classe ?? 'risco0'];
 
@@ -40,7 +40,7 @@ export default function CalendarioPlantio({ linhas }) {
                                         const periodo = `${inicioDoDecendio(i + 1)} a ${fimDoDecendio(i + 1)}`;
                                         return (
                                             <span key={i} className={`${styles.celula} ${classeDoRisco(r)} ${i === hoje ? styles.hoje : ''}`}
-                                                title={`${periodo}: ${r ? `risco ${r}%` : 'plantio não indicado'}${i === hoje ? ' (hoje)' : ''}`} />
+                                                title={`${periodo}: ${r ? `${r}% de risco de perder a lavoura por clima${r === 20 ? ' (o menor)' : ''}` : 'plantio não indicado'}${i === hoje ? ' (hoje)' : ''}`} />
                                         );
                                     })}
                                 </div>
@@ -50,6 +50,12 @@ export default function CalendarioPlantio({ linhas }) {
                     );
                 })}
             </ul>
+            {/* Sem isto, "risco 20%" parecia coisa ruim para quem não conhece o ZARC */}
+            <p className={styles.explicacaoRisco}>
+                <strong>O que é o risco:</strong> a chance de perder a lavoura por causa do clima (seca, geada, chuva demais)
+                se plantar naquele período. <strong>Quanto menor, melhor</strong>: 20% é o período mais seguro. Em cinza, o ZARC
+                não indica o plantio, porque o risco passa de 40%.
+            </p>
             <div className={styles.legenda}>
                 {NIVEIS.map(({ classe, rotulo }) => (
                     <span key={classe}><i className={`${styles.amostra} ${styles[classe]}`} />{rotulo}</span>
