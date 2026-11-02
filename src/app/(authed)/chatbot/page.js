@@ -186,6 +186,9 @@ export default function ChatCultivAI() {
   // segura dois toques rápidos, antes de o estado chegar à tela.
   const [aguardando, setAguardando] = useState(false);
   const aguardandoRef = useRef(false);
+  // Texto lido pelo leitor de tela quando a resposta chega (região escondida, aria-live).
+  // Na lista inteira, ele releria as mensagens a cada mudança.
+  const [anuncio, setAnuncio] = useState("");
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -450,8 +453,10 @@ export default function ChatCultivAI() {
 
       // O id do banco substitui o provisório, para a resposta poder ser avaliada.
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, id: data.mensagemId || loadingId, text: respostaTexto, form: formData, fontes, epoca, semBase } : msg));
+      setAnuncio(`Resposta do CultivAI: ${frasesParaFala(respostaTexto).join(" ")}`);
     } catch (err) {
       setMessages((prev) => prev.map(msg => msg.id === loadingId ? { ...msg, text: "Ocorreu um erro ao conectar com o modelo de linguagem." } : msg));
+      setAnuncio("Ocorreu um erro ao conectar com o assistente.");
     } finally {
       aguardandoRef.current = false;
       setAguardando(false);
@@ -679,7 +684,8 @@ export default function ChatCultivAI() {
         </nav>
       )}
 
-      <div className={styles.chatMensagens} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
+      <p className={styles.somenteLeitor} role="status" aria-live="polite">{aguardando ? "O CultivAI está pensando na resposta." : anuncio}</p>
+      <div className={styles.chatMensagens} aria-busy={aguardando} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
         {messages.map((msg) => (
           <div key={msg.id} className={styles.bolha} style={{ alignSelf: msg.sender === "user" ? 'flex-end' : 'flex-start', animation: 'fadeIn 0.3s ease', width: (msg.form || msg.submittedData) ? '100%' : 'auto' }}>
             <div className={styles.balao} style={{
