@@ -78,6 +78,7 @@ scripts/
   relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
+  acessibilidade.mjs        → axe-core em todas as telas, no celular e no computador (npm run acessibilidade; roda no CI)
   casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
 ```
@@ -310,4 +311,11 @@ npm run start   # inicia o servidor de produção
 npm run lint    # roda o ESLint
 ```
 
-**Integração contínua:** a cada PR e a cada push na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda lint, build e checagem de tipos. Um PR com erro aparece com ❌ no GitHub antes do merge. O fluxo usa valores falsos de `JWT_SECRET` e `MONGODB_URI` só para compilar; nenhuma chave real fica no GitHub.
+**Integração contínua:** a cada PR e a cada push na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda lint, build, checagem de tipos e a checagem de acessibilidade. Um PR com erro aparece com ❌ no GitHub antes do merge. O fluxo usa um `JWT_SECRET` falso e um MongoDB descartável, criado e apagado a cada execução; nenhuma chave real fica no GitHub.
+
+**Acessibilidade:** `tests/acessibilidade.mjs` abre todas as telas (as públicas e as logadas, inclusive cada bloco do formulário do cultivo e a lista de conversas), no celular e no computador, e passa o [axe-core](https://github.com/dequelabs/axe-core) com as regras WCAG 2.2 A e AA. Reprova com problema grave ou crítico; os moderados e menores aparecem no relatório. Para rodar à mão, com o servidor no ar e **apontado para um banco de teste** (o teste cria uma conta `@exemplo.invalido`):
+
+```bash
+npm run acessibilidade                     # com o Chromium do Playwright (npx playwright install chromium)
+NAVEGADOR=msedge npm run acessibilidade    # ou com o Edge/Chrome já instalado (NAVEGADOR=chrome)
+```

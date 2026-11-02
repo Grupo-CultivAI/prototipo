@@ -1,5 +1,5 @@
-# Confere cada PR antes do merge: lint, checagem de tipos e build. Antes, quem descobria
-# um build quebrado era a Vercel, já no deploy. Gratuito para repositórios públicos.
+# Confere cada PR antes do merge: lint, checagem de tipos, build e acessibilidade. Antes, quem
+# descobria um build quebrado era a Vercel, já no deploy. Gratuito para repositórios públicos.
 name: CI
 
 on:
@@ -10,13 +10,20 @@ on:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # O build carrega rotas que exigem estas variáveis ao iniciar. Os valores são falsos e só
-    # servem para compilar: nada aqui conecta ao banco nem chama as APIs.
+    timeout-minutes: 20
+    # O build carrega rotas que exigem estas variáveis ao iniciar. Os valores são falsos: o
+    # MONGODB_URI aponta para o banco descartável abaixo, e nenhuma API externa é chamada.
     env:
       JWT_SECRET: valor-falso-somente-para-compilar
       MONGODB_URI: mongodb://localhost:27017/ci
       NEXT_TELEMETRY_DISABLED: 1
+    # Banco vazio, só para a checagem de acessibilidade: ela cria uma conta de teste para
+    # entrar nas telas logadas. Some quando o fluxo termina.
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,3 +39,15 @@ jobs:
       # arquivos .css. Antes dele, a checagem acusa "Cannot find module ...module.css".
       - name: Checagem de tipos
         run: npx tsc --noEmit
+      - name: Navegador da checagem de acessibilidade
+        run: npx playwright install --with-deps chromium
+      # axe-core em todas as telas, no celular e no computador (tests/acessibilidade.mjs).
+      # Reprova com problema grave ou crítico das regras WCAG 2.2 A/AA.
+      - name: Acessibilidade
+        run: |
+          npm start > servidor.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 2; done
+          npm run acessibilidade
+      - name: Log do servidor (se a acessibilidade falhar)
+        if: failure()
+        run: tail -n 100 servidor.log || true
