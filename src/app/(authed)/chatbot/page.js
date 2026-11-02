@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,6 +12,13 @@ import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE 
 // Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
 // fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
 const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
+
+// O servidor recusa perguntas acima disto (src/app/api/llm); o contador aparece a partir do aviso.
+const LIMITE_PERGUNTA = 1000;
+const AVISO_LIMITE = 800;
+
+// Texto da mensagem provisória enquanto a resposta não chega (aparece com os pontos animados)
+const PENSANDO = "Pensando...";
 
 // O título vem do catálogo (src/lib/documentos.json); sem ele, o nome do arquivo arrumado.
 const partesDaFonte = (fonte) => {
@@ -224,6 +231,31 @@ export default function ChatCultivAI() {
   const reconhecimentoRef = useRef(null);
   const enviarRef = useRef(null);
   const messagesEndRef = useRef(null);
+  // Campo da pergunta: cresce com o texto (até umas 5 linhas, depois rola). Era de uma linha
+  // só e escondia as perguntas longas. A "pílula" em volta perde o arredondado total quando
+  // passa de uma linha. Roda a cada mudança do texto (digitado, ditado ou apagado no envio) e da
+  // largura do campo (o botão vira "Aguarde...", o celular gira).
+  const campoRef = useRef(null);
+  const entradaRef = useRef(null);
+  useLayoutEffect(() => {
+    const campo = campoRef.current;
+    if (!campo) return;
+    const ajustar = () => {
+      campo.style.height = "auto";
+      const variasLinhas = campo.scrollHeight > campo.offsetHeight + 1;
+      campo.style.height = `${campo.scrollHeight}px`;
+      if (entradaRef.current) entradaRef.current.dataset.variasLinhas = String(variasLinhas);
+    };
+    ajustar();
+    let largura = campo.offsetWidth;
+    const observador = new ResizeObserver(() => {
+      if (campo.offsetWidth === largura) return; // a própria mudança de altura não conta
+      largura = campo.offsetWidth;
+      ajustar();
+    });
+    observador.observe(campo);
+    return () => observador.disconnect();
+  }, [inputValue, loading]);
 
   useEffect(() => {
     async function loadData() {
@@ -448,7 +480,7 @@ export default function ChatCultivAI() {
       sender: m.sender
     }));
 
-    setMessages((prev) => [...prev, { id: loadingId, text: "Pensando...", sender: "bot" }]);
+    setMessages((prev) => [...prev, { id: loadingId, text: PENSANDO, sender: "bot" }]);
     aguardandoRef.current = true;
     setAguardando(true);
 
@@ -625,7 +657,28 @@ export default function ChatCultivAI() {
   const conversaVazia = !messages.some((m) => m.sender === "user");
   const faltando = itensFaltando(propriedade);
 
-  if (loading) return <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Carregando a sua experiência...</div>;
+  // Enquanto carrega, o esboço da tela (topo, mensagens, campo) no lugar do texto parado:
+  // mostra que o app está trabalhando e a tela não "pula" quando o chat aparece.
+  if (loading) return (
+    <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column' }} aria-busy="true">
+      <p className={styles.somenteLeitor} role="status">Abrindo o chat...</p>
+      <div className={`${styles.chatCabecalho} ${styles.esqueleto}`} aria-hidden="true">
+        <span className={styles.esqueletoLinha} style={{ width: 'min(14rem, 100%)', height: '2rem' }} />
+        <span style={{ gridArea: 'info', display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingTop: '0.4rem' }}>
+          <span className={styles.esqueletoLinha} style={{ width: 'min(22rem, 100%)' }} />
+          <span className={styles.esqueletoLinha} style={{ width: '9rem' }} />
+        </span>
+      </div>
+      <div className={`${styles.chatMensagens} ${styles.esqueleto}`} style={{ flex: 1, display: 'flex', flexDirection: 'column' }} aria-hidden="true">
+        <span className={styles.esqueletoBalao} style={{ width: 'min(26rem, 80%)' }} />
+        <span className={styles.esqueletoBalao} style={{ width: 'min(14rem, 60%)', alignSelf: 'flex-end' }} />
+        <span className={styles.esqueletoBalao} style={{ width: 'min(30rem, 85%)', height: '5rem' }} />
+      </div>
+      <div className={`${styles.chatEntrada} ${styles.esqueleto}`} style={{ display: 'flex' }} aria-hidden="true">
+        <span className={styles.esqueletoLinha} style={{ flex: 1, height: 'var(--altura-campo)', borderRadius: '100px' }} />
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent' }}>
@@ -782,7 +835,12 @@ export default function ChatCultivAI() {
               fontWeight: msg.sender === "user" ? '400' : '500'
             }}>
               {/* Only show text if it's not a pure form-response, or show both if preferred */}
-              {!msg.submittedData ? (
+              {msg.text === PENSANDO ? (
+                <span className={styles.pensando}>
+                  <span className={styles.pontos} aria-hidden="true"><span /><span /><span /></span>
+                  Pensando na resposta
+                </span>
+              ) : !msg.submittedData ? (
                 <ReactMarkdown
                   components={{ p: ({ node, ...props }) => <p style={{ margin: 0, paddingBottom: '0.5rem', color: 'inherit' }} {...props} /> }}
                 >
@@ -844,7 +902,7 @@ export default function ChatCultivAI() {
               {msg.sender === "user" ? 'Você' : 'CultivAI'}
               {msg.sender === "bot" && (
                 <span className={styles.acoesMensagem}>
-                  {temFala && msg.text !== "Pensando..." && (
+                  {temFala && msg.text !== PENSANDO && (
                     <button type="button" onClick={() => ouvir(msg)} aria-pressed={falandoId === msg.id} title={falandoId === msg.id ? "Parar a leitura" : "Ouvir a resposta"} className={falandoId === msg.id ? styles.avaliada : undefined}>
                       {falandoId === msg.id ? <Square size={15} /> : <Volume2 size={15} />}
                     </button>
@@ -857,7 +915,7 @@ export default function ChatCultivAI() {
                     <ThumbsDown size={15} />
                   </button>
                   </>}
-                  {msg.text !== "Pensando..." && (
+                  {msg.text !== PENSANDO && (
                     <button type="button" onClick={() => copiarResposta(msg)} title={copiadoId === msg.id ? "Copiado!" : "Copiar a resposta"} aria-label={copiadoId === msg.id ? "Resposta copiada" : "Copiar a resposta"}>
                       {copiadoId === msg.id ? <Check size={15} /> : <Copy size={15} />}
                     </button>
@@ -903,17 +961,34 @@ export default function ChatCultivAI() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className={styles.chatEntrada} style={{ display: 'flex', gap: '12px', background: 'var(--surface)', borderRadius: '100px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
-        <input
-          type="text"
+      {/* Perto do limite do servidor, o contador aparece; antes o erro só vinha depois do envio */}
+      {inputValue.length >= AVISO_LIMITE && (
+        <p id="contador-caracteres" className={styles.contadorCaracteres} data-no-limite={inputValue.length >= LIMITE_PERGUNTA}>
+          {inputValue.length >= LIMITE_PERGUNTA
+            ? `Limite de ${LIMITE_PERGUNTA.toLocaleString("pt-BR")} caracteres atingido`
+            : `${inputValue.length.toLocaleString("pt-BR")} de ${LIMITE_PERGUNTA.toLocaleString("pt-BR")} caracteres`}
+        </p>
+      )}
+      <div ref={entradaRef} className={styles.chatEntrada} style={{ display: 'flex', gap: '12px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+        <textarea
+          ref={campoRef}
+          rows={1}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+          // Enter envia; Shift+Enter quebra a linha. Durante a composição de acentos (teclados
+          // que montam a letra em duas teclas), o Enter confirma a letra e não envia.
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          enterKeyHint="send"
           placeholder={ouvindo ? "Pode falar..." : "Digite sua dúvida..."}
           aria-label="Sua pergunta para o assistente"
-          maxLength={1000}
+          aria-describedby={inputValue.length >= AVISO_LIMITE ? "contador-caracteres" : undefined}
+          maxLength={LIMITE_PERGUNTA}
           className={styles.campoTexto}
-          style={{ flex: 1, minWidth: 0, borderRadius: '100px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
+          style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
         {temVoz && (
           <button
