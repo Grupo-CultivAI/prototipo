@@ -991,3 +991,62 @@
 .botaoSairConta:hover {
     background: #FEE2E2;
 }
+
+/* --- Formulário do cultivo: situação de cada bloco, no cabeçalho --- */
+.situacaoBloco {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.situacaoBloco[data-tipo="ok"] {
+    color: var(--primary-dark);
+}
+
+.situacaoBloco[data-tipo="falta"] {
+    color: #92400E;
+}
+
+.situacaoBloco[data-tipo="erro"] {
+    color: var(--erro);
+    box-shadow: inset 0 0 0 1px #FECACA;
+}
+
+/* Botões de salvar presos ao pé da tela; no celular, logo acima da navegação do rodapé */
+.barraSalvar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-bottom: 1rem;
+    background: var(--bg);
+}
+
+@media (max-width: 768px), (max-height: 500px) {
+    /* A navegação do rodapé tem ~77px; o estilo no código dá 1,5rem de folga em cima, que no
+       celular deixava a barra alta demais */
+    .barraSalvar {
+        bottom: calc(4.6rem + env(safe-area-inset-bottom)); /* um pouco por baixo da navegação, sem fresta */
+        margin: 0 -0.75rem !important;
+        padding: 0.6rem 0.75rem !important;
+        gap: 0.5rem !important;
+        box-shadow: 0 -6px 12px rgba(6, 64, 43, 0.06);
+    }
+
+    .barraSalvar > div:empty {
+        display: none;
+    }
+
+    .barraSalvar button {
+        flex: 1;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
