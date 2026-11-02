@@ -145,6 +145,12 @@ async function abrirNavegador() {
         console.log(`        onde: ${[...new Set(r.ondes)].join('; ')}`);
         for (const [alvo, motivo] of [...r.alvos].slice(0, 5)) console.log(`        - ${alvo}${motivo ? `: ${motivo}` : ''}`);
         console.log('');
+        // No GitHub Actions, cada problema vira também uma anotação, que aparece na página do PR
+        if (process.env.GITHUB_ACTIONS) {
+            const [alvo, motivo] = [...r.alvos][0] ?? ['', ''];
+            const texto = `${r.help} | onde: ${[...new Set(r.ondes)].join('; ')} | ${alvo}: ${motivo}`.replace(/\r?\n/g, ' ');
+            console.log(`::${REPROVA.has(r.impact) ? 'error' : 'warning'} title=Acessibilidade (${IMPACTO[r.impact] ?? r.impact}) ${r.id}::${texto}`);
+        }
     }
     const reprovados = lista.filter((r) => REPROVA.has(r.impact));
     if (!lista.length) console.log('Nenhum problema encontrado.');
