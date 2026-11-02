@@ -13,23 +13,35 @@ const TTL_PREVISAO_MS = 60 * 60 * 1000;
 const DIAS_DE_PREVISAO = 5;
 const DIAS_DA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
+// O lugar da consulta: o ponto marcado no mapa (Meus Cultivos), se houver; senão, a cidade.
+// Em município grande, o centro da cidade pode ter outro tempo.
+export type Ponto = { lat?: number | null; lng?: number | null } | null | undefined;
+const temPonto = (p: Ponto): p is { lat: number; lng: number } => typeof p?.lat === 'number' && typeof p?.lng === 'number';
+
 async function consultar<T>(
     recurso: 'weather' | 'forecast',
     cidade: string | null | undefined,
+    ponto: Ponto,
     ttl: number,
     resumir: (d: any) => T | null,
 ): Promise<T | null> {
     const apiKey = process.env.OPENWEATHER_API_KEY;
-    if (!apiKey || !cidade?.trim()) return null;
+    if (!apiKey || (!cidade?.trim() && !temPonto(ponto))) return null;
 
-    const key = `${recurso}:${cidade.trim().toLowerCase()}`;
+    // Pontos a ~1 km um do outro dividem o cache
+    const key = temPonto(ponto) ? `${recurso}:${ponto.lat.toFixed(2)},${ponto.lng.toFixed(2)}` : `${recurso}:${cidade!.trim().toLowerCase()}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < ttl) return hit.value as T;
 
     try {
         const url = new URL(`https://api.openweathermap.org/data/2.5/${recurso}`);
-        // ",BR" evita resolver "Bela Vista" para outro país
-        url.searchParams.set('q', `${cidade.trim()},BR`);
+        if (temPonto(ponto)) {
+            url.searchParams.set('lat', String(ponto.lat));
+            url.searchParams.set('lon', String(ponto.lng));
+        } else {
+            // ",BR" evita resolver "Bela Vista" para outro país
+            url.searchParams.set('q', `${cidade!.trim()},BR`);
+        }
         url.searchParams.set('appid', apiKey);
         url.searchParams.set('units', 'metric');
         url.searchParams.set('lang', 'pt_br');
@@ -47,8 +59,8 @@ async function consultar<T>(
     }
 }
 
-export function getWeatherSummary(cidade?: string | null) {
-    return consultar('weather', cidade, TTL_AGORA_MS, (d) => {
+export function getWeatherSummary(cidade?: string | null, ponto?: Ponto) {
+    return consultar('weather', cidade, ponto, TTL_AGORA_MS, (d) => {
         const partes = [
             d.weather?.[0]?.description ?? 'sem descrição',
             `${Math.round(d.main?.temp)}°C (sensação ${Math.round(d.main?.feels_like)}°C)`,
@@ -68,8 +80,8 @@ export type DiaDePrevisao = { hoje: boolean; semana: string; data: string; min: 
  * A OpenWeather gratuita entrega blocos de 3 horas por 5 dias; aqui eles viram totais por dia,
  * no fuso da cidade. O dia de hoje entra só com as horas que ainda faltam.
  */
-export function getForecastDays(cidade?: string | null) {
-    return consultar<DiaDePrevisao[]>('forecast', cidade, TTL_PREVISAO_MS, (d) => {
+export function getForecastDays(cidade?: string | null, ponto?: Ponto) {
+    return consultar<DiaDePrevisao[]>('forecast', cidade, ponto, TTL_PREVISAO_MS, (d) => {
         const fuso = Number(d.city?.timezone ?? -10800);
         const dias = new Map<string, { min: number; max: number; chuva: number; chance: number; dia: Date }>();
         for (const bloco of d.list ?? []) {
@@ -98,8 +110,8 @@ export function getForecastDays(cidade?: string | null) {
 }
 
 /** A previsão para a IA, uma linha por dia: "qua 28/10: 18 a 29°C, chuva 12 mm (chance 80%)". */
-export async function getForecastSummary(cidade?: string | null) {
-    const dias = await getForecastDays(cidade);
+export async function getForecastSummary(cidade?: string | null, ponto?: Ponto) {
+    const dias = await getForecastDays(cidade, ponto);
     if (!dias) return null;
     return dias.map(({ hoje, semana, data, min, max, chuvaMm, chance }) => {
         const textoChuva = chuvaMm >= 1

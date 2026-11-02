@@ -18,6 +18,20 @@ export const tamanhoEmTexto = (t) => {
     return /^\d+([.,]\d+)?$/.test(texto) ? `${texto} ha` : texto;
 };
 
+// --- Safras (linha do tempo do cultivo) ---
+export const PERIODOS_DA_SAFRA = [
+    { valor: 'verao', rotulo: 'Safra de verão (plantio de set. a dez.)' },
+    { valor: 'inverno', rotulo: 'Safrinha ou inverno (plantio de jan. a jul.)' },
+];
+export const rotuloDaSafra = ({ ano, periodo }) =>
+    periodo === 'verao' ? `Safra ${ano}/${String(Number(ano) + 1).slice(-2)}` : `Safrinha ${ano}`;
+// Em ordem de plantio: no mesmo ano, a safrinha (jan. a jul.) vem antes da safra de verão (set. a dez.).
+const ordemDaSafra = (s) => Number(s.ano) * 2 + (s.periodo === 'verao' ? 1 : 0);
+export const ordenarSafras = (safras) => [...(safras ?? [])].sort((a, b) => ordemDaSafra(a) - ordemDaSafra(b));
+
+// --- Plano de rotação ---
+export const proximaEtapa = (plano) => plano?.etapas?.find((e) => !e.feita) ?? null;
+
 // Nome do cultivo para mostrar (Meus Cultivos). Os perfis de antes de 30/10/2026 não têm nome.
 export const nomeDoCultivo = (c) => c?.nome?.trim() || (c?.cidade ? `Cultivo em ${c.cidade}` : 'Meu cultivo');
 

@@ -11,13 +11,13 @@ const projetar = ([lng, lat]) => [
     (projecao.maxLat - lat) * projecao.escalaY,
 ];
 
-// pontos: [{ uf, codigo, rotulo, ativo }]
+// pontos: [{ uf, codigo, exato, rotulo, ativo }]; exato = { lat, lng } marcado no mapa do cultivo
 export default function MapaPropriedade({ pontos = [] }) {
     const estados = [...new Set(pontos.map((p) => p.uf).filter((uf) => contornos[uf]))];
     // Município criado depois da malha do IBGE (sem centro): fica só o estado destacado.
     const marcados = pontos
-        .filter((p) => p.codigo && centros[p.codigo])
-        .map((p) => ({ ...p, xy: projetar(centros[p.codigo]) }))
+        .filter((p) => p.exato || (p.codigo && centros[p.codigo]))
+        .map((p) => ({ ...p, xy: projetar(p.exato ? [p.exato.lng, p.exato.lat] : centros[p.codigo]) }))
         .sort((a, b) => Number(a.ativo) - Number(b.ativo)); // o escolhido por cima
     const descricao = pontos.length
         ? `Mapa do Brasil com ${pontos.length === 1 ? 'o cultivo' : 'os cultivos'} em ${pontos.map((p) => p.rotulo).join('; ')}`

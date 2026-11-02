@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import ContadorPerguntas from "@/components/ContadorPerguntas";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -77,6 +77,11 @@ async function copiarTexto(texto) {
 // Só respostas gravadas no banco (id do MongoDB) podem ser avaliadas; a saudação inicial e
 // as mensagens de erro não têm id.
 const respostaGravada = (msg) => msg.sender === "bot" && /^[a-f0-9]{24}$/.test(String(msg.id));
+
+// Resposta com cara de plano de rotação: uma lista (numerada ou com marcadores) que fala de safra,
+// rotação ou plano. Só nela aparece "Salvar como plano".
+const pareceUmPlano = (texto) => /safra|rota[çc][ãa]o|plano|sequ[êe]ncia/i.test(texto || "")
+  && ((texto || "").match(/^\s*(\d+[.)]|[-*•])\s+/gm) || []).length >= 2;
 
 // Atalhos para a primeira pergunta, montados com o que o produtor contou sobre o cultivo.
 function sugestoesDePergunta(p) {
@@ -183,6 +188,8 @@ export default function ChatCultivAI() {
   const [temFala] = useState(() => !!sinteseDeFala());
   const [falandoId, setFalandoId] = useState(null);
   const [copiadoId, setCopiadoId] = useState(null);
+  // Resultado do "Salvar como plano", por resposta: { carregando } | { ok, texto } | { erro }
+  const [planos, setPlanos] = useState({});
   const falaRef = useRef(0);
   const reconhecimentoRef = useRef(null);
   const enviarRef = useRef(null);
@@ -511,6 +518,24 @@ export default function ChatCultivAI() {
     setTimeout(() => setCopiadoId((atual) => (atual === msg.id ? null : atual)), 2000);
   };
 
+  // Guarda a sequência da resposta como plano de rotação do cultivo da conversa.
+  const salvarPlano = async (msg) => {
+    if (!propriedade) return;
+    setPlanos((p) => ({ ...p, [msg.id]: { carregando: true } }));
+    try {
+      const r = await fetch(`/api/cultivos/${propriedade._id}/plano`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mensagemId: msg.id })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.message || "Não deu para salvar o plano agora.");
+      setCultivos((lista) => lista.map((c) => (c._id === propriedade._id ? { ...c, plano: d.plano } : c)));
+      const n = d.plano.etapas.length;
+      setPlanos((p) => ({ ...p, [msg.id]: { ok: true, texto: `Plano salvo em ${nomeDoCultivo(propriedade)}: ${n} ${n === 1 ? "etapa" : "etapas"}${d.substituiu ? ", no lugar do plano anterior" : ""}.` } }));
+    } catch (err) {
+      setPlanos((p) => ({ ...p, [msg.id]: { erro: err.message } }));
+    }
+  };
+
   const avaliar = async (msg, valor) => {
     const avaliacao = msg.avaliacao === valor ? null : valor; // clicar de novo desfaz
     setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, avaliacao } : m)));
@@ -736,9 +761,21 @@ export default function ChatCultivAI() {
                       {copiadoId === msg.id ? <Check size={15} /> : <Copy size={15} />}
                     </button>
                   )}
+                  {propriedade && respostaGravada(msg) && pareceUmPlano(msg.text) && (
+                    <button type="button" onClick={() => salvarPlano(msg)} disabled={planos[msg.id]?.carregando}
+                      title={`Guardar esta sequência como plano de rotação de ${nomeDoCultivo(propriedade)}`} className={styles.botaoPlano}>
+                      <ListChecks size={15} /> <span>{planos[msg.id]?.carregando ? "Salvando..." : "Salvar como plano"}</span>
+                    </button>
+                  )}
                 </span>
               )}
             </div>
+            {planos[msg.id]?.ok && (
+              <p className={styles.avisoPlano} role="status">
+                {planos[msg.id].texto} <Link href={`/meus-cultivos/${propriedade?._id}#plano`}>Ver e ajustar o plano</Link>
+              </p>
+            )}
+            {planos[msg.id]?.erro && <p className={styles.avisoPlanoErro} role="alert">{planos[msg.id].erro}</p>}
           </div>
         ))}
         {conversaVazia && (propriedade ? faltando.length > 0 : true) && (

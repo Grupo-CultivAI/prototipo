@@ -10,8 +10,9 @@ function iconeDoDia({ chuvaMm, chance }) {
     return chance >= 0.1 ? CloudSun : Sun;
 }
 
-export default async function Previsao({ cidade }) {
-    const dias = await getForecastDays(cidade);
+// ponto: o lugar marcado no mapa do cultivo, se houver (vale no lugar do centro da cidade).
+export default async function Previsao({ cidade, ponto }) {
+    const dias = await getForecastDays(cidade, ponto);
     if (!dias) return <p className={styles.vazio}>A previsão do tempo não está disponível agora. Tente de novo mais tarde.</p>;
 
     return (

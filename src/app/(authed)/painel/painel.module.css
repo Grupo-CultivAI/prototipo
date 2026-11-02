@@ -154,6 +154,66 @@
     font-weight: 700;
 }
 
+/* --- Avisos de plantio (janelas do ZARC abrindo ou fechando) --- */
+.avisos {
+    padding: 1.1rem 1.25rem;
+    border: 1px solid #FDE68A;
+    border-radius: 18px;
+    background: #FFFBEB;
+}
+
+.painel .avisos h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem;
+    color: #92400E;
+}
+
+.avisos ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.6rem;
+    list-style: none;
+}
+
+.avisos a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    height: 100%;
+    padding: 0.7rem 0.85rem;
+    border-left: 4px solid var(--primary);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text-primary);
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.avisos a:hover,
+.avisos a:focus-visible {
+    box-shadow: var(--shadow-md);
+}
+
+.avisos strong {
+    color: var(--primary-dark);
+}
+
+.avisos span {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+
+.avisos .aviso_fecha a {
+    border-left-color: #D97706;
+}
+
+.avisos .aviso_abre a {
+    border-left-color: #2563EB;
+}
+
 /* --- Números --- */
 .numeros {
     display: grid;
@@ -603,6 +663,94 @@
 
 .rotacao + .vazio {
     margin-top: 1rem;
+}
+
+/* Safras em linha do tempo e plano de rotação (cartão Rotação) */
+.linhaDoTempo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+}
+
+.linhaDoTempo li {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+}
+
+.linhaDoTempo li + li::before {
+    content: '→';
+    position: absolute;
+    left: -0.95rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.linhaDoTempo li + li {
+    margin-left: 0.7rem;
+}
+
+.linhaDoTempoQuando {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+}
+
+.linhaDoTempoCultura {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.subtituloCartao svg {
+    vertical-align: -2px;
+}
+
+.plano {
+    display: grid;
+    gap: 0.45rem;
+    list-style: none;
+}
+
+.plano li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    line-height: 1.35;
+    font-size: 0.9rem;
+}
+
+.plano li svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--text-secondary);
+}
+
+.plano small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.plano .etapaFeita {
+    color: var(--text-secondary);
+}
+
+.plano .etapaFeita strong {
+    text-decoration: line-through;
+}
+
+.plano .etapaFeita svg {
+    color: var(--primary);
+}
+
+.plano .etapaProxima svg {
+    color: var(--primary-dark);
 }
 
 /* --- Assistente --- */

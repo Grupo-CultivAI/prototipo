@@ -7,6 +7,7 @@
  *   cultura citada, entram a próxima cultura e as culturas do perfil.
  */
 import ZarcMunicipio from '@/models/ZarcMunicipio';
+import { proximaEtapa } from '@/lib/perfil';
 import {
     GRUPO_DO_PERFIL, NOME_DO_GRUPO, decodificarFaixas, janelasEmTexto, melhorRisco, normalizar, palavrasDaCultura,
 } from '@/lib/zarc-formato.mjs';
@@ -165,7 +166,8 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
 // --- Calendário do Painel: as janelas de todas as culturas do perfil, decêndio a decêndio ---
 
 // riscos: 36 decêndios (0 = plantio não indicado); null = não indicado neste tipo de solo.
-export type LinhaDoCalendario = { cultura: string; manejo: 'sequeiro' | 'irrigado'; riscos: number[] | null; proxima: boolean };
+// proxima: da próxima cultura do perfil; doPlano: da próxima etapa do plano de rotação.
+export type LinhaDoCalendario = { cultura: string; manejo: 'sequeiro' | 'irrigado'; riscos: number[] | null; proxima: boolean; doPlano: boolean };
 export type CalendarioDePlantio =
     | { encontrado: true; codigoMunicipio: string; local: string; solo: string | null; linhas: LinhaDoCalendario[]; semZarc: string[] }
     | { encontrado: false; local: string };
@@ -195,11 +197,15 @@ export async function calendarioDePlantio(propriedade: any): Promise<CalendarioD
         const irriga = Boolean(propriedade?.irrigacao) && propriedade.irrigacao !== 'Não irrigo';
         const grupo = GRUPO_DO_PERFIL[String(propriedade?.tipoSolo ?? '') as keyof typeof GRUPO_DO_PERFIL];
         const proxima = normalizar(propriedade?.proximaCultura ?? '');
+        const etapa = proximaEtapa(propriedade?.plano)?.cultura ?? '';
 
-        // A próxima cultura primeiro; cada cultura do perfil traz até duas variações do ZARC.
+        // A próxima cultura primeiro, depois a da próxima etapa do plano (mesmo se ainda não está
+        // no histórico); cada cultura traz até duas variações do ZARC.
         const linhas: LinhaDoCalendario[] = [];
         const semZarc: string[] = [];
-        for (const nome of new Set(culturasDoPerfil(propriedade))) {
+        const [primeira, ...resto] = culturasDoPerfil(propriedade);
+        const nomes = primeira && normalizar(primeira) === proxima ? [primeira, etapa, ...resto] : [etapa, primeira, ...resto];
+        for (const nome of new Set(nomes.filter(Boolean))) {
             const doZarc = culturasCitadas(municipio, normalizar(nome))
                 .sort((a, b) => ordemDaVariacao(nome, a) - ordemDaVariacao(nome, b) || a.length - b.length);
             if (!doZarc.length) semZarc.push(nome);
@@ -212,6 +218,7 @@ export async function calendarioDePlantio(propriedade: any): Promise<CalendarioD
                     manejo: manejo === 'i' ? 'irrigado' : 'sequeiro',
                     riscos: janelas ? riscosDaJanela(janelas, grupo) : null,
                     proxima: normalizar(nome) === proxima,
+                    doPlano: Boolean(etapa) && normalizar(nome) === normalizar(etapa),
                 });
             }
         }

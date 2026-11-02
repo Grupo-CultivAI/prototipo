@@ -745,3 +745,117 @@
     color: var(--primary-dark);
     font-weight: 600;
 }
+
+/* --- Formulário do cultivo: linha do tempo das safras e etapas do plano --- */
+.linhaSafra,
+.etapaPlano {
+    display: grid;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.linhaSafra {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 1.2fr) auto;
+}
+
+.etapaPlano {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.rotuloSafra {
+    display: block;
+    min-height: 1.2rem;
+    margin: 0.25rem 0 0.6rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.etapaFeita {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.etapaFeita input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.botaoTirar {
+    display: inline-flex;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.botaoTirar:hover {
+    color: #B91C1C;
+    border-color: #FECACA;
+}
+
+@media (max-width: 768px) {
+    /* No celular, cada linha vira um bloco: período e ano lado a lado, a cultura embaixo */
+    .linhaSafra {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr) auto;
+    }
+
+    .linhaSafra input {
+        grid-column: 1 / 3;
+        grid-row: 2;
+    }
+
+    .etapaPlano {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .etapaPlano input {
+        grid-column: 1 / -1;
+    }
+
+    .etapaPlano > button {
+        grid-row: 1;
+        grid-column: 2;
+    }
+}
+
+/* --- Chat: "Salvar como plano" e o resultado, abaixo da resposta --- */
+.acoesMensagem .botaoPlano {
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    border-color: var(--border);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.avisoPlano,
+.avisoPlanoErro {
+    margin: 0.4rem 8px 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.avisoPlano {
+    color: var(--primary-dark);
+}
+
+.avisoPlano a {
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.avisoPlanoErro {
+    color: #B91C1C;
+}

@@ -18,7 +18,7 @@ const secoes = [
     titulo: "Quais dados guardamos",
     lista: [
       "Conta: nome, email e senha. A senha é guardada criptografada; nem a equipe consegue lê-la.",
-      "Meus Cultivos: o que você preencher sobre cada área, como nome, cidade, tipo de solo, culturas, irrigação e objetivos.",
+      "Meus Cultivos: o que você preencher sobre cada área, como nome, cidade, tipo de solo, culturas, safras, plano de rotação, irrigação e objetivos. O ponto exato da área no mapa só é guardado se você marcar.",
       "Conversas: as perguntas que você faz, as respostas do CultivAI e as avaliações 👍/👎 que você der.",
       "Data em que você aceitou este aviso.",
     ],
@@ -35,9 +35,11 @@ const secoes = [
     titulo: "Com quem os dados são compartilhados",
     texto: ["Para funcionar, o CultivAI usa serviços de outras empresas, algumas fora do Brasil. Cada uma recebe só o necessário:"],
     lista: [
-      "Groq (inteligência artificial que escreve as respostas): recebe a sua pergunta, as mensagens anteriores da conversa e um resumo do cultivo da conversa. Não recebe seu nome nem seu email.",
-      "Google Gemini: recebe o texto da pergunta, para encontrar os trechos da Embrapa relacionados.",
-      "OpenWeather: recebe só o nome da sua cidade, para informar o clima atual.",
+      "Groq e NVIDIA (inteligência artificial que escreve as respostas; a NVIDIA só quando a Groq está sem cota): recebem a sua pergunta, as mensagens anteriores da conversa e um resumo do cultivo da conversa e, quando você salva um plano de rotação, o texto da resposta. Não recebem seu nome nem seu email.",
+      "Pinecone: recebe o texto da pergunta, para encontrar os trechos da Embrapa relacionados.",
+      "OpenWeather: recebe só o nome da cidade do cultivo, ou o ponto marcado no mapa, se houver, para informar o clima e a previsão.",
+      "ViaCEP: recebe o CEP que você digitar no cultivo, para preencher o estado e a cidade.",
+      "OpenStreetMap: ao abrir o mapa do cultivo, seu navegador baixa dele as imagens da região mostrada. O ponto que você marca não é enviado a ele.",
       "MongoDB Atlas (banco de dados, em servidores em São Paulo) e Vercel (hospedagem do site): guardam e entregam os dados do aplicativo.",
     ],
   },

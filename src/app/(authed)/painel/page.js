@@ -1,13 +1,14 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Sprout, MessageCircle, MessagesSquare, ClipboardCheck, MapPin, CalendarDays, CloudSun, Repeat, ArrowRight } from 'lucide-react';
+import { Sprout, MessageCircle, MessagesSquare, ClipboardCheck, MapPin, CalendarDays, CloudSun, Repeat, ArrowRight, BellRing, ListChecks, CircleCheck, Circle } from 'lucide-react';
 import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import { LIMITE_POR_DIA, perguntasDeHoje } from '@/lib/limites';
-import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto } from '@/lib/perfil';
+import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto, ordenarSafras, rotuloDaSafra, proximaEtapa } from '@/lib/perfil';
 import { calendarioDePlantio, codigoDoMunicipio } from '@/lib/zarc';
 import { cultivosDoUsuario, nomeDoCultivo } from '@/lib/cultivos';
+import { avisosDeJanela } from '@/lib/avisos';
 import User from '@/models/User';
 import Conversa from '@/models/Conversa';
 import ChatMessage from '@/models/ChatMessage';
@@ -116,16 +117,23 @@ export default async function Painel({ searchParams }) {
     const completo = (ITENS_DO_PERFIL.length - faltando.length) / ITENS_DO_PERFIL.length;
     const restantes = Math.max(0, LIMITE_POR_DIA - feitasHoje);
     // O mapa mostra todos os cultivos; o código do IBGE dos perfis antigos vem do ZARC, pelo nome.
-    const [calendario, codigos] = await Promise.all([
+    // Com o ponto marcado no mapa (Meus Cultivos), ele vale no lugar do centro da cidade.
+    const [calendario, codigos, avisos] = await Promise.all([
         temLocal ? calendarioDePlantio(p) : null,
         Promise.all(cultivos.map(codigoDoMunicipio)),
+        avisosDeJanela(cultivos),
     ]);
+    const temPonto = (c) => typeof c.coordenadas?.lat === 'number' && typeof c.coordenadas?.lng === 'number';
     const pontos = cultivos.map((c, i) => ({ c, codigo: codigos[i] })).filter(({ c }) => c.cidade && c.estado).map(({ c, codigo }) => ({
         uf: String(c.estado).toUpperCase(),
         codigo,
+        exato: temPonto(c) ? c.coordenadas : null,
         rotulo: `${nomeDoCultivo(c)} (${c.cidade}/${String(c.estado).toUpperCase()})`,
         ativo: c === selecionado,
     }));
+    const safras = ordenarSafras(p.safras);
+    const etapas = p.plano?.etapas ?? [];
+    const etapa = proximaEtapa(p.plano);
     const local = temLocal ? `${p.cidade}/${String(p.estado).toUpperCase()}` : null;
     const primeiroNome = String(user.nome ?? '').trim().split(/\s+/)[0];
 
@@ -168,6 +176,22 @@ export default async function Painel({ searchParams }) {
                 </p>
             )}
 
+            {avisos.length > 0 && (
+                <section className={styles.avisos} aria-label="Avisos de plantio">
+                    <h2><BellRing size={20} aria-hidden="true" /> Avisos de plantio</h2>
+                    <ul>
+                        {avisos.map((a) => (
+                            <li key={`${a.cultivoId}-${a.cultura}`} className={styles[`aviso_${a.tipo}`]}>
+                                <Link href={`/painel?cultivo=${a.cultivoId}`}>
+                                    <strong>{a.cultura.replace(/\s*\(.*\)\s*$/, '')} · {a.cultivo}</strong>
+                                    <span>{a.texto}</span>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
             <ul className={styles.numeros}>
                 <Numero icone={Sprout} valor={cultivos.length} rotulo={cultivos.length === 1 ? 'cultivo cadastrado' : 'cultivos cadastrados'}
                     detalhe={cultivos.length ? `${totalCulturas} ${totalCulturas === 1 ? 'cultura' : 'culturas'} ao todo` : 'Nenhum ainda'} />
@@ -202,6 +226,14 @@ export default async function Painel({ searchParams }) {
                             {p.tipoSolo && <div><dt>Solo</dt><dd>{p.tipoSolo === 'nao_sei' ? 'não sei' : p.tipoSolo}</dd></div>}
                             {p.irrigacao && <div><dt>Irrigação</dt><dd>{p.irrigacao}</dd></div>}
                             {p.sistemaPlantio && <div><dt>Plantio</dt><dd>{p.sistemaPlantio}</dd></div>}
+                            <div>
+                                <dt>Ponto no mapa</dt>
+                                <dd>
+                                    {temPonto(p)
+                                        ? <a href={`https://www.openstreetmap.org/?mlat=${p.coordenadas.lat}&mlon=${p.coordenadas.lng}#map=15/${p.coordenadas.lat}/${p.coordenadas.lng}`} target="_blank" rel="noopener noreferrer">Ver a área</a>
+                                        : <Link href={`${editar}`}>Marcar</Link>}
+                                </dd>
+                            </div>
                         </dl>
                     ) : (
                         <p className={styles.vazio}>
@@ -252,23 +284,37 @@ export default async function Painel({ searchParams }) {
                 </Cartao>
 
                 {temLocal && (
-                    <Cartao icone={CloudSun} titulo={`Previsão do tempo em ${p.cidade}`} className={styles.cartaoLargo}>
+                    <Cartao icone={CloudSun} titulo={temPonto(p) ? `Previsão do tempo na área (${p.cidade})` : `Previsão do tempo em ${p.cidade}`} className={styles.cartaoLargo}>
                         <Suspense fallback={<p className={styles.vazio}>Carregando a previsão...</p>}>
-                            <Previsao cidade={p.cidade} />
+                            <Previsao cidade={p.cidade} ponto={temPonto(p) ? p.coordenadas : null} />
                         </Suspense>
                     </Cartao>
                 )}
 
                 <Cartao icone={Repeat} titulo={nome && cultivos.length > 1 ? `Rotação · ${nome}` : 'Sua rotação'}
                     acao={<Link href={editar} className={styles.linkCartao}>Editar</Link>}>
-                    {culturas.length || proxima ? (
+                    {culturas.length || proxima || etapas.length ? (
                         <>
-                            {culturas.length > 0 && (
+                            {/* Com safras registradas, a rotação vira uma linha do tempo, na ordem do plantio */}
+                            {safras.length > 0 ? (
+                                <>
+                                    <h3 className={styles.subtituloCartao}>Safras</h3>
+                                    <ol className={styles.linhaDoTempo}>
+                                        {safras.map((s) => (
+                                            <li key={`${s.ano}-${s.periodo}-${s.cultura}`}>
+                                                <span className={styles.linhaDoTempoQuando}>{rotuloDaSafra(s)}</span>
+                                                <span className={styles.linhaDoTempoCultura}>{s.cultura}</span>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                </>
+                            ) : culturas.length > 0 && (
                                 <>
                                     <h3 className={styles.subtituloCartao}>Plantadas nos últimos anos</h3>
                                     <ul className={styles.rotacao}>
                                         {culturas.map((c) => <li key={c}>{c}</li>)}
                                     </ul>
+                                    <p className={styles.nota}>Registre as safras no cultivo para ver a rotação na ordem em que foi plantada.</p>
                                 </>
                             )}
                             {proxima && (
@@ -279,7 +325,24 @@ export default async function Painel({ searchParams }) {
                                     </ul>
                                 </>
                             )}
-                            {!proxima && <p className={styles.vazio}>Ainda não sabe o que plantar depois? <Link href={linkPergunta('Que rotação de culturas você recomenda para a minha área?', idSelecionado)}>Peça uma sugestão ao assistente</Link></p>}
+                            {etapas.length > 0 && (
+                                <>
+                                    <h3 className={styles.subtituloCartao}><ListChecks size={14} aria-hidden="true" /> Plano de rotação</h3>
+                                    <ol className={styles.plano}>
+                                        {etapas.map((e, i) => (
+                                            <li key={i} className={e.feita ? styles.etapaFeita : e === etapa ? styles.etapaProxima : undefined}>
+                                                {e.feita ? <CircleCheck size={16} aria-label="Feita" /> : <Circle size={16} aria-label={e === etapa ? 'Próxima' : 'A fazer'} />}
+                                                <span>
+                                                    <strong>{e.cultura}</strong>{e.quando ? ` · ${e.quando}` : ''}
+                                                    {e.objetivo && <small>{e.objetivo}</small>}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                    <p className={styles.nota}>{etapa ? <>Próxima etapa: <strong>{etapa.cultura}</strong>. Marque as etapas feitas no cultivo.</> : 'Plano concluído.'}</p>
+                                </>
+                            )}
+                            {!proxima && !etapas.length && <p className={styles.vazio}>Ainda não sabe o que plantar depois? <Link href={linkPergunta('Que rotação de culturas você recomenda para a minha área?', idSelecionado)}>Peça uma sugestão ao assistente</Link></p>}
                         </>
                     ) : (
                         <p className={styles.vazio}>Cadastre as culturas dos últimos anos para acompanhar a sua rotação. <Link href={editar}>{selecionado ? 'Editar o cultivo' : 'Cadastrar'}</Link></p>
