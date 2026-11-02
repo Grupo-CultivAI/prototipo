@@ -12,7 +12,7 @@ import styles from './Sidebar.module.css';
 // desenho em cada aparelho e davam um ar pouco sério à navegação.
 const LINKS = [
     { href: '/painel', icone: House, rotulo: 'Início' },
-    { href: '/chatbot', icone: MessageCircle, rotulo: 'Assistente AI' },
+    { href: '/chatbot', icone: MessageCircle, rotulo: 'Assistente' },
     { href: '/meus-cultivos', icone: Sprout, rotulo: 'Meus Cultivos' },
     { href: '/conta', icone: CircleUser, rotulo: 'Minha Conta' },
 ];

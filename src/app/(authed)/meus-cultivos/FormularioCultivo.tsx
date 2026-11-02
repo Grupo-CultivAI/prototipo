@@ -410,7 +410,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
 
                 {/* --- 2. SOLO --- */}
                 <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('solo')} aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo (Base Física/Química)" description="Condiciona o desenvolvimento e retenção de nutrientes." />
+                    <CabecalhoSecao situacao={situacaoDo('solo')} aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo" description="Tipo de terra, acidez e drenagem: pesam na escolha da cultura e da adubação." />
                     {openSection === 'solo' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div>

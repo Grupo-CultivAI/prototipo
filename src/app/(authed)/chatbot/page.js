@@ -692,7 +692,7 @@ export default function ChatCultivAI() {
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}
-              <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar Log Debug'}</span>
+              <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar histórico (teste)'}</span>
             </button>
           )}
         </div>
