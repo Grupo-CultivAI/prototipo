@@ -387,20 +387,36 @@
     gap: 0.25rem;
 }
 
+/* Cor cheia: com 70% de transparência, "Salvar como plano" parecia desabilitado */
 .acoesMensagem button {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0.3rem;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0.7;
 }
 
 .acoesMensagem button:hover {
-    opacity: 1;
     border-color: var(--border);
+    color: var(--text-primary);
+}
+
+/* No celular, alvos de 40px (eram 27px): mais fácil de acertar com o dedo */
+@media (max-width: 768px) {
+    .acoesMensagem {
+        flex-wrap: wrap;
+    }
+
+    .acoesMensagem button {
+        min-width: 40px;
+        min-height: 40px;
+    }
 }
 
 .acoesMensagem .avaliada {
