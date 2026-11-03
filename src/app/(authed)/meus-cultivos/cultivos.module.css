@@ -82,11 +82,18 @@
     box-shadow: var(--shadow-sm);
 }
 
+/* O "Editar" desce para baixo do nome quando os dois não cabem lado a lado (letra aumentada) */
 .cartaoTopo {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.5rem 1rem;
+}
+
+.cartaoTopo > div {
+    flex: 1 1 12rem;
+    min-width: 0;
 }
 
 .cartaoTopo h2 {
