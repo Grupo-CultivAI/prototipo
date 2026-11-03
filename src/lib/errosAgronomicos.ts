@@ -79,8 +79,10 @@ function nomesTrocados(resposta: string): string | null {
 function leguminosaErrada(resposta: string): string | null {
     const n = sem(resposta);
     const erros: string[] = [];
-    // "crotalária, mucuna ou milheto; essas leguminosas", "milheto (leguminosa)", "milheto é uma leguminosa"
-    if (new RegExp(`\\b(${NAO_LEGUMINOSAS})\\b[^.\\n]{0,60}\\b(essas|estas|ambas|todas) (as )?leguminosas\\b|\\b(${NAO_LEGUMINOSAS})\\s*(\\(\\s*|e uma\\s+)leguminosa`).test(n)) {
+    // "crotalária, mucuna ou milheto; essas leguminosas", "milheto (leguminosa)", "milheto é uma
+    // leguminosa" e, desde 03/11/2026, "uma leguminosa de inverno (como aveia-preta ou ervilhaca)":
+    // a primeira planta depois de "como" é a que foi chamada de leguminosa.
+    if (new RegExp(`\\b(${NAO_LEGUMINOSAS})\\b[^.\\n]{0,60}\\b(essas|estas|ambas|todas) (as )?leguminosas\\b|\\b(${NAO_LEGUMINOSAS})\\s*(\\(\\s*|e uma\\s+)leguminosa|\\bleguminosas?\\b[^.\\n,;]{0,25}\\b(como|tipo)\\s+(o |a |os |as )?(${NAO_LEGUMINOSAS})\\b`).test(n)) {
         erros.push('Milheto, sorgo, aveia, centeio, trigo, braquiária e nabo forrageiro não são leguminosas: não chame essas plantas de leguminosas nem diga que elas fixam nitrogênio do ar.');
     }
     // "culturas que não sejam leguminosas (milho, soja)"

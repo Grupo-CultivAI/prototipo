@@ -76,7 +76,7 @@ scripts/
   verify-ingest.mjs         → consulta avulsa ao Pinecone, para conferir um PDF específico
   test-integrations.mjs     → testa os embeddings, o Pinecone e a Groq (node --env-file=.env.local scripts/test-integrations.mjs)
   migrar-embeddings.mjs     → copia a base para o namespace de um modelo de embedding novo, gerando os vetores de novo
-  relatorio-chat.mjs        → respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
+  relatorio-chat.mjs        → cota da IA, versões do prompt, respostas com 👎 e perguntas com pouca cobertura na base (npm run relatorio-chat)
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
   acessibilidade.mjs        → axe-core em todas as telas, no celular e no computador (npm run acessibilidade; roda no CI)
@@ -193,6 +193,8 @@ npm run relatorio-chat                          # últimos 30 dias
 npm run relatorio-chat -- --dias 7 --limite 0.40
 ```
 
+- **Cota da IA nas últimas 24 horas:** respostas e tokens de cada modelo (com a porcentagem da cota diária da Groq e um alerta acima de 70%), quantas vezes a NVIDIA precisou responder e quantas perguntas ficaram sem resposta.
+- **Por versão do prompt:** reescritas pelas checagens, avisos, 👍/👎 e tokens por resposta de cada versão (`VERSAO_DO_PROMPT`, em `src/lib/prompt.ts`). Ao mudar as instruções da IA, suba a versão para comparar antes e depois.
 - **Respostas com 👎:** pergunta, resposta e score da busca, para a Frente 3 investigar.
 - **Pouca cobertura na base:** perguntas cuja busca não passou de 0,42 (ajustável com `--limite`). São candidatas a assuntos que faltam na base, mas as faixas de score se sobrepõem, então cada uma precisa ser lida. Abaixo de 0,32, em geral, a pergunta está fora do tema. Respostas de antes de 28/10/2026 têm a nota do Gemini, noutra escala (faixas de 0,62 e 0,72), e aparecem marcadas com (G).
 

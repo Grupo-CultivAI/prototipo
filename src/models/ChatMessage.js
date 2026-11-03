@@ -45,6 +45,7 @@ const ChatMessageSchema = new mongoose.Schema({
         },
         // Como a resposta foi gerada, para entender erros e custo
         geracao: {
+            versaoPrompt: String, // VERSAO_DO_PROMPT (src/lib/prompt.ts); sem ela, de antes de 03/11/2026
             modelo: String,
             tokensEntrada: Number,
             tokensSaida: Number,
