@@ -1,4 +1,6 @@
 // Relatório do uso do chat, para fechar o ciclo entre as frentes:
+//   - cota da IA nas últimas 24 horas e perguntas que ficaram sem resposta;
+//   - reescritas, avisos e avaliações por versão do prompt (src/lib/prompt.ts);
 //   - respostas marcadas com 👎 pelos produtores → a Frente 3 investiga o que a IA errou;
 //   - perguntas cuja busca na base achou pouco → assuntos que faltam na base da Embrapa,
 //     para orientar a pesquisa de novos documentos.
@@ -46,6 +48,58 @@ try {
     const boas = comPergunta.filter((r) => r.metadata.avaliacao === 'boa');
     const ruins = comPergunta.filter((r) => r.metadata.avaliacao === 'ruim');
     console.log(`\n📊 Últimos ${DIAS} dias: ${comPergunta.length} respostas, ${boas.length} 👍 e ${ruins.length} 👎`);
+
+    // Cota da IA nas últimas 24 horas, somando todos os usuários. A Groq gratuita dá 200 mil
+    // tokens por dia por modelo (29/10/2026); quando ela enche, a NVIDIA responde, e se a fila
+    // inteira falha a pergunta fica sem resposta. Os tokens de uma reescrita contam no modelo
+    // que deu a resposta final, então os números são uma estimativa.
+    const COTA_DIARIA_GROQ = 200_000;
+    const ha24h = new Date(Date.now() - 86_400_000);
+    const ultimas = await mensagens.find({ sender: 'bot', createdAt: { $gte: ha24h } }).project({ 'metadata.geracao': 1 }).toArray();
+    const porModelo = new Map();
+    for (const r of ultimas) {
+        const g = r.metadata?.geracao;
+        if (!g?.modelo) continue;
+        const s = porModelo.get(g.modelo) ?? { respostas: 0, tokens: 0 };
+        s.respostas++;
+        s.tokens += (g.tokensEntrada ?? 0) + (g.tokensSaida ?? 0);
+        porModelo.set(g.modelo, s);
+    }
+    const semResposta = await mensagens.countDocuments({ sender: 'user', 'metadata.falhou': true, createdAt: { $gte: ha24h } });
+    console.log('\n⛽ Cota da IA nas últimas 24 horas (todos os usuários)');
+    if (!porModelo.size) console.log('   nenhuma resposta');
+    for (const [modelo, s] of [...porModelo].sort()) {
+        if (modelo.startsWith('groq:')) {
+            const uso = s.tokens / COTA_DIARIA_GROQ;
+            console.log(`   ${modelo.padEnd(36)} ${String(s.respostas).padStart(4)} respostas, ${s.tokens.toLocaleString('pt-BR')} tokens (${Math.round(uso * 100)}% da cota diária)${uso >= 0.7 ? '  ⚠️ acima de 70%' : ''}`);
+        } else {
+            console.log(`   ${modelo.padEnd(36)} ${String(s.respostas).padStart(4)} respostas${modelo.startsWith('nvidia:') ? '  (só responde quando a Groq falha: cota cheia ou fora do ar)' : ''}`);
+        }
+    }
+    console.log(`   perguntas sem resposta (a fila inteira falhou): ${semResposta}${semResposta ? '  ⚠️' : ''}`);
+
+    // Versões do prompt (src/lib/prompt.ts): ao mudar as instruções, a versão sobe, e aqui dá
+    // para ver se as reescritas pelas checagens, os avisos e as avaliações melhoraram.
+    const porVersao = new Map();
+    for (const r of comPergunta) {
+        const g = r.metadata.geracao ?? {};
+        const versao = g.versaoPrompt ?? '(sem versão)';
+        const s = porVersao.get(versao) ?? { n: 0, revisadas: 0, avisos: 0, boas: 0, ruins: 0, tokens: 0 };
+        s.n++;
+        if (g.revisada) s.revisadas++;
+        if (g.comAviso || g.agronomiaComAviso) s.avisos++;
+        if (r.metadata.avaliacao === 'boa') s.boas++;
+        if (r.metadata.avaliacao === 'ruim') s.ruins++;
+        s.tokens += (g.tokensEntrada ?? 0) + (g.tokensSaida ?? 0);
+        porVersao.set(versao, s);
+    }
+    const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '—');
+    console.log(`\n🧪 Por versão do prompt (últimos ${DIAS} dias)`);
+    if (!porVersao.size) console.log('   nenhuma resposta');
+    else console.log('   versão         respostas  reescritas  com aviso   👍   👎  tokens por resposta');
+    for (const [versao, s] of [...porVersao].sort()) {
+        console.log(`   ${versao.padEnd(14)} ${String(s.n).padStart(9)}  ${pct(s.revisadas, s.n).padStart(10)}  ${pct(s.avisos, s.n).padStart(9)}  ${String(s.boas).padStart(3)}  ${String(s.ruins).padStart(3)}  ${String(Math.round(s.tokens / s.n)).padStart(19)}`);
+    }
 
     console.log(`\n👎 Respostas avaliadas como ruins (${ruins.length}) — para a Frente 3`);
     if (!ruins.length) console.log('   nenhuma');

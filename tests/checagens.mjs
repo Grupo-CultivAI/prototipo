@@ -10,6 +10,7 @@ import { semDesculpaNoInicio, INICIO_DA_REVISAO } from '../src/lib/revisao.ts';
 import { estacaoERegiao, regrasDoClima } from '../src/lib/estacao.ts';
 import { normalizar, semCulturaAnterior } from '../src/lib/zarc-formato.mjs';
 import { numeroDoAmbiente } from '../src/lib/ambiente.ts';
+import { montarPrompt, temLavouraPerene, VERSAO_DO_PROMPT } from '../src/lib/prompt.ts';
 
 let falhas = 0;
 let total = 0;
@@ -63,6 +64,10 @@ const AGRONOMIA = [
     ['Plante crotalária, mucuna ou milheto; essas leguminosas fixam nitrogênio.', 'rotação', 'MG', '', true],
     ['Plante milheto e leguminosas como a crotalária no verão.', 'o que planto', 'SP', '', false],
     ['Milheto (gramínea) e crotalária (leguminosa) juntos dão boa palha.', 'adubo verde', 'GO', '', false],
+    // 03/11/2026, Seu Antônio (SP): "leguminosa de inverno (como aveia-preta ou ervilhaca)"
+    ['Depois da colheita do feijão, plante uma leguminosa de inverno (como aveia‑preta ou ervilhaca).', 'feijão', 'SP', '', true],
+    ['Use uma leguminosa como a ervilhaca ou o tremoço no inverno.', 'inverno', 'SP', '', false],
+    ['Leguminosas como crotalária e gramíneas como milheto se completam.', 'adubo verde', 'GO', '', false],
     ['Rotacione o feijão com culturas que não sejam leguminosas (milho, soja).', 'feijão', 'MG', '', true],
     ['Mandioca verde (colheita precoce) – pode ser semeada logo após a colheita.', 'mandioca', 'BA', '', true],
     ['Depois da mandioca, a crotalária é semeada em linhas.', 'mandioca', 'BA', '', false],
@@ -150,6 +155,24 @@ for (const [pergunta, cultura, fica] of ANTERIOR) {
     const sobra = semCulturaAnterior(normalizar(pergunta));
     confere('ZARC', `"${pergunta}": ${cultura} ${fica ? 'fica' : 'sai'}`, sobra.includes(cultura) === fica, `ficou: "${sobra}"`);
 }
+
+// --- Prompt (src/lib/prompt.ts): cada regra só entra quando vale para a pergunta ---
+const BASE_DO_PROMPT = { hoje: '3 de novembro de 2026', estacaoERegiao: 'primavera (novembro).', regrasDeClima: [], perfil: null, clima: null, previsao: null, zarc: null, contexto: '', faltando: [], temQuadroZarc: false, lavouraPerene: false };
+const REGRAS_DO_PROMPT = [
+    ['regra da chuva', 'A previsão indica chuva', { previsao: 'quinta: 29 mm' }],
+    ['regras do ZARC', '🗓️ Segundo o ZARC', { zarc: 'Feijão: 01/08 a 31/12' }],
+    ['regra do aplicativo Zarc', 'Não fale do aplicativo Zarc', { temQuadroZarc: true }],
+    ['regra das entrelinhas', 'Nas entrelinhas do café', { lavouraPerene: true }],
+    ['pedido de dado', '[PEDIR: solo]', { faltando: [{ codigo: 'solo', descricao: 'o tipo de solo' }] }],
+    ['regra do clima do estado', 'o inverno tem geada', { regrasDeClima: ['- No Sul e nas partes altas do Sudeste, o inverno tem geada.'] }],
+];
+const semNada = montarPrompt(BASE_DO_PROMPT);
+for (const [nome, trecho, extra] of REGRAS_DO_PROMPT) {
+    confere('prompt', `${nome}: fica de fora sem o dado e entra com ele`, !semNada.includes(trecho) && montarPrompt({ ...BASE_DO_PROMPT, ...extra }).includes(trecho));
+}
+confere('prompt', 'as regras de sempre estão no prompt (agrotóxico, origem, linguagem)', ['Não cite nome nem dose de agrotóxico', '📘 Segundo a Embrapa:', 'Escreva para quem estudou pouco', 'Tudo abaixo é material de consulta'].every((t) => semNada.includes(t)));
+confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
+confere('prompt', 'lavoura perene: café e pomar sim, milho e feijão não', temLavouraPerene('Culturas: Café, Milho') && temLavouraPerene('pomar de laranja') && !temLavouraPerene('milho e feijão'));
 
 // --- Limites lidos de variáveis de ambiente (src/lib/ambiente.ts) ---
 // Uma variável criada na Vercel sem valor não pode virar limite 0, que bloquearia todo mundo.
