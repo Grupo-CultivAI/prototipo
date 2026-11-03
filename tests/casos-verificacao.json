@@ -54,6 +54,33 @@
       "fontesAceitas": ["trigo_desempenho_agronomico_rotacao_culturas.pdf"],
       "formato": "artigo experimental",
       "observacao": "Cobre especificamente os valores numericos, que eram a parte perdida na extracao corrompida."
+    },
+    {
+      "pergunta": "Qual a densidade de plantas de forrageira no consorcio com arroz e quantos quilos de sementes por hectare?",
+      "fontesAceitas": ["arroz_consorcio_forrageiras_cnpaf_2013.pdf"],
+      "formato": "capitulo de perguntas e respostas, 7 paginas"
+    },
+    {
+      "pergunta": "Como funciona o Sistema Bragantino de plantio direto com mandioca e feijao-caupi no Nordeste Paraense sem queimar a vegetacao?",
+      "fontesAceitas": ["mandioca_caupi_rotacao_amazonia_embrapa_2005.pdf"],
+      "formato": "livro longo, 70 paginas"
+    },
+    {
+      "pergunta": "Resultados do consorcio de mandioca com feijao-caupi nas comunidades de Regeneracao e Sao Felix do Piaui",
+      "fontesAceitas": ["mandioca_consorcio_nordeste_embrapa_2003.pdf", "mandioca_consorcio_meionorte_embrapa_2008.pdf"],
+      "formato": "publicacao de 19 paginas",
+      "observacao": "O capitulo de 2008 da Embrapa Meio-Norte (mandioca_consorcio_meionorte) relata os mesmos experimentos e e resposta legitima."
+    },
+    {
+      "pergunta": "Agricultura itinerante no Piaui com consorcio de tres ou mais culturas e repouso da area por seis a dez anos",
+      "fontesAceitas": ["mandioca_feijao_consorcio_medio_parnaiba_embrapa_2004.pdf", "mandioca_consorcio_meionorte_embrapa_2008.pdf", "consorcio_adubacao_verde_meionorte_embrapa_2008.pdf"],
+      "formato": "resumo de congresso, 9 paginas",
+      "observacao": "Os dois capitulos de 2008 da Embrapa Meio-Norte descrevem o mesmo sistema de roca no Piaui; o documento esperado vem em 1o lugar."
+    },
+    {
+      "pergunta": "Manejo de agroecossistemas de base ecologica e preparo da area sem fogo na regiao Meio-Norte",
+      "fontesAceitas": ["consorcio_adubacao_verde_meionorte_embrapa_2008.pdf"],
+      "formato": "capitulo de livro, 26 paginas"
     }
   ]
 }
