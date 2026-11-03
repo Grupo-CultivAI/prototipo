@@ -196,6 +196,14 @@ const numerosSemRespaldo = (atribuido: string, fonte: string) => {
     return [...new Set(numerosRelevantes(atribuido).filter((n) => !daFonte.has(semSeparador(n))))];
 };
 
+// O pedido de revisão vai ao modelo como mensagem de usuário, e o modelo achava que era o
+// produtor reclamando: em 03/11/2026 o nemotron da NVIDIA começou a resposta revisada com "Você
+// tem toda a razão. Peço desculpas pelo erro." O produtor nunca vê a primeira resposta.
+const INICIO_DA_REVISAO = 'REVISÃO INTERNA DO CULTIVAI (o produtor não vê esta mensagem nem a resposta anterior). Problemas encontrados: ';
+const FIM_DA_REVISAO = ' Escreva a resposta para o produtor como se fosse a primeira: não peça desculpas, não agradeça a correção e não diga que houve erro ou revisão.';
+// Se o modelo se desculpar mesmo assim, as frases de desculpa do começo saem.
+const DESCULPA_NO_INICIO = /^\s*(?:(?:voc[êe] tem (?:toda a )?raz[ãa]o|tem toda a raz[ãa]o|pe[çc]o desculpas|me desculpe|desculpe(?:-me)? pel[oa] \S+|perd[ãa]o pel[oa] \S+|obrigad[oa] pela corre[çc][ãa]o)[^.!?\n]*[.!?]\s*)+/i;
+
 // "11 / 9", "11/09" e "11 de setembro" viram "11/09". Em 03/11/2026 a IA escreveu sob "🗓️" uma
 // janela por extenso ("15 de setembro a 30 de outubro") que não estava no ZARC, e a checagem,
 // que só lia dd/mm, deixou passar.
@@ -446,10 +454,10 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta)].filter(Boolean).join(' ');
         if (problema) {
             console.warn('⚠️ Atribuição sem respaldo, agrotóxico com dose ou erro agronômico; pedindo revisão.', problema);
-            const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: problema }]);
+            const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: `${INICIO_DA_REVISAO}${problema}${FIM_DA_REVISAO}` }]);
             geracao.revisada = true;
             if (revisada.texto) {
-                answer = revisada.texto;
+                answer = revisada.texto.replace(DESCULPA_NO_INICIO, '');
                 geracao.modelo = revisada.modelo;
                 geracao.tokensEntrada += revisada.tokensEntrada ?? 0;
                 geracao.tokensSaida += revisada.tokensSaida ?? 0;
