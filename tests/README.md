@@ -138,3 +138,19 @@ O OCR não é transcrição perfeita: sobrescritos saem errados (`kg hL⁻¹` vi
 **Folders com tabela recuperados sem o cabeçalho.** A tabela de genótipos se divide em vários trechos e o cabeçalho que identifica as colunas aparecia uma única vez. Uma busca recuperava, com score 0,7768, um trecho de linhas soltas como `GNZ 7280PRO2 Geneze S R S`, sem nada indicando a qual nematoide cada letra se refere — o modelo poderia inverter as colunas e recomendar um híbrido suscetível como resistente.
 
 Corrigido em `scripts/ingest-pdfs.mjs`, que repete o cabeçalho e a legenda em todos os trechos desses dois arquivos, e reindexado em 20/10/2026. Cada trecho recuperado agora chega ao modelo com a explicação das colunas junto.
+
+# Checagens das respostas do chat (Frente 1)
+
+`tests/checagens.mjs` confere, sem rede, sem banco e sem IA, as checagens que a rota do chat aplica a cada resposta antes de mostrá-la ao produtor:
+
+- **erros agronômicos** (`src/lib/errosAgronomicos.ts`): planta de verão no inverno do Sul, plantio no inverno seco do Cerrado sem irrigação, planta de inverno semeada na primavera, soja no inverno, nomes de plantas trocados, leguminosa errada, mandioca "semeada";
+- **agrotóxicos** (`src/lib/agrotoxicos.ts`): produto com dose ou produto proibido;
+- **origem da informação** (`src/lib/atribuicao.ts`): números sob o 📘 que não estão nos trechos da Embrapa e datas sob o 🗓️ que não estão nas janelas do ZARC;
+- **reescrita** (`src/lib/revisao.ts`): o corte das desculpas no começo da resposta reescrita;
+- **estação e clima** (`src/lib/estacao.ts`) e a **cultura de antes** nas perguntas do ZARC (`src/lib/zarc-formato.mjs`).
+
+```bash
+npm run checagens
+```
+
+Roda em segundos e faz parte da CI. Cada caso é uma frase que a checagem deve marcar (errada) ou deixar passar (certa). As checagens são expressões regulares: uma mudança pequena pode quebrá-las sem aviso, e um falso positivo custa uma reescrita da resposta (cerca de 4 mil tokens da cota gratuita). Ao achar um erro novo nas respostas da IA, acrescente a frase errada e uma parecida, porém certa, antes de mexer na checagem.

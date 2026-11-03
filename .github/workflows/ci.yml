@@ -1,6 +1,6 @@
-# Confere cada PR antes do merge: lint, cores pelos tokens, checagem de tipos, build e
-# acessibilidade. Antes, quem descobria um build quebrado era a Vercel, já no deploy. Gratuito
-# para repositórios públicos.
+# Confere cada PR antes do merge: lint, checagens das respostas do chat, cores pelos tokens,
+# checagem de tipos, build e acessibilidade. Antes, quem descobria um build quebrado era a
+# Vercel, já no deploy. Gratuito para repositórios públicos.
 name: CI
 
 on:
@@ -34,6 +34,10 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
+      # Checagens das respostas do chat (agronomia, agrotóxicos, origem da informação, reescrita),
+      # sem rede nem IA (tests/checagens.mjs)
+      - name: Checagens das respostas do chat
+        run: npm run checagens
       # Cor nova entra como token em src/styles/variables.css (docs/design-system.md)
       - name: Cores só pelos tokens
         run: npm run checar-tokens

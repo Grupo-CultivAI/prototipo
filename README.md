@@ -284,6 +284,7 @@ PINECONE_INDEX_HOST=    # host do índice no Pinecone, sem "https://"
 # Limites de uso
 RATE_LIMIT_PER_MINUTE=  # opcional (padrão: 4)
 RATE_LIMIT_PER_DAY=     # opcional (padrão: 40); renova à meia-noite de Brasília
+LIMITE_CADASTROS_POR_IP= # opcional (padrão: 20 contas novas por IP a cada 15 min); numa oficina com turma maior no mesmo wi-fi, aumente
 
 # Email de recuperação de senha (SMTP; ex.: Gmail com senha de app, ou Brevo)
 SMTP_HOST=              # ex.: smtp.gmail.com ou smtp-relay.brevo.com
