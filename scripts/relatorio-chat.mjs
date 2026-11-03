@@ -6,6 +6,7 @@
 // Lê o MongoDB (.env.local) e não consome cota de nenhuma API. Não mostra quem perguntou.
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { bancoLocal, descreverBanco } from './banco.mjs';
 import { FAIXA_FORA_DO_TEMA, FAIXA_POUCA_COBERTURA, MODELO_EMBEDDING } from '../src/lib/embeddings.mjs';
 dotenv.config({ path: '.env.local', quiet: true });
 
@@ -30,6 +31,7 @@ const curto = (t, n) => { const s = String(t).replace(/\s+/g, ' ').trim(); retur
 const perguntaDeVerdade = (t) => t && t !== '[apagada]' && !/^Informei: |^Prefiro não informar agora/.test(t);
 
 await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
+console.log(`Banco: ${descreverBanco(process.env.MONGODB_URI)}${bancoLocal(process.env.MONGODB_URI) ? ' (local)' : ''}`);
 try {
     const mensagens = mongoose.connection.db.collection('chatmessages');
     const desde = new Date(Date.now() - DIAS * 86_400_000);

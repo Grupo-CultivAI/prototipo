@@ -2,13 +2,18 @@
 //   npm run dev            (em outro terminal)
 //   npm run cenarios-chat  (ou: node tests/cenarios-chat.mjs http://localhost:3000)
 // Cria usuários descartáveis e os apaga ao final. Consome ~14 chamadas do Pinecone e da Groq.
+// Só roda num banco local, o mesmo do servidor (o .env.local aponta para a produção):
+//   MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run cenarios-chat
+// Para rodar na produção de propósito: npm run cenarios-chat -- --producao
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { frasesComAgrotoxico } from '../src/lib/agrotoxicos.ts';
 import { problemaAgronomico } from '../src/lib/errosAgronomicos.ts';
+import { descreverBanco, exigirBancoDeTeste } from '../scripts/banco.mjs';
 dotenv.config({ path: '.env.local', quiet: true });
+exigirBancoDeTeste(process.env.MONGODB_URI);
 
-const BASE = process.argv[2] || 'http://localhost:3000';
+const BASE = process.argv.slice(2).find((a) => !a.startsWith('--')) || 'http://localhost:3000';
 const SENHA = 'senhaDeTeste123';
 const sufixo = Date.now();
 const emails = [];
@@ -21,7 +26,19 @@ async function novoUsuario(rotulo) {
     const r = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha: SENHA }) });
     const m = (r.headers.get('set-cookie') || '').match(/authToken=([^;]+)/);
     if (!m) throw new Error(`login do usuário de teste falhou (HTTP ${r.status})`);
-    return `authToken=${m[1]}`;
+    const cookie = `authToken=${m[1]}`;
+    // No primeiro usuário, confere se o servidor grava no mesmo banco que o teste lê. Se não, a
+    // limpeza do final não acharia os usuários, e eles ficariam no banco do servidor (talvez a
+    // produção): este é apagado pela própria API, e o teste para.
+    if (emails.length === 1) {
+        if (mongoose.connection.readyState !== 1) await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
+        if (!(await mongoose.connection.db.collection('users').findOne({ email }))) {
+            await fetch(`${BASE}/api/user`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ senha: SENHA }) });
+            emails.length = 0;
+            throw new Error(`o servidor ${BASE} grava em outro banco, e não em ${descreverBanco(process.env.MONGODB_URI)}. Suba o servidor com o mesmo MONGODB_URI do teste (o usuário de teste criado lá já foi apagado).`);
+        }
+    }
+    return cookie;
 }
 
 async function perguntar(cookie, pergunta) {
@@ -174,9 +191,9 @@ try {
         await db.collection('conversas').deleteMany({ userId: { $in: ids } });
         await db.collection('propriedades').deleteMany({ userId: { $in: ids } });
         await db.collection('users').deleteMany({ _id: { $in: ids } });
-        await mongoose.disconnect();
         console.log(`(${ids.length} usuário(s) de teste removido(s))`);
     }
+    if (mongoose.connection.readyState === 1) await mongoose.disconnect();
 }
 
 let falhou = false;
