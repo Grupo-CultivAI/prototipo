@@ -67,6 +67,12 @@ const AGRONOMIA = [
     ['Mandioca verde (colheita precoce) – pode ser semeada logo após a colheita.', 'mandioca', 'BA', '', true],
     ['Depois da mandioca, a crotalária é semeada em linhas.', 'mandioca', 'BA', '', false],
     ['Plante as manivas de mandioca no começo das chuvas.', 'mandioca', 'BA', '', false],
+    // Espaço fino inseparável (U+202F) e hífen inseparável (U+2011), que a IA usa em metade das
+    // respostas (03/11/2026): antes da normalização, estes erros passavam sem ser notados.
+    ['Feijão‑de‑porco (crotalária) – fixa nitrogênio.', 'mandioca', 'BA', '', true],
+    ['Rotacione o feijão com culturas que não sejam leguminosas (milho, soja).', 'feijão', 'MG', '', true],
+    ['Semeie aveia‑preta em outubro.', 'rotação', 'SP', '', true],
+    ['Semeie aveia‑preta em abril.', 'rotação', 'SP', '', false],
 ];
 for (const [frase, pergunta, estado, irrigacao, deveMarcar] of AGRONOMIA) {
     const marcou = Boolean(problemaAgronomico(frase, { pergunta, estado, irrigacao }));
@@ -81,6 +87,7 @@ const AGROTOXICO = [
     ['Aplique 2 L/ha de glifosato antes do plantio.', true],
     ['Faça o tratamento de sementes e procure um engenheiro agrônomo para escolher o produto.', false],
     ['Use 200 quilos por hectare de adubo 5-30-15 no plantio.', false],
+    ['Faça o tratamento de sementes com 2 L/ha do produto.', true],
 ];
 for (const [frase, deveMarcar] of AGROTOXICO) {
     confere('agrotóxicos', `${deveMarcar ? 'marcar' : 'deixar passar'}: ${frase}`, (frasesComAgrotoxico(frase).length > 0) === deveMarcar);
