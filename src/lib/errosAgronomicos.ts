@@ -3,7 +3,7 @@
  * das plantas, mas o modelo às vezes erra assim mesmo. No teste com personas de 02/11/2026 ele
  * indicou milheto e crotalária para o inverno do sul do Paraná (morrem com a geada), soja no
  * inverno, "feijão-de-porco (crotalária)", milheto como leguminosa e "mandioca semeada"; em
- * 03/11, plantio no inverno seco de Minas Gerais, sem irrigação.
+ * 03/11, plantio no inverno seco de Minas Gerais, sem irrigação, e aveia semeada em outubro.
  * Como em src/lib/agrotoxicos.ts, a checagem não depende do modelo: achado um erro, a rota pede
  * que ele reescreva a resposta. Sem imports, para os testes em node (tests/) a usarem direto.
  */
@@ -56,7 +56,8 @@ function deVeraoNoInvernoDoSul(resposta: string, { pergunta, estado }: Contexto)
     if (!plantas.size) return null;
     const nomes = [...plantas];
     const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}` : nomes[0];
-    return `A pergunta é sobre o inverno e a propriedade fica no Sul, onde o inverno tem geada. ${lista[0].toUpperCase()}${lista.slice(1)} são plantas de verão e morrem com a geada: não as indique para o inverno. Para o inverno, indique plantas de inverno, como aveia-preta, nabo forrageiro, ervilhaca ou centeio. Se citar as de verão, diga que são para o verão.`;
+    const verao = nomes.length > 1 ? 'são plantas de verão e morrem com a geada: não as indique' : 'é planta de verão e morre com a geada: não a indique';
+    return `A pergunta é sobre o inverno e a propriedade fica no Sul, onde o inverno tem geada. ${lista[0].toUpperCase()}${lista.slice(1)} ${verao} para o inverno. Para o inverno, indique plantas de inverno, como aveia-preta, nabo forrageiro, ervilhaca ou centeio. Se citar as de verão, diga que são para o verão.`;
 }
 
 function sojaNoInverno(resposta: string): string | null {
@@ -96,11 +97,45 @@ function mandiocaSemeada(resposta: string): string | null {
         : null;
 }
 
+// Planta de inverno semeada na primavera ou no verão. Em 03/11/2026 o plano do Rafael (ES) mandou
+// semear aveia, ervilhaca ou tremoço "em outubro-novembro"; em todo o país elas vão no outono
+// (de março a junho, conforme a região). Vale qualquer estado.
+const MESES_QUENTES = /\b(setembro|outubro|novembro|dezembro|janeiro)\b/;
+// Manejo da planta já crescida ("role a aveia em setembro") não é semeadura
+const MANEJO = /\b(colh\w*|ro[cç]\w*|cort\w*|dessec\w*|rol\w*|manej\w*|incorpor\w*)\b/;
+const OUTRA_CULTURA = /\b(milho|soja|feijao|milheto|crotalari\w*|sorgo|mandioca|arroz|algodao|mucuna|guandu|feijao[- ]de[- ]porco|amendoim|girassol)\b/;
+
+// A planta semeada é a primeira citada depois do verbo ("semeie a aveia em outubro, depois do
+// milho"); sem planta depois dele, a última antes ("aveia-preta: semeie em outubro"); sem
+// nenhuma na frase ("semeie em outubro-novembro"), a das duas linhas de cima.
+const PLANTA = new RegExp(`${DE_INVERNO.source}|${OUTRA_CULTURA.source}`, 'g');
+const deInvernoOuNao = (trecho: string, ultima = false) => {
+    const achadas = [...trecho.matchAll(PLANTA)].map((m) => DE_INVERNO.test(m[0]));
+    return achadas.length ? (ultima ? achadas.at(-1) : achadas[0]) : null;
+};
+
+function invernoNaPrimavera(resposta: string): string | null {
+    const achou = sem(resposta).split(/\n\s*\n/).some((bloco) => {
+        const linhas = bloco.split('\n');
+        return linhas.some((linha, i) => linha.split(/[.;!?]+/).some((frase) => {
+            const verbo = frase.match(PLANTAR);
+            if (!verbo || !MESES_QUENTES.test(frase) || MANEJO.test(frase)) return false;
+            const depois = deInvernoOuNao(frase.slice(verbo.index! + verbo[0].length));
+            if (depois !== null) return depois;
+            const antes = deInvernoOuNao(frase.slice(0, verbo.index), true);
+            if (antes !== null) return antes;
+            return linhas.slice(Math.max(0, i - 2), i).some((l) => DE_INVERNO.test(l));
+        }));
+    });
+    return achou ? 'Aveia, ervilhaca, nabo forrageiro, tremoço, centeio e azevém são plantas de inverno: são semeadas no outono (de março a junho, conforme a região), não na primavera nem no verão. Corrija a época de semeadura.' : null;
+}
+
 /** Instrução de revisão quando a resposta tem um erro agronômico conhecido, ou null. */
 export function problemaAgronomico(resposta: string, contexto: Contexto): string | null {
     const erros = [
         deVeraoNoInvernoDoSul(resposta, contexto),
         plantioNoInvernoSeco(resposta, contexto),
+        invernoNaPrimavera(resposta),
         sojaNoInverno(resposta),
         nomesTrocados(resposta),
         leguminosaErrada(resposta),
