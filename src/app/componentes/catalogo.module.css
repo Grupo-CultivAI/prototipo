@@ -1,0 +1,109 @@
+/* Catálogo do design system (só no npm run dev) */
+.pagina {
+    display: block;
+    max-width: 1000px;
+    min-height: 0;
+    margin: 0 auto;
+    padding: var(--espaco-6) var(--espaco-4) 8rem;
+    color: var(--text-primary);
+}
+
+.intro {
+    max-width: 44rem;
+    margin: var(--espaco-2) 0 var(--espaco-6);
+}
+
+.secao {
+    margin-bottom: var(--espaco-6);
+    padding: var(--espaco-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.secao h2 {
+    margin-bottom: var(--espaco-4);
+    font-size: var(--texto-xl);
+}
+
+.grupoCores h3 {
+    margin: var(--espaco-4) 0 var(--espaco-2);
+    font-size: var(--texto-md);
+}
+
+.cores {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: var(--espaco-2);
+    list-style: none;
+}
+
+.cores li {
+    display: flex;
+    align-items: center;
+    gap: var(--espaco-2);
+    font-size: var(--texto-sm);
+}
+
+.amostra {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.tabela {
+    width: 100%;
+    margin-bottom: var(--espaco-4);
+    border-collapse: collapse;
+}
+
+.tabela th,
+.tabela td {
+    padding: var(--espaco-2);
+    text-align: left;
+    font-size: var(--texto-sm);
+}
+
+.fundoEscuro {
+    background: var(--primary-dark);
+}
+
+.fundoEscuro th {
+    color: var(--white);
+}
+
+.linha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espaco-3);
+}
+
+.coluna {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espaco-3);
+}
+
+.grade {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--espaco-4);
+}
+
+.inteira {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+    .grade {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tabela {
+        display: block;
+        overflow-x: auto;
+    }
+}

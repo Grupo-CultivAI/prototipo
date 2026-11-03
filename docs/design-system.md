@@ -6,6 +6,10 @@ Cores, raios, sombras e camadas das telas saem dos tokens de [`src/styles/variab
 
 **A exceção:** o email de recuperação de senha (`src/app/api/auth/esqueci-senha/route.js`) usa cores escritas por extenso, porque programas de email não entendem variáveis de CSS.
 
+**Quem confere:** `npm run checar-tokens` (`tests/tokens.mjs`) procura cor escrita fora dos tokens (hexadecimal, `rgb`/`hsl` e nomes como `white`) e roda no CI a cada PR. Comentários ficam de fora.
+
+**Catálogo:** com o `npm run dev` no ar, [http://localhost:3000/componentes](http://localhost:3000/componentes) mostra os tokens de cor e cada componente em todas as variações. Em produção, o endereço não existe.
+
 ## Cores
 
 | Token | Para quê |

@@ -11,7 +11,8 @@
     "cenarios-chat": "node tests/cenarios-chat.mjs",
     "relatorio-chat": "node scripts/relatorio-chat.mjs",
     "importar-zarc": "node scripts/importar-zarc.mjs",
-    "acessibilidade": "node tests/acessibilidade.mjs"
+    "acessibilidade": "node tests/acessibilidade.mjs",
+    "checar-tokens": "node tests/tokens.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
