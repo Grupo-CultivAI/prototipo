@@ -1,10 +1,11 @@
 // Cenários de regressão do chat (Frente 1). Roda contra um servidor no ar:
 //   npm run dev            (em outro terminal)
 //   npm run cenarios-chat  (ou: node tests/cenarios-chat.mjs http://localhost:3000)
-// Cria usuários descartáveis e os apaga ao final. Consome ~13 chamadas do Gemini e da Groq.
+// Cria usuários descartáveis e os apaga ao final. Consome ~14 chamadas do Pinecone e da Groq.
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { frasesComAgrotoxico } from '../src/lib/agrotoxicos.ts';
+import { problemaAgronomico } from '../src/lib/errosAgronomicos.ts';
 dotenv.config({ path: '.env.local', quiet: true });
 
 const BASE = process.argv[2] || 'http://localhost:3000';
@@ -28,7 +29,7 @@ async function perguntar(cookie, pergunta) {
     const d = await r.json().catch(() => ({}));
     const texto = d.parsedData?.resposta || d.message || '';
     const campos = (d.parsedData?.campos_necessarios || []).map((c) => c.chave);
-    return { status: r.status, texto, fontes: d.fontes || [], campos, mensagemId: d.mensagemId, citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
+    return { status: r.status, texto, fontes: d.fontes || [], campos, mensagemId: d.mensagemId, epoca: d.epoca, citaEmbrapa: texto.includes('📘'), aviso: texto.includes('⚠️ Parte desta resposta') };
 }
 
 // O texto que a rota buscou na base para responder (gravado em metadata.busca.texto).
@@ -119,7 +120,23 @@ try {
         ['orienta procurar um engenheiro agrônomo', /agr[ôo]nomo/i.test(r.texto), false],
     ], r);
 
-    // 7. Limite de uso: 5 perguntas seguidas, a 5ª deve ser bloqueada pelo CultivAI.
+    // 7. Inverno no Sul: plantas de inverno, não as de verão (src/lib/errosAgronomicos.ts). Em
+    // 02/11/2026 o chat indicou milheto e crotalária, que morrem com a geada, para o inverno do Paraná.
+    const g = await novoUsuario('inverno');
+    await fetch(`${BASE}/api/cultivos`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: g },
+        body: JSON.stringify({ estado: 'PR', cidade: 'Rio Bonito do Iguaçu', culturasHistorico: ['milho', 'feijão'] }),
+    });
+    const perguntaDeInverno = 'depois do milho o que eu planto no inverno pra melhorar a terra?';
+    r = await perguntar(g, perguntaDeInverno);
+    registrar('7. Inverno no Sul', [
+        ['responde (HTTP 200)', r.status === 200, true],
+        ['nenhum erro agronômico conhecido (planta de verão no inverno com geada)', !problemaAgronomico(r.texto, { pergunta: perguntaDeInverno, estado: 'PR' }), true],
+        ['indica planta de inverno (aveia, nabo, ervilhaca, centeio...)', /aveia|nabo|ervilhaca|centeio|tremo[çc]o|azev[ée]m/i.test(r.texto), true],
+        ['quadro do ZARC com aveia ou centeio (o milho é a cultura de antes)', Boolean(r.epoca?.linhas?.some((l) => /aveia|centeio/i.test(l))), false],
+    ], r);
+
+    // 8. Limite de uso: 5 perguntas seguidas, a 5ª deve ser bloqueada pelo CultivAI.
     // A espera libera o limite por minuto da Groq, gasto pelos cenários anteriores; mesmo assim
     // as 4 primeiras podem falhar por ele, e isso é observação, não falha do limite do CultivAI.
     console.log('aguardando 60s para o limite por minuto da Groq se recompor...');
@@ -127,12 +144,12 @@ try {
     const c = await novoUsuario('limite');
     const status = [];
     for (let i = 1; i <= 5; i++) status.push((await perguntar(c, `Pergunta rápida ${i}: o que é adubação verde?`)).status);
-    registrar('7. Limite de 4 por minuto', [
+    registrar('8. Limite de 4 por minuto', [
         ['a 5ª é bloqueada pelo CultivAI (HTTP 429)', status[4] === 429, true],
         ['as 4 primeiras respondem (depende da folga da Groq)', status.slice(0, 4).every((s) => s === 200), false],
     ], { status: status.join(', '), texto: '', fontes: [] });
 
-    // 8. Nova conversa e apagar conversa, com o usuário do cenário 7 (sem chamar a IA).
+    // 9. Nova conversa e apagar conversa, com o usuário do cenário 8 (sem chamar a IA).
     const historico = async (cookie) => (await fetch(`${BASE}/api/chat/history`, { headers: { Cookie: cookie } })).json();
     const novaConversa = async (cookie) => (await fetch(`${BASE}/api/conversas`, { method: 'POST', headers: { Cookie: cookie } })).json();
     const antes = await historico(c);
@@ -141,7 +158,7 @@ try {
     const outraVez = await novaConversa(c);
     const apagada = await (await fetch(`${BASE}/api/chat/history?conversa=${antes.conversaId}`, { method: 'DELETE', headers: { Cookie: c } })).json();
     const final = await historico(c);
-    registrar('8. Nova conversa', [
+    registrar('9. Nova conversa', [
         ['a conversa anterior tinha mensagens', antes.history?.length > 0, true],
         ['a nova conversa começa vazia', depois.history?.length === 0 && depois.conversaId === nova.conversaId, true],
         ['o saldo de perguntas do dia não muda', depois.restantesHoje === antes.restantesHoje, true],

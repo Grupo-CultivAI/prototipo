@@ -49,9 +49,10 @@ const ChatMessageSchema = new mongoose.Schema({
             tokensEntrada: Number,
             tokensSaida: Number,
             duracaoMs: Number,
-            revisada: Boolean, // a checagem de números pediu que o modelo reescrevesse
+            revisada: Boolean, // uma checagem (números, agrotóxico, erro agronômico) pediu que o modelo reescrevesse
             comAviso: Boolean, // a revisão também falhou e a resposta saiu com aviso
-            agrotoxicoRemovido: Boolean // a revisão manteve produto/dose de agrotóxico e as frases foram cortadas
+            agrotoxicoRemovido: Boolean, // a revisão manteve produto/dose de agrotóxico e as frases foram cortadas
+            agronomiaComAviso: Boolean // a revisão manteve um erro agronômico conhecido (src/lib/errosAgronomicos.ts) e a resposta saiu com aviso
         },
         // O que a IA sabia da propriedade quando respondeu (o perfil pode mudar depois)
         contexto: {

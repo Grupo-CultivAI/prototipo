@@ -13,8 +13,9 @@ import styles from "../paginas.module.css";
 import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
 // Se a resposta veio só de prática geral, listar os documentos consultados sugeriria uma
-// fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa.
-const citouEmbrapa = (texto) => /segundo a embrapa/i.test(texto || "");
+// fonte que não foi usada. Por isso as fontes só aparecem quando o texto cita a Embrapa, pelo
+// nome ou pelo marcador 📘 (a IA às vezes usa o marcador sem "Segundo a Embrapa").
+const citouEmbrapa = (texto) => /segundo a embrapa|📘/iu.test(texto || "");
 
 // O servidor recusa perguntas acima disto (src/app/api/llm); o contador aparece a partir do aviso.
 const LIMITE_PERGUNTA = 1000;

@@ -1,0 +1,37 @@
+/**
+ * Estação do ano e clima da região, para o prompt do chat. Em 02/11/2026, no teste com personas,
+ * a IA indicou milheto e crotalária (plantas de verão, que morrem com a geada) para o inverno do
+ * sul do Paraná, e soja no inverno de Minas Gerais. Com a estação e a região escritas no prompt,
+ * o modelo não precisa deduzir de "novembro" e "PR" que lá é primavera e que o inverno gela.
+ */
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+// Hemisfério sul: o verão vai de dezembro a fevereiro
+const ESTACAO_DO_MES = ['verão', 'verão', 'outono', 'outono', 'outono', 'inverno', 'inverno', 'inverno', 'primavera', 'primavera', 'primavera', 'verão'];
+
+const ESTADOS_DO_SUL = ['PR', 'SC', 'RS'];
+
+// Descrições gerais: dentro de um estado o clima varia, por isso "nas partes altas" e afins.
+const CLIMA_DA_REGIAO: [string[], string][] = [
+    [ESTADOS_DO_SUL, 'inverno frio, com geadas; verão quente e chuvoso (região Sul)'],
+    [['SP', 'MS'], 'inverno seco e mais frio, com geada possível no sul do estado e nas partes altas; verão quente e chuvoso'],
+    [['MG'], 'chuvas de outubro a março e inverno seco; em boa parte do estado é Cerrado, onde sem irrigação quase nada se planta de maio a setembro; geada possível nas serras e no sul do estado'],
+    [['RJ', 'ES'], 'chuvas de outubro a março e inverno mais seco; geada possível nas serras e partes altas'],
+    [['GO', 'DF', 'MT', 'TO'], 'chuvas de outubro a abril e seca de maio a setembro; sem irrigação, quase nada se planta na seca (Cerrado)'],
+    [['MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'], 'chuvas concentradas em poucos meses, que mudam conforme a parte do estado: no litoral, mais no outono e no inverno; no Semiárido, curtas e irregulares, com seca longa (região Nordeste)'],
+    [['AC', 'AM', 'AP', 'PA', 'RO', 'RR'], 'quente o ano todo, sem geada, com uma época de muita chuva e outra mais seca (região Norte)'],
+];
+
+function mesEmSaoPaulo(data: Date): number {
+    const mes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', month: 'numeric' }).format(data);
+    return Number(mes) - 1;
+}
+
+/** Ex.: "primavera (novembro). Clima em PR: inverno frio, com geadas; verão quente e chuvoso (região Sul)." */
+export function estacaoERegiao(estado?: string | null, data = new Date()): string {
+    const mes = mesEmSaoPaulo(data);
+    const estacao = `${ESTACAO_DO_MES[mes]} (${MESES[mes]})`;
+    const uf = String(estado ?? '').trim().toUpperCase();
+    const clima = CLIMA_DA_REGIAO.find(([ufs]) => ufs.includes(uf))?.[1];
+    return clima ? `${estacao}. Clima em ${uf}: ${clima}.` : `${estacao}. Região não informada: a época certa de cada planta muda de uma região para outra.`;
+}

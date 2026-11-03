@@ -32,6 +32,13 @@ export type EpocaDePlantio = { paraIA: string; local?: string; linhas: string[];
 const CULTURAS_NO_CONTEXTO = 4;
 const LINHAS_NO_CONTEXTO = 8;
 
+// "Depois do milho, o que eu planto no inverno?": o milho é a cultura de antes, não a que se quer
+// plantar. Em 02/11/2026 essa pergunta trouxe só as janelas do milho, e a IA indicou milheto e
+// crotalária (de verão) para o inverno do Paraná. Com "inverno" na pergunta, entram as culturas
+// de inverno que o ZARC tem e que também servem de cobertura.
+const semCulturaAnterior = (texto: string) => texto.replace(/\b(?:depois|apos|dps)\s+(?:d[aoe]s?\s+|[ao]s?\s+)?\S+/g, ' ');
+const DE_INVERNO = ['Aveia', 'Centeio'];
+
 const contem = (texto: string, palavra: string) => ` ${texto} `.includes(` ${palavra} `);
 
 function textoDaJanela(janelas: Janelas, grupo: string | undefined): string {
@@ -121,7 +128,8 @@ export async function epocaDePlantio(propriedade: any, texto: string, anterior =
         // Primeiro a pergunta atual; só sem cultura nela, a anterior; por fim, o perfil.
         let escolhidas: string[] = [];
         for (const alvo of [pergunta, antes]) {
-            escolhidas = citadas(alvo);
+            escolhidas = citadas(semCulturaAnterior(alvo));
+            if (/\binverno\b/.test(alvo)) escolhidas = [...new Set([...escolhidas, ...DE_INVERNO.filter((c) => municipio.j[c])])];
             const semZarc = alvo.match(FORA_DO_ZARC)?.[0];
             if (!escolhidas.length && semZarc) {
                 const aviso = `O ZARC não tem janela de plantio para ${semZarc}.`;
