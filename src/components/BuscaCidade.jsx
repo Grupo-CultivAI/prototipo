@@ -23,7 +23,8 @@ const VAZIA = [];
 
 // idCampo: o id do campo, para o <label htmlFor> do formulário apontar para ele.
 // descritoPor: id da mensagem de erro, lida pelo leitor de tela junto com o campo.
-export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo, invalido, idCampo, descritoPor }) {
+// classe: aparência do campo (a do Campo do design system); estilo, se preciso, por cima dela
+export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo = {}, classe = "", invalido, idCampo, descritoPor }) {
   const id = useId();
   const [municipios, setMunicipios] = useState({ uf: null, lista: [], erro: false });
   // null = mostrando a cidade escolhida; texto = o produtor está digitando
@@ -112,6 +113,7 @@ export default function BuscaCidade({ uf, valor, codigo, aoEscolher, estilo, inv
         onBlur={sair}
         onKeyDown={teclado}
         style={estilo}
+        className={classe || undefined}
       />
       {aberta && uf && (
         <ul id={idLista} role="listbox" className={styles.listaCidades}>

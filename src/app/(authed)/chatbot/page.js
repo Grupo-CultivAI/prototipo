@@ -8,7 +8,7 @@ import ContadorPerguntas from "@/components/ContadorPerguntas";
 import Botao from "@/components/ui/Botao";
 import Aviso from "@/components/ui/Aviso";
 import ConfirmarNaTela from "@/components/ui/ConfirmarNaTela";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, Ellipsis, BookOpen, CalendarDays, Lightbulb, Info } from "lucide-react";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, SendHorizontal, LoaderCircle, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, Ellipsis, BookOpen, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -682,7 +682,8 @@ export default function ChatCultivAI() {
         <div className={styles.chatInfo}>
           {restantes !== null && <ContadorPerguntas restantes={restantes} limite={limiteDiario} />}
           {/* De qual cultivo a conversa trata: o perfil dele vai para a IA */}
-          <div className={styles.seletorCultivo}>
+          {/* Sem cultivo, é só uma ajuda (a mesma aparece na conversa): some no topo compacto */}
+          <div className={`${styles.seletorCultivo} ${cultivos.length ? "" : styles.ajudaSemCultivo}`}>
             <Sprout size={15} aria-hidden="true" />
             {cultivos.length > 0 ? (
               <label>
@@ -934,14 +935,17 @@ export default function ChatCultivAI() {
           aria-describedby={inputValue.length >= AVISO_LIMITE ? "contador-caracteres" : undefined}
           maxLength={LIMITE_PERGUNTA}
           className={styles.campoTexto}
-          style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
         {temVoz && (
           <Botao variante="discreto" pilula apenasIcone icone={Mic} rotulo={ouvindo ? "Parar de ouvir" : "Falar a pergunta"}
             aria-pressed={ouvindo} onClick={alternarVoz} className={`${styles.botaoVoz} ${ouvindo ? styles.ouvindo : ""}`} />
         )}
-        <Botao pilula className={styles.botaoEnviar} onClick={() => handleSendMessage()} carregando={aguardando} textoCarregando="Aguarde...">
-          Enviar
+        {/* O nome vem do aria-label: na linha estreita, só o ícone aparece (ver .textoEnviar) */}
+        <Botao pilula className={styles.botaoEnviar} onClick={() => handleSendMessage()} carregando={aguardando}
+          aria-label={aguardando ? "Aguarde a resposta" : "Enviar"}>
+          {aguardando
+            ? <><LoaderCircle size={20} aria-hidden="true" className={styles.iconeEnviar} /><span className={styles.textoEnviar}>Aguarde...</span></>
+            : <><SendHorizontal size={20} aria-hidden="true" className={styles.iconeEnviar} /><span className={styles.textoEnviar}>Enviar</span></>}
         </Botao>
       </div>
     </div>

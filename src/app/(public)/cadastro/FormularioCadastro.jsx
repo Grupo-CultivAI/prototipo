@@ -3,7 +3,7 @@ import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
-import Input from "@/components/Input"
+import { Entrada } from "@/components/ui/Campo"
 import Botao from "@/components/ui/Botao"
 import Aviso from "@/components/ui/Aviso"
 import { CHAVE_EMAIL_CADASTRADO } from "@/lib/cadastro"
@@ -86,16 +86,16 @@ export default function FormularioCadastro() {
           </div>
 
           <form onSubmit={cadastrar} noValidate className={styles.formulario}>
-            <Input ref={nomeRef} label="Nome" value={nome} onChange={alterar(setNome)} placeholder="Ex.: João da Silva"
+            <Entrada ref={nomeRef} rotulo="Nome" value={nome} onChange={alterar(setNome)} placeholder="Ex.: João da Silva"
               autoComplete="name" autoCapitalize="words" required invalido={invalido("nome")} />
 
-            <Input ref={emailRef} label="Email" type="email" value={email} onChange={alterar(setEmail)} placeholder="seuemail@exemplo.com"
+            <Entrada ref={emailRef} rotulo="Email" type="email" value={email} onChange={alterar(setEmail)} placeholder="seuemail@exemplo.com"
               autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required invalido={invalido("email")} />
 
             <div className={styles.duasColunas}>
-              <Input ref={senhaRef} label="Senha" type="password" value={senha} onChange={alterar(setSenha)}
+              <Entrada ref={senhaRef} rotulo="Senha" type="password" value={senha} onChange={alterar(setSenha)}
                 autoComplete="new-password" required minLength={8} dica={REGRA_SENHA} invalido={invalido("senha")} />
-              <Input ref={confirmarRef} label="Confirmar senha" type="password" value={confirmarSenha} onChange={alterar(setConfirmarSenha)}
+              <Entrada ref={confirmarRef} rotulo="Confirmar senha" type="password" value={confirmarSenha} onChange={alterar(setConfirmarSenha)}
                 autoComplete="new-password" required invalido={invalido("confirmar")} />
             </div>
 
