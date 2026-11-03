@@ -10,12 +10,12 @@ import { LIMITE_DE_CULTIVOS, cultivosDoUsuario, dadosParaGravar } from '@/lib/cu
 export async function GET() {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         await dbConnect();
         return NextResponse.json({ success: true, cultivos: await cultivosDoUsuario(userId) });
     } catch (err) {
         console.error('Erro ao listar cultivos:', err);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }
 
@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(req) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         const resultado = perfilParcialSchema.safeParse(await req.json().catch(() => null));
         if (!resultado.success) {
@@ -45,6 +45,6 @@ export async function POST(req) {
             return NextResponse.json({ message: 'Ainda não é possível cadastrar mais de um cultivo. Avise a equipe pelo Fale conosco.' }, { status: 409 });
         }
         console.error('Erro ao criar cultivo:', err);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }

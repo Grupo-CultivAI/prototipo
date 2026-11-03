@@ -43,7 +43,7 @@ const citadaNoTexto = (cultura, texto) => {
 export async function POST(req, { params }) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         const { mensagemId } = (await req.json().catch(() => ({}))) ?? {};
         if (!mongoose.isValidObjectId(mensagemId)) return NextResponse.json({ message: 'Resposta inválida.' }, { status: 400 });
 

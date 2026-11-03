@@ -1,35 +1,17 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
 import dbConnect from '@/lib/mongodb';
+import { getUserIdFromToken } from '@/lib/auth';
 import ChatMessage from '@/models/ChatMessage';
 import Conversa from '@/models/Conversa';
 import { conversaAtual, conversaDoUsuario } from '@/lib/conversas';
 import { comTitulos } from '@/lib/documentos';
 import { LIMITE_POR_DIA, perguntasRestantesHoje } from '@/lib/limites';
 
-if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET environment variable is not set');
-}
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
-
-async function getUserIdFromToken() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('authToken')?.value;
-    if (!token) return null;
-    try {
-        const { payload } = await jwtVerify(token, JWT_SECRET);
-        return payload.id;
-    } catch (error) {
-        return null;
-    }
-}
-
 // Mensagens da conversa pedida (?conversa=id, vinda da lista) ou, sem ela, da mais recente.
 export async function GET(req) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         await dbConnect();
         const pedida = new URL(req.url).searchParams.get('conversa');
@@ -58,7 +40,7 @@ export async function GET(req) {
         return NextResponse.json({ success: true, history: formattedHistory, restantesHoje, limiteDiario: LIMITE_POR_DIA, conversaId: conversa?._id ?? null, propriedadeId: conversa?.propriedadeId ?? null });
     } catch (error) {
         console.error("Erro ao buscar histórico:", error);
-        return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+        return NextResponse.json({ success: false, message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }
 
@@ -66,7 +48,7 @@ export async function GET(req) {
 export async function DELETE(req) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         await dbConnect();
         const conversa = await conversaDoUsuario(userId, new URL(req.url).searchParams.get('conversa'));
@@ -86,6 +68,6 @@ export async function DELETE(req) {
         return NextResponse.json({ success: true, message: 'Conversa apagada', conversaId: nova._id, propriedadeId: nova.propriedadeId });
     } catch (error) {
         console.error("Erro ao apagar histórico:", error);
-        return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+        return NextResponse.json({ success: false, message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import Propriedade from '@/models/Propriedade';
@@ -9,22 +8,23 @@ import TentativaAcesso from '@/models/TentativaAcesso';
 import { getUserIdFromToken } from '@/lib/auth';
 import { apagarCookieSessao } from '@/lib/cookieSessao';
 import { normalizarEmail } from '@/lib/senha';
+import { senhaConfere } from '@/lib/conferirSenha';
 import { excedeuLimite, registrarTentativa, ipDe, MINUTOS_DE_ESPERA } from '@/lib/tentativas';
 
 export async function GET() {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         await dbConnect();
         // Nunca devolver ao navegador a senha nem o código de recuperação, mesmo em hash.
         const user = await User.findById(userId).select('-senha -resetSenhaHash -resetSenhaExpira');
 
-        if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        if (!user) return NextResponse.json({ message: 'Conta não encontrada.' }, { status: 404 });
         return NextResponse.json({ user });
     } catch (error) {
         console.error('API User Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }
 
@@ -33,7 +33,7 @@ export async function GET() {
 export async function DELETE(req) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         await dbConnect();
         const user = await User.findById(userId);
@@ -49,7 +49,7 @@ export async function DELETE(req) {
                 { status: 429 }
             );
         }
-        if (!senha || !(await bcrypt.compare(senha, user.senha))) {
+        if (!(await senhaConfere(senha, user))) {
             await registrarTentativa('login', email, ip);
             return NextResponse.json({ message: 'Senha incorreta.', campo: 'senha' }, { status: 401 });
         }

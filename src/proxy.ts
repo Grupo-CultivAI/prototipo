@@ -6,8 +6,9 @@ import { jwtVerify } from 'jose';
 // a página abria e só depois descobria que não havia sessão.
 //
 // Aqui só se confere a assinatura do cookie, sem consultar o banco (isso rodaria a cada
-// página). Uma conta excluída com cookie ainda válido passa, e a própria página manda para
-// o login quando /api/user responde que a conta não existe.
+// página). Uma conta excluída, ou uma sessão que caiu com a troca de senha, passa por aqui com
+// o cookie ainda assinado; a página confere no banco (getUserIdFromToken, em src/lib/auth.ts)
+// e manda para o login.
 export async function proxy(req: NextRequest) {
     const token = req.cookies.get('authToken')?.value;
     if (token && process.env.JWT_SECRET) {

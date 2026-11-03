@@ -4,6 +4,9 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { normalizarEmail, problemaNaSenha } from '@/lib/senha';
+import { senhaConfere } from '@/lib/conferirSenha';
+import { getUserIdFromToken } from '@/lib/auth';
+import { gravarCookieSessao } from '@/lib/cookieSessao';
 import { excedeuLimite, registrarTentativa, limparTentativas, ipDe, MINUTOS_DE_ESPERA } from '@/lib/tentativas';
 
 // Dois jeitos de definir uma senha nova:
@@ -29,7 +32,7 @@ export async function POST(req) {
             }
         } else {
             const email = normalizarEmail(emailDigitado);
-            if (!email || !senhaAtual) {
+            if (!email || typeof senhaAtual !== 'string' || !senhaAtual) {
                 return NextResponse.json({ message: 'Preencha todos os campos.' }, { status: 400 });
             }
             // Trocar senha também testa uma senha: entra no mesmo limite do login.
@@ -41,10 +44,9 @@ export async function POST(req) {
                 );
             }
             user = await User.findOne({ email }) ?? await User.findOne({ email: String(emailDigitado).trim() });
-            const credenciaisOk = user && (await bcrypt.compare(senhaAtual, user.senha));
-            // Mesma resposta para email inexistente e senha errada: distinguir os dois
-            // permitiria descobrir quais emails têm conta no sistema.
-            if (!credenciaisOk) {
+            // Mesma resposta (e mesmo tempo: o bcrypt roda mesmo sem conta) para email inexistente
+            // e senha errada: distinguir os dois permitiria descobrir quais emails têm conta.
+            if (!(await senhaConfere(senhaAtual, user))) {
                 await registrarTentativa('login', email, ip);
                 return NextResponse.json(
                     { message: 'Email ou senha atual incorretos.' },
@@ -53,18 +55,26 @@ export async function POST(req) {
             }
         }
 
+        // Quem troca a senha em Minha Conta está logado e volta para lá: lida antes de a versão
+        // subir, a sessão dele ganha um cookie novo, e só as outras caem.
+        const sessaoDeQuemTrocou = (await getUserIdFromToken()) === user._id.toString();
+
         const salt = await bcrypt.genSalt(10);
         user.senha = await bcrypt.hash(novaSenha, salt);
         // O link só serve uma vez.
         user.resetSenhaHash = null;
         user.resetSenhaExpira = null;
+        // Todas as sessões abertas com a senha antiga deixam de valer (src/lib/auth.ts): quem
+        // tinha pegado a sessão da pessoa perde o acesso assim que ela troca a senha.
+        user.versaoSessao = (user.versaoSessao ?? 0) + 1;
         await user.save();
         await limparTentativas('login', normalizarEmail(user.email));
 
-        return NextResponse.json(
+        const response = NextResponse.json(
             { message: 'Senha alterada. Agora é só entrar com a senha nova.' },
             { status: 200 }
         );
+        return sessaoDeQuemTrocou ? gravarCookieSessao(response, user) : response;
     } catch (error) {
         console.error('Reset Password Error:', error);
         return NextResponse.json(
