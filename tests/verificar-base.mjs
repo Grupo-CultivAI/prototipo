@@ -10,7 +10,11 @@ const { topK, casos } = JSON.parse(fs.readFileSync(ARQUIVO_CASOS, 'utf-8'));
 
 const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
-const namespace = NAMESPACE_DA_BASE;
+// --namespace outro: confere uma base de teste (por exemplo, gravada com ingest-pdfs --namespace)
+// nos mesmos casos, para comparar com a base em uso antes de trocar NAMESPACE_DA_BASE.
+const iNamespace = process.argv.indexOf('--namespace');
+const namespace = iNamespace >= 0 ? process.argv[iNamespace + 1] : NAMESPACE_DA_BASE;
+console.log(`Namespace: ${namespace}${namespace === NAMESPACE_DA_BASE ? ' (a base que o chat usa)' : ' (teste)'}`);
 
 if (!host || !pineconeApiKey) {
     console.error('❌ PINECONE_INDEX_HOST e PINECONE_API_KEY são obrigatórios no .env.local');

@@ -15,7 +15,7 @@ import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
 import { FIM_DA_REVISAO, INICIO_DA_REVISAO, semDesculpaNoInicio } from '@/lib/revisao';
 import { estacaoERegiao, regrasDoClima } from '@/lib/estacao';
-import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
+import { comTitulos, rotuloDoTrecho } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, segundosAteMeiaNoite } from '@/lib/limites';
 
 
@@ -290,7 +290,7 @@ export async function POST(req: Request) {
         const zarc = epoca?.paraIA ?? null;
 
         const contexto = trechos
-            .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
+            .map((t) => `${rotuloDoTrecho(t.fonte, t.pagina)} ${t.texto}`)
             .join('\n\n');
         const perfil = resumoDoPerfil(propriedade) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`

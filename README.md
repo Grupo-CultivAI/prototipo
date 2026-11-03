@@ -239,7 +239,13 @@ Esse script é o único trecho do projeto que só roda no Windows. Vale usá-lo 
 ```bash
 node scripts/ingest-pdfs.mjs            # ingere os PDFs de ./docs-embrapa
 node scripts/ingest-pdfs.mjs ./outra-pasta
+
+# Testar outro jeito de cortar os trechos sem tocar na base que o chat usa:
+node scripts/ingest-pdfs.mjs --namespace teste-frases --corte frase --tamanho 800
+node tests/verificar-base.mjs --namespace teste-frases   # compara nos mesmos casos
 ```
+
+Com `--namespace`, a ingestão grava em outro namespace do índice, com o próprio arquivo de progresso (`.ingest-state-<namespace>.json`). `--corte frase` termina cada trecho no fim de uma frase (os PDFs não têm parágrafos marcados), e `--tamanho` muda o tamanho máximo do trecho. Para a base em uso passar a ser outra, troque `NAMESPACE_DA_BASE` em `src/lib/embeddings.mjs`. Depois do teste, apague o namespace no Pinecone. O resultado do teste de 03/11/2026 está em `tests/README.md`.
 
 ### Verificação técnica da indexação
 A suíte em [`tests/`](tests/README.md) confere se a base está indexada corretamente: para cada pergunta de uma amostra fixa, verifica se os melhores resultados vêm do documento esperado com score acima do limiar. O `tests/README.md` registra os resultados da última execução e os problemas em aberto.
