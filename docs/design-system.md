@@ -52,6 +52,59 @@ Antes de usar um texto novo sobre um fundo novo, confira o contraste (4,5:1 para
 
 Da mais baixa para a mais alta: `--z-mapa` 0 · `--z-acima` 1 · `--z-barra` 5 (barra de Salvar) · `--z-lista` 20 (sugestões de um campo) · `--z-flutuante` 30 (menus e dicas) · `--z-navegacao` 40 (menu lateral, Fale conosco) · `--z-navegacao-celular` 50. Um elemento novo entra numa dessas camadas; um número solto acaba por cima do menu ou por baixo da barra sem ninguém saber por quê.
 
+## Componentes
+
+Ficam em [`src/components/ui/`](../src/components/ui/), em TypeScript: o editor sugere as variantes e uma variante errada vira erro no build.
+
+### Botao
+
+```tsx
+import Botao from '@/components/ui/Botao';
+
+<Botao onClick={salvar}>Salvar</Botao>                                   // principal, tamanho m
+<Botao href="/meus-cultivos/novo" pilula icone={Plus}>Cadastrar cultivo</Botao>  // link com cara de botão
+<Botao variante="neutro" tamanho="p" icone={Pencil}>Editar</Botao>
+<Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta safra" />   // só ícone: rotulo é obrigatório
+<Botao type="submit" tamanho="g" larguraTotal carregando={enviando} textoCarregando="Salvando...">Salvar senha nova</Botao>
+```
+
+| Variante | Para quê |
+| --- | --- |
+| `principal` | A ação principal da tela: uma por tela, de preferência |
+| `secundario` | Ação importante, mas não a principal (Nova conversa, Perguntar sobre este cultivo, Trocar senha) |
+| `neutro` | Ações comuns (Editar, Ver no Painel, Cancelar, Imprimir) |
+| `discreto` | Ícones de apoio, sem borda (ouvir, avaliar, copiar, tirar um item) |
+| `perigo` | Confirmar uma exclusão (fundo vermelho) |
+| `perigoDiscreto` | Abrir uma exclusão ou sair da conta (texto vermelho, sem fundo) |
+| `claro` | Sobre o verde-escuro (cartão de boas-vindas do Painel, Fale conosco da página inicial) |
+
+Tamanhos: `p` (36 px de altura; 40 no celular), `m` (44 px), `g` (52 px). Com `aria-pressed` ou `aria-expanded` verdadeiro, `neutro` e `discreto` ficam verdes (ligado ou aberto). Com `href`, vira link (`<Link>`; `<a>` para `http` e `mailto:`). Não usa hooks: serve também nas páginas de servidor.
+
+### Aviso
+
+```tsx
+<Aviso tipo="erro">{erro}</Aviso>            // anunciado na hora (role="alert")
+<Aviso tipo="sucesso">Cultivo salvo.</Aviso> // anunciado sem interromper (role="status")
+<Aviso tipo="alerta" papel="note">...</Aviso> // já vem na página: não é anunciado
+```
+
+Tipos: `erro`, `alerta`, `sucesso`, `info`. Sempre com ícone, para a cor não ser a única pista.
+
+### Selo
+
+`<Selo tipo="ok">Completo</Selo>`. Tipos: `ok` (com ✓), `falta`, `erro` (com ícone), `neutro`, `destaque` (verde cheio).
+
+### ConfirmarNaTela
+
+Para apagar ou excluir algo, no lugar do `confirm()` do navegador. O foco vai para "Cancelar", Esc cancela, e se `aoConfirmar` lançar um erro a mensagem aparece na própria confirmação. Quem abre devolve o foco ao botão de origem em `aoCancelar`.
+
+```tsx
+<ConfirmarNaTela pergunta="Excluir este cultivo? Sua conta e suas conversas continuam."
+  rotuloConfirmar="Excluir" textoOcupado="Excluindo..." aoConfirmar={excluir} aoCancelar={fechar} />
+```
+
+`aparencia="faixa"` destaca em vermelho-claro (usado no chat); o padrão, `linha`, cabe dentro de um cartão.
+
 ## Ainda por fazer
 
-Tamanhos de texto, espaçamentos e os componentes (botão, aviso, campo, bloco do formulário) entram nos próximos PRs do design system. Até lá, eles seguem escritos em cada tela.
+Os componentes de formulário (campo, opções clicáveis, bloco do formulário, barra de ações) e os tamanhos de texto e espaçamentos entram no próximo PR. Ficam fora do `Botao`, de propósito, os itens de menu e de lista (menu "Mais" e lista de conversas do chat), o anel do contador de perguntas e o botão de mostrar a senha.

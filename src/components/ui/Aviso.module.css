@@ -1,0 +1,53 @@
+/* Aviso do design system (components/ui/Aviso.jsx) */
+.aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid;
+    border-radius: var(--radius-md);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.icone {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.texto {
+    min-width: 0;
+}
+
+.texto a {
+    color: inherit;
+    font-weight: 700;
+}
+
+.erro {
+    border-color: var(--erro-borda);
+    background: var(--erro-fundo);
+    color: var(--erro);
+}
+
+.alerta {
+    border-color: var(--aviso-borda);
+    background: var(--aviso-fundo);
+    color: var(--aviso);
+}
+
+.sucesso {
+    border-color: var(--primary-line);
+    background: var(--primary-tint);
+    color: var(--primary-dark);
+}
+
+.info {
+    border-color: var(--border);
+    background: var(--primary-tint-weak);
+    color: var(--text-primary);
+}
+
+.info .icone {
+    color: var(--primary);
+}
