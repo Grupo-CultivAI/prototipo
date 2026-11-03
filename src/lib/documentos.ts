@@ -10,11 +10,13 @@ import catalogo from './documentos.json';
 type Documento = { titulo: string; url?: string; condicao?: string };
 const CATALOGO: Record<string, Documento> = catalogo;
 
-// Rótulo do trecho no prompt: "[Título (condição do experimento: ...), p. 3 do PDF]"
-export function rotuloDoTrecho(arquivo: string, pagina?: number) {
+// Nome do documento no rótulo do trecho que vai para a IA (src/app/api/llm/route.ts), com a
+// condição do experimento quando há: "Título (condição do experimento: área irrigada...)".
+// A lista de documentos consultados, na tela, usa só o título (comTitulos, abaixo).
+export function tituloDoDocumento(arquivo: string) {
     const doc = CATALOGO[arquivo];
-    const condicao = doc?.condicao ? ` (condição do experimento: ${doc.condicao})` : '';
-    return `[${doc?.titulo ?? arquivo}${condicao}${pagina ? `, p. ${pagina} do PDF` : ''}]`;
+    if (!doc) return arquivo;
+    return doc.condicao ? `${doc.titulo} (condição do experimento: ${doc.condicao})` : doc.titulo;
 }
 
 // Aplicado na leitura, não na gravação: corrigir um título no catálogo vale também para
