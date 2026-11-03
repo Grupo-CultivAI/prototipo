@@ -22,6 +22,7 @@ import readline from 'node:readline';
 import { Readable } from 'node:stream';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { confirmarEscrita } from './banco.mjs';
 import { GRUPO_DO_SOLO, codificarFaixas, decodificarFaixas, janelasEmTexto, normalizar } from '../src/lib/zarc-formato.mjs';
 dotenv.config({ path: '.env.local', quiet: true });
 
@@ -35,6 +36,8 @@ const ARQUIVOS = [
 const args = process.argv.slice(2);
 const opcao = (nome) => { const i = args.indexOf(nome); return i >= 0 ? args[i + 1] : null; };
 const confirmar = args.includes('--confirmar');
+// Com --confirmar num banco que não é local, pede para digitar "producao" (ver scripts/banco.mjs)
+if (confirmar) await confirmarEscrita(process.env.MONGODB_URI, args);
 const locais = opcao('--arquivos')?.split(',');
 const ver = opcao('--ver');
 const soEstes = opcao('--municipios')?.split(',');

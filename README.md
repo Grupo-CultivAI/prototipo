@@ -151,10 +151,12 @@ Em 27/10/2026, a Groq não tinha outros modelos de conversa úteis na chave do p
 
 **Pedido de dados que faltam:** se o perfil não tem tipo de solo, localização ou culturas e a resposta depende disso, o modelo termina pedindo o dado com a marca `[PEDIR: código]` na última linha. A rota tira a marca do texto e devolve `tipo: 'coleta_dados'` com os campos do formulário, usando as mesmas opções do formulário de Meus Cultivos; o que o produtor responde é salvo no cultivo da conversa. Só se pede o que falta, no máximo dois dados, e no máximo uma vez a cada 4 mensagens.
 
-Os cenários de regressão do chat rodam com o servidor no ar (`npm run dev` em outro terminal):
+Os cenários de regressão do chat rodam com o servidor no ar, e os dois (servidor e teste) no mesmo banco local. O `.env.local` aponta para o banco da produção, por isso o teste recusa um banco que não seja local e para se o servidor gravar em outro banco (`scripts/banco.mjs`):
 
 ```bash
-npm run cenarios-chat
+MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run dev            # em outro terminal
+MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run cenarios-chat
+npm run cenarios-chat -- --producao                                    # na produção, de propósito
 ```
 
 **Conversas:** o botão "Nova conversa" começa do zero sem apagar nada. O contexto da IA (mensagens anteriores e a junção de perguntas curtas com a anterior) fica restrito à conversa aberta, para uma dúvida antiga sobre outro assunto não contaminar a nova. O botão "Conversas" lista as anteriores (`GET /api/conversas`, da última mensagem mais recente para a mais antiga); abrir uma delas e perguntar continua aquela conversa. A conversa aberta fica guardada no navegador, para voltar a ela ao recarregar a página. O histórico gravado antes das conversas existirem vira uma conversa na primeira vez que a pessoa abre o chat.
@@ -178,6 +180,8 @@ npm run importar-zarc                              # baixa e só mostra o resumo
 npm run importar-zarc -- --ver "Campinas/SP"       # mostra as janelas de um município
 npm run importar-zarc -- --confirmar               # grava (substitui a importação anterior)
 ```
+
+Com `--confirmar` num banco que não é local, o script mostra o banco (sem a senha) e pede para digitar `producao` antes de gravar; sem terminal, só com `--sim`. O mesmo vale para os outros scripts que gravam (`limpar-campos-legados`, `migrar-cultivos`).
 
 A cada safra nova, acrescente o arquivo dela no início da lista `ARQUIVOS` do script e rode de novo: cada cultura vem do arquivo mais novo que a tem.
 

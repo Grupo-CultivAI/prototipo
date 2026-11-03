@@ -11,9 +11,12 @@
 // O banco do .env.local é o mesmo da produção. Pode rodar mais de uma vez.
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { confirmarEscrita } from './banco.mjs';
 dotenv.config({ path: '.env.local', quiet: true });
 
 const confirmar = process.argv.includes('--confirmar');
+// Com --confirmar num banco que não é local, pede para digitar "producao" (ver scripts/banco.mjs)
+if (confirmar) await confirmarEscrita(process.env.MONGODB_URI);
 await mongoose.connect(process.env.MONGODB_URI, { dbName: 'cultivai' });
 const perfis = mongoose.connection.db.collection('propriedades');
 
