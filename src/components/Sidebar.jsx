@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { House, MessageCircle, Sprout, CircleUser, Mail, LogOut } from 'lucide-react';
+import { House, MessageCircle, Sprout, CircleUser, Mail } from 'lucide-react';
 import folha from "@/assets/leaves-of-a-plant.png";
 import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
 import BotaoSair from './BotaoSair';
@@ -43,10 +43,7 @@ export default function Sidebar() {
 
             {/* No celular some (fica em Minha Conta): ver Sidebar.module.css */}
             <div className={styles.rodape}>
-                <BotaoSair className={styles.sair}>
-                    <LogOut size={20} aria-hidden="true" className={styles.iconeSair} />
-                    <span className={styles.rotulo}>Sair da Conta</span>
-                </BotaoSair>
+                <BotaoSair larguraTotal />
             </div>
         </aside>
     );

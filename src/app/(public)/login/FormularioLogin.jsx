@@ -3,7 +3,8 @@ import { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Input from "@/components/Input"
-import AvisoFormulario from "@/components/AvisoFormulario"
+import Botao from "@/components/ui/Botao"
+import Aviso from "@/components/ui/Aviso"
 import { CHAVE_EMAIL_CADASTRADO, emailCadastrado } from "@/lib/cadastro"
 import styles from "../conta.module.css"
 
@@ -75,8 +76,8 @@ export default function FormularioLogin({ contaExcluida = false }) {
         </div>
 
         <form onSubmit={entrar} noValidate className={styles.formulario}>
-          {vindoDoCadastro && !erro && <AvisoFormulario tipo="sucesso">Conta criada. Agora é só digitar sua senha para entrar.</AvisoFormulario>}
-          {contaExcluida && !vindoDoCadastro && !erro && <AvisoFormulario tipo="sucesso">Sua conta e todos os seus dados foram excluídos.</AvisoFormulario>}
+          {vindoDoCadastro && !erro && <Aviso tipo="sucesso">Conta criada. Agora é só digitar sua senha para entrar.</Aviso>}
+          {contaExcluida && !vindoDoCadastro && !erro && <Aviso tipo="sucesso">Sua conta e todos os seus dados foram excluídos.</Aviso>}
 
           <Input
             ref={emailRef}
@@ -106,11 +107,9 @@ export default function FormularioLogin({ contaExcluida = false }) {
             acessorio={<Link href="/esqueci-senha" className={styles.linkPequeno}>Esqueci a senha</Link>}
           />
 
-          {erro && <AvisoFormulario>{erro.texto}</AvisoFormulario>}
+          {erro && <Aviso tipo="erro">{erro.texto}</Aviso>}
 
-          <button type="submit" disabled={loading} className={styles.botao} style={{ background: 'var(--primary-dark)' }}>
-            {loading ? 'Entrando...' : 'Entrar'}
-          </button>
+          <Botao type="submit" tamanho="g" larguraTotal carregando={loading} textoCarregando="Entrando...">Entrar</Botao>
         </form>
 
         <p className={styles.rodape}>

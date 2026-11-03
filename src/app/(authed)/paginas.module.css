@@ -125,66 +125,9 @@
     color: var(--erro);
 }
 
-/* Confirmação de "Apagar conversa", na própria tela (como em Meus Cultivos e Minha Conta) */
+/* Confirmação de "Apagar conversa" (components/ui/ConfirmarNaTela, aparência "faixa"): só o espaço */
 .confirmarApagar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem 1rem;
     margin-bottom: 1.5rem;
-    padding: 0.9rem 1.25rem;
-    border: 1px solid var(--erro-borda);
-    border-radius: var(--radius-lg);
-    background: var(--erro-fundo);
-}
-
-.confirmarApagar p {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-}
-
-.confirmarApagar p svg {
-    flex-shrink: 0;
-}
-
-.confirmarApagar > div {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.confirmarApagar button {
-    min-height: 2.75rem;
-    padding: 0 1.1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    color: var(--text-primary);
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.confirmarApagar .botaoApagar {
-    border-color: transparent;
-    background: var(--erro);
-    color: var(--white);
-}
-
-.confirmarApagar button:disabled {
-    cursor: wait;
-    opacity: 0.75;
-}
-
-.confirmarApagar .erroApagar {
-    width: 100%;
-    color: var(--erro);
-    font-weight: 600;
 }
 
 .chatTitulo {
@@ -256,13 +199,16 @@
     text-overflow: ellipsis;
 }
 
-.botaoEnviar {
+/* O Enviar é um Botao (components/ui): aqui só a altura da linha do campo e o espaço lateral */
+.chat .chatEntrada .botaoEnviar {
     padding: 0 2rem;
 }
 
-.chatEntrada .botaoEnviar,
-.chatEntrada .botaoVoz {
+/* Enviar e microfone (Botao) com a altura de uma linha do campo, que muda no celular deitado */
+.chat .chatEntrada .botaoEnviar,
+.chat .chatEntrada .botaoVoz {
     flex-shrink: 0;
+    min-height: 0;
     height: var(--altura-campo);
 }
 
@@ -364,16 +310,10 @@
 
 /* --- Quadro do ZARC no fim da resposta: informação, não parte do texto da IA --- */
 /* --- Aviso de resposta sem a busca na base (cota, limite ou erro) --- */
-.avisoSemBase {
-    margin: 0.75rem 0 0;
-    padding: 0.6rem 0.8rem;
-    border-left: 3px solid var(--aviso-icone);
-    border-radius: var(--radius-sm);
-    background: var(--aviso-fundo);
-    color: var(--text-secondary);
+.balao .avisoSemBase {
+    margin-top: 0.75rem;
     font-size: 0.85rem;
     font-weight: 400;
-    line-height: 1.45;
 }
 
 .fontesTitulo svg {
@@ -381,16 +321,11 @@
     margin-top: 0.15em;
 }
 
-.iconeAviso,
 .iconeLembrete,
 .iconeNota {
     display: inline-block;
     margin-right: 0.15rem;
     vertical-align: -0.15em;
-}
-
-.iconeAviso {
-    color: var(--aviso-icone);
 }
 
 .iconeLembrete {
@@ -490,43 +425,11 @@
     gap: 0.25rem;
 }
 
-/* Cor cheia: com 70% de transparência, "Salvar como plano" parecia desabilitado */
-.acoesMensagem button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    min-height: 32px;
-    padding: 0.3rem;
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-}
-
-.acoesMensagem button:hover {
-    border-color: var(--border);
-    color: var(--text-primary);
-}
-
-/* No celular, alvos de 40px (eram 27px): mais fácil de acertar com o dedo */
+/* Os botões são Botao "discreto" (components/ui), com 36 px no computador e 40 no celular */
 @media (max-width: 768px) {
     .acoesMensagem {
         flex-wrap: wrap;
     }
-
-    .acoesMensagem button {
-        min-width: 40px;
-        min-height: 40px;
-    }
-}
-
-.acoesMensagem .avaliada {
-    opacity: 1;
-    color: var(--primary);
-    border-color: var(--primary);
-    background: var(--primary-tint);
 }
 
 /* --- Sugestões de primeira pergunta --- */
@@ -622,27 +525,7 @@
     gap: 1rem;
 }
 
-/* --- Botão "Conversas" e a lista que ele abre --- */
-.botaoCabecalho {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0.6rem 1rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.botaoCabecalhoAtivo {
-    border-color: var(--primary);
-    background: var(--primary-tint);
-    color: var(--primary-dark);
-}
-
+/* --- Lista que o botão "Conversas" abre --- */
 .listaConversas {
     max-height: 40vh;
     overflow-y: auto;
@@ -700,20 +583,9 @@
 }
 
 /* --- Microfone --- */
-.botaoVoz {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 2.75rem;
-    border: none;
-    border-radius: var(--radius-pill);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-}
-
-.botaoVoz.ouvindo {
+/* O microfone é um Botao "discreto" (components/ui); ouvindo, fica vermelho e pulsa.
+   .chat .chatEntrada na frente para vencer o estilo de "ligado" (verde) do Botao. */
+.chat .chatEntrada .botaoVoz.ouvindo {
     background: var(--erro-forte);
     color: var(--white);
     animation: pulsar 1.2s ease-in-out infinite;
@@ -879,10 +751,6 @@
         margin-bottom: 0.75rem;
     }
 
-    .confirmarApagar {
-        padding: 0.75rem;
-    }
-
     .bolha {
         max-width: 90%;
     }
@@ -895,7 +763,7 @@
         padding: 0.5rem;
     }
 
-    .botaoEnviar {
+    .chat .chatEntrada .botaoEnviar {
         padding: 0 1.2rem;
     }
 }
@@ -1133,36 +1001,10 @@
     }
 }
 
-/* --- Chat: "Salvar como plano" e o resultado, abaixo da resposta --- */
-.acoesMensagem .botaoPlano {
-    gap: 0.3rem;
-    padding: 0.3rem 0.55rem;
-    border-color: var(--border);
-    font: inherit;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-.avisoPlano,
-.avisoPlanoErro {
+/* --- Chat: resultado do "Salvar como plano", abaixo da resposta --- */
+.bolha .avisoPlano {
     margin: 0.4rem 8px 0;
-    font-size: 0.82rem;
-    line-height: 1.4;
-}
-
-.avisoPlano {
-    color: var(--primary-dark);
-}
-
-.avisoPlano a {
-    font-weight: 700;
-    text-decoration: underline;
-}
-
-.avisoPlanoErro {
-    color: var(--erro);
+    font-size: 0.85rem;
 }
 
 /* Texto só para o leitor de tela (fora da vista, mas lido) */
@@ -1179,24 +1021,6 @@
 }
 
 /* --- Minha Conta: "Sair da conta" (no celular, é o único lugar dele) --- */
-.botaoSairConta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.8rem 1.25rem;
-    border: 1px solid var(--erro-borda);
-    border-radius: var(--radius-md);
-    background: var(--erro-fundo);
-    color: var(--erro);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.botaoSairConta:hover {
-    background: var(--erro-fundo-forte);
-}
-
 /* --- Formulário do cultivo: situação de cada bloco, no cabeçalho --- */
 .situacaoBloco {
     display: inline-flex;

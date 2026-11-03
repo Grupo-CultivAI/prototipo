@@ -44,30 +44,6 @@
     text-transform: uppercase;
 }
 
-.botaoPrincipal,
-.botaoClaro {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.8rem 1.3rem;
-    border-radius: var(--radius-pill);
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform 0.2s, background 0.2s;
-}
-
-.painel .botaoPrincipal {
-    background: var(--primary);
-    color: var(--white);
-    box-shadow: var(--shadow-primary);
-}
-
-.painel .botaoPrincipal:hover,
-.painel .botaoPrincipal:focus-visible {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-}
-
 /* --- Sem cadastro: chamada para Meus Cultivos --- */
 .boasVindas {
     display: flex;
@@ -117,17 +93,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 1.5rem;
-}
-
-.painel .botaoClaro {
-    background: var(--white);
-    color: var(--primary-dark);
-}
-
-.painel .botaoClaro:hover,
-.painel .botaoClaro:focus-visible {
-    background: var(--primary-soft);
-    transform: translateY(-2px);
 }
 
 .painel .linkClaro {

@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import mongoose from 'mongoose';
-import { Plus, MapPin, Pencil, Copy, MessageCircle, LayoutDashboard, CalendarDays, Sprout, CircleCheck, History, ListChecks } from 'lucide-react';
+import { Plus, MapPin, Pencil, Copy, MessageCircle, LayoutDashboard, CalendarDays, Sprout, History, ListChecks } from 'lucide-react';
 import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import { cultivosDoUsuario, nomeDoCultivo, LIMITE_DE_CULTIVOS } from '@/lib/cultivos';
@@ -10,6 +9,8 @@ import { emDias, situacaoDaJanela } from '@/lib/janelaDePlantio';
 import { ITENS_DO_PERFIL, itensFaltando, tamanhoEmTexto, ordenarSafras, rotuloDaSafra, proximaEtapa } from '@/lib/perfil';
 import { DIAS_PARA_AVISAR_FECHAMENTO } from '@/lib/avisos';
 import Conversa from '@/models/Conversa';
+import Botao from '@/components/ui/Botao';
+import Aviso from '@/components/ui/Aviso';
 import ExcluirCultivo from './ExcluirCultivo';
 import styles from './cultivos.module.css';
 
@@ -64,14 +65,12 @@ export default async function MeusCultivos({ searchParams }) {
                     <p>Cada área que você planta, com a cidade, o solo e as culturas dela. O assistente usa esses dados para responder sobre cada uma.</p>
                 </div>
                 {cultivos.length < LIMITE_DE_CULTIVOS && (
-                    <Link href="/meus-cultivos/novo" className={styles.botaoPrincipal}>
-                        <Plus size={18} aria-hidden="true" /> Cadastrar cultivo
-                    </Link>
+                    <Botao href="/meus-cultivos/novo" pilula icone={Plus} className={styles.botaoCadastrar}>Cadastrar cultivo</Botao>
                 )}
             </header>
 
-            {aviso?.salvo && <p className={styles.aviso} role="status"><CircleCheck size={18} aria-hidden="true" /> Cultivo salvo.</p>}
-            {aviso?.excluido && <p className={styles.aviso} role="status"><CircleCheck size={18} aria-hidden="true" /> Cultivo excluído.</p>}
+            {aviso?.salvo && <Aviso tipo="sucesso">Cultivo salvo.</Aviso>}
+            {aviso?.excluido && <Aviso tipo="sucesso">Cultivo excluído.</Aviso>}
 
             {cultivos.length === 0 ? (
                 <section className={styles.vazio}>
@@ -81,9 +80,7 @@ export default async function MeusCultivos({ searchParams }) {
                         Cadastre cada área que você planta: um sítio, um talhão, um lote. Com a cidade e as culturas, o CultivAI mostra a
                         época oficial de plantio, a chuva prevista e responde pensando na realidade de cada uma.
                     </p>
-                    <Link href="/meus-cultivos/novo" className={styles.botaoPrincipal}>
-                        <Plus size={18} aria-hidden="true" /> Cadastrar o primeiro cultivo
-                    </Link>
+                    <Botao href="/meus-cultivos/novo" pilula icone={Plus}>Cadastrar o primeiro cultivo</Botao>
                 </section>
             ) : (
                 <ul className={styles.lista}>
@@ -114,9 +111,7 @@ export default async function MeusCultivos({ searchParams }) {
                                             {c.cidade && c.estado ? `${c.cidade}/${String(c.estado).toUpperCase()}` : 'Cidade não informada'}
                                         </p>
                                     </div>
-                                    <Link href={`/meus-cultivos/${id}`} className={styles.acao}>
-                                        <Pencil size={16} aria-hidden="true" /> Editar
-                                    </Link>
+                                    <Botao href={`/meus-cultivos/${id}`} variante="neutro" tamanho="p" icone={Pencil}>Editar</Botao>
                                 </div>
 
                                 {detalhes.length > 0 && <p className={styles.detalhes}>{detalhes.join(' · ')}</p>}
@@ -163,16 +158,10 @@ export default async function MeusCultivos({ searchParams }) {
                                 </div>
 
                                 <div className={styles.acoes}>
-                                    <Link href={`/chatbot?cultivo=${id}`} className={styles.acaoPrincipal}>
-                                        <MessageCircle size={16} aria-hidden="true" /> Perguntar sobre este cultivo
-                                    </Link>
-                                    <Link href={`/painel?cultivo=${id}`} className={styles.acao}>
-                                        <LayoutDashboard size={16} aria-hidden="true" /> Ver no Painel
-                                    </Link>
+                                    <Botao href={`/chatbot?cultivo=${id}`} variante="secundario" tamanho="p" icone={MessageCircle}>Perguntar sobre este cultivo</Botao>
+                                    <Botao href={`/painel?cultivo=${id}`} variante="neutro" tamanho="p" icone={LayoutDashboard}>Ver no Painel</Botao>
                                     {cultivos.length < LIMITE_DE_CULTIVOS && (
-                                        <Link href={`/meus-cultivos/novo?copiar=${id}`} className={styles.acao} title="Novo cultivo com a mesma localização, solo e manejo">
-                                            <Copy size={16} aria-hidden="true" /> Duplicar
-                                        </Link>
+                                        <Botao href={`/meus-cultivos/novo?copiar=${id}`} variante="neutro" tamanho="p" icone={Copy} title="Novo cultivo com a mesma localização, solo e manejo">Duplicar</Botao>
                                     )}
                                     <span className={styles.conversas}>{totalConversas} {totalConversas === 1 ? 'conversa' : 'conversas'}</span>
                                     <ExcluirCultivo id={id} nome={nome} />

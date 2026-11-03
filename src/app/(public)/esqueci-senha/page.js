@@ -3,7 +3,8 @@ import { useState, useRef } from "react"
 import Link from "next/link"
 import { MailCheck } from "lucide-react"
 import Input from "@/components/Input"
-import AvisoFormulario from "@/components/AvisoFormulario"
+import Botao from "@/components/ui/Botao"
+import Aviso from "@/components/ui/Aviso"
 import styles from "../conta.module.css"
 
 // Primeiro passo da recuperação: a pessoa informa o email e recebe um link para criar uma
@@ -64,11 +65,9 @@ export default function EsqueciSenha() {
               placeholder="seuemail@exemplo.com" autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off"
               spellCheck={false} required invalido={Boolean(erro)} />
 
-            {erro && <AvisoFormulario>{erro}</AvisoFormulario>}
+            {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-            <button type="submit" disabled={loading} className={styles.botao}>
-              {loading ? "Enviando..." : "Enviar link"}
-            </button>
+            <Botao type="submit" tamanho="g" larguraTotal carregando={loading} textoCarregando="Enviando...">Enviar link</Botao>
           </form>
 
           <p className={styles.rodape}>

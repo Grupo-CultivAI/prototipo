@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, KeyRound, LogOut } from 'lucide-react';
+import { Trash2, KeyRound } from 'lucide-react';
 import Input from '@/components/Input';
 import BotaoSair from '@/components/BotaoSair';
-import AvisoFormulario from '@/components/AvisoFormulario';
+import Botao from '@/components/ui/Botao';
+import Aviso from '@/components/ui/Aviso';
 import styles from '../paginas.module.css';
 
 export default function Conta() {
@@ -102,14 +102,11 @@ export default function Conta() {
                 </dl>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2.5rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
-                    <Link href={`/redefinir-senha?email=${encodeURIComponent(user.email)}&voltar=/conta`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary)', color: 'var(--primary-dark)', fontWeight: 600, textDecoration: 'none' }}>
-                        <KeyRound size={18} aria-hidden="true" /> Trocar senha
-                    </Link>
+                    <Botao href={`/redefinir-senha?email=${encodeURIComponent(user.email)}&voltar=/conta`} variante="secundario" icone={KeyRound}>
+                        Trocar senha
+                    </Botao>
                     {/* No celular, este é o lugar do "Sair" (saiu da navegação do rodapé) */}
-                    <BotaoSair className={styles.botaoSairConta}>
-                        <LogOut size={18} aria-hidden="true" /> Sair da conta
-                    </BotaoSair>
+                    <BotaoSair />
                 </div>
             </div>
 
@@ -120,24 +117,15 @@ export default function Conta() {
                     Apaga a sua conta e tudo o que está guardado nela: os seus cultivos, as conversas e as avaliações. Não dá para desfazer.
                 </p>
                 {!excluindo ? (
-                    <button type="button" onClick={() => setExcluindo(true)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--erro-forte)', background: 'transparent', color: 'var(--erro)', fontWeight: 600, cursor: 'pointer' }}>
-                        <Trash2 size={18} aria-hidden="true" /> Excluir minha conta
-                    </button>
+                    <Botao variante="perigoDiscreto" icone={Trash2} onClick={() => setExcluindo(true)}>Excluir minha conta</Botao>
                 ) : (
                     <form onSubmit={excluirConta} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '420px' }}>
                         <Input ref={senhaRef} label="Para confirmar, digite a sua senha" type="password" value={senha}
                             onChange={(e) => { setSenha(e.target.value); setErro(''); }} autoComplete="current-password" invalido={Boolean(erro)} />
-                        {erro && <AvisoFormulario>{erro}</AvisoFormulario>}
+                        {erro && <Aviso tipo="erro">{erro}</Aviso>}
                         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <button type="submit" disabled={aguardando}
-                                style={{ padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--erro-forte)', color: 'var(--white)', fontWeight: 600, cursor: aguardando ? 'wait' : 'pointer', opacity: aguardando ? 0.7 : 1 }}>
-                                {aguardando ? 'Excluindo...' : 'Excluir definitivamente'}
-                            </button>
-                            <button type="button" onClick={() => { setExcluindo(false); setSenha(''); setErro(''); }}
-                                style={{ padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
-                                Cancelar
-                            </button>
+                            <Botao type="submit" variante="perigo" carregando={aguardando} textoCarregando="Excluindo...">Excluir definitivamente</Botao>
+                            <Botao variante="neutro" onClick={() => { setExcluindo(false); setSenha(''); setErro(''); }}>Cancelar</Botao>
                         </div>
                     </form>
                 )}

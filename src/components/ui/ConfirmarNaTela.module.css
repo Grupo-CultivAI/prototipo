@@ -1,0 +1,54 @@
+/* Confirmação na tela (components/ui/ConfirmarNaTela.jsx) */
+.confirmar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    width: 100%;
+}
+
+.pergunta {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.botoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.erro {
+    width: 100%;
+    margin: 0;
+    color: var(--erro);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.faixa {
+    justify-content: space-between;
+    padding: 0.9rem 1.25rem;
+    border: 1px solid var(--erro-borda);
+    border-radius: var(--radius-lg);
+    background: var(--erro-fundo);
+}
+
+.faixa .pergunta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.faixa .pergunta svg {
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .faixa {
+        padding: 0.75rem;
+    }
+}

@@ -1,15 +1,18 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X, Check, AlertCircle } from 'lucide-react';
+import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X, Trash2 } from 'lucide-react';
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, PERIODOS_DA_SAFRA, normalizarCultura, semRepetir, nomeDoCultivo, rotuloDaSafra, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
 import BuscaCidade from '@/components/BuscaCidade';
 import MapaDoPonto from '@/components/MapaDoPonto';
+import Botao from '@/components/ui/Botao';
+import Selo from '@/components/ui/Selo';
+import ConfirmarNaTela from '@/components/ui/ConfirmarNaTela';
 
 const SEM_PROBLEMAS = 'Nenhum';
 
@@ -97,11 +100,7 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                     {situacao && (
-                        <span className={styles.situacaoBloco} data-tipo={situacao.tipo}>
-                            {situacao.tipo === 'ok' && <Check size={14} aria-hidden="true" />}
-                            {situacao.tipo === 'erro' && <AlertCircle size={14} aria-hidden="true" />}
-                            {situacao.texto}
-                        </span>
+                        <Selo tipo={situacao.tipo}>{situacao.texto}</Selo>
                     )}
                     {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
                 </span>
@@ -121,6 +120,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
     const [messageErro, setMessageErro] = useState(false);
     const [novaCultura, setNovaCultura] = useState('');
     const [confirmandoApagar, setConfirmandoApagar] = useState(false);
+    const excluirRef = useRef<HTMLButtonElement>(null);
     const [naoEncontrado, setNaoEncontrado] = useState(false);
 
     const [statusCep, setStatusCep] = useState('');
@@ -131,18 +131,11 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
     });
 
     // Some o cultivo; a conta e as conversas continuam (as conversas sobre ele viram gerais).
+    // A falha aparece na própria confirmação (ConfirmarNaTela), que continua aberta.
     const excluirCultivo = async () => {
-        setSaving(true);
-        try {
-            const res = await fetch(`/api/cultivos/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error();
-            router.push('/meus-cultivos?excluido=1');
-        } catch {
-            setMessageErro(true);
-            setMessage('Não foi possível excluir o cultivo. Tente de novo.');
-            setSaving(false);
-            setConfirmandoApagar(false);
-        }
+        const res = await fetch(`/api/cultivos/${id}`, { method: 'DELETE' }).catch(() => null);
+        if (!res?.ok) throw new Error('Não foi possível excluir o cultivo. Tente de novo.');
+        router.push('/meus-cultivos?excluido=1');
     };
 
     // useWatch, e não watch(): o watch() não é compatível com o otimizador do React.
@@ -481,7 +474,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                                 <input value={novaCultura} onChange={(e) => setNovaCultura(e.target.value)} placeholder="Outra cultura" aria-label="Outra cultura, que não está na lista"
                                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }}
                                                     style={{ ...inputStyle, padding: '0.8rem 1rem', minWidth: 0 }} />
-                                                <button type="button" onClick={acrescentar} className={styles.opcao} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Acrescentar</button>
+                                                <Botao variante="neutro" icone={Plus} onClick={acrescentar} style={{ flexShrink: 0 }}>Acrescentar</Botao>
                                             </div>
                                         </>
                                     );
@@ -554,7 +547,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                                 {ANOS.map((ano) => <option key={ano} value={ano}>{ano}</option>)}
                                             </select>
                                             <input list="culturas-sugeridas" placeholder="Cultura" {...register(`safras.${i}.cultura`)} style={inputCompacto} aria-label="Cultura plantada" />
-                                            <button type="button" onClick={() => safras.remove(i)} className={styles.botaoTirar} aria-label="Tirar esta safra"><X size={18} aria-hidden="true" /></button>
+                                            <Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta safra" onClick={() => safras.remove(i)} />
                                         </div>
                                         <span className={styles.rotuloSafra}>
                                             {valores.safras?.[i]?.ano ? rotuloDaSafra({ ano: valores.safras[i].ano, periodo: valores.safras[i].periodo }) : ''}
@@ -562,9 +555,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                         </span>
                                     </div>
                                 ))}
-                                <button type="button" className={styles.opcao} onClick={() => safras.append({ cultura: '', ano: ANO_ATUAL, periodo: 'verao' })}>
-                                    <Plus size={16} aria-hidden="true" style={{ verticalAlign: '-3px' }} /> Acrescentar safra
-                                </button>
+                                <Botao variante="neutro" tamanho="p" icone={Plus} onClick={() => safras.append({ cultura: '', ano: ANO_ATUAL, periodo: 'verao' })}>Acrescentar safra</Botao>
                             </div>
                         </div>
                     )}
@@ -623,13 +614,11 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                     <input placeholder="Quando (ex.: Safra 2025/26)" {...register(`plano.etapas.${i}.quando`)} style={inputCompacto} aria-label="Quando" />
                                     <input list="culturas-sugeridas" placeholder="Cultura" {...register(`plano.etapas.${i}.cultura`)} style={inputCompacto} aria-label="Cultura" />
                                     <input placeholder="Para quê (ex.: fixar nitrogênio)" {...register(`plano.etapas.${i}.objetivo`)} style={inputCompacto} aria-label="Objetivo da etapa" />
-                                    <button type="button" onClick={() => etapas.remove(i)} className={styles.botaoTirar} aria-label="Tirar esta etapa"><X size={18} aria-hidden="true" /></button>
+                                    <Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta etapa" onClick={() => etapas.remove(i)} />
                                     {errors.plano?.etapas?.[i]?.cultura && <span style={errorStyle}>{errors.plano.etapas[i]?.cultura?.message}</span>}
                                 </div>
                             ))}
-                            <button type="button" className={styles.opcao} style={{ alignSelf: 'flex-start' }} onClick={() => etapas.append({ quando: '', cultura: '', objetivo: '', feita: false })}>
-                                <Plus size={16} aria-hidden="true" style={{ verticalAlign: '-3px' }} /> Acrescentar etapa
-                            </button>
+                            <Botao variante="neutro" tamanho="p" icone={Plus} style={{ alignSelf: 'flex-start' }} onClick={() => etapas.append({ quando: '', cultura: '', objetivo: '', feita: false })}>Acrescentar etapa</Botao>
                         </div>
                     )}
                 </div>
@@ -645,36 +634,24 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                         {message}
                     </div>
                     <div className={styles.acoesFormulario}>
-                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}
-                            style={{ background: 'transparent', color: 'var(--primary-dark)', padding: '1.1rem 2rem', borderRadius: 'var(--radius-pill)', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '700', fontSize: '1rem', opacity: saving ? 0.7 : 1 }}>
+                        <Botao variante="secundario" tamanho="g" pilula disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}>
                             {id ? 'Salvar' : 'Cadastrar'}
-                        </button>
-                        <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}
-                            style={{ background: 'var(--primary)', color: 'var(--white)', padding: '1.25rem 2.5rem', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1.05rem', transition: 'all 0.3s', opacity: saving ? 0.7 : 1, boxShadow: 'var(--shadow-primary)' }}>
-                            {saving ? 'Salvando...' : 'Salvar e pedir análise à IA'}
-                        </button>
+                        </Botao>
+                        <Botao tamanho="g" pilula carregando={saving} textoCarregando="Salvando..." onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}>
+                            Salvar e pedir análise à IA
+                        </Botao>
                     </div>
                 </div>
             </form>
 
             {id && <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                 {!confirmandoApagar ? (
-                    <button type="button" onClick={() => setConfirmandoApagar(true)}
-                        style={{ background: 'none', border: 'none', padding: 0, color: 'var(--erro)', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem' }}>
+                    <Botao variante="perigoDiscreto" tamanho="p" icone={Trash2} ref={excluirRef} onClick={() => setConfirmandoApagar(true)}>
                         Excluir este cultivo
-                    </button>
+                    </Botao>
                 ) : (
-                    <div role="group" aria-label="Confirmar exclusão do cultivo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-                        <span>Excluir este cultivo? Sua conta e suas conversas continuam.</span>
-                        <button type="button" onClick={excluirCultivo} disabled={saving}
-                            style={{ padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--erro-forte)', color: 'var(--white)', fontWeight: 600, cursor: 'pointer' }}>
-                            Excluir
-                        </button>
-                        <button type="button" onClick={() => setConfirmandoApagar(false)}
-                            style={{ padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
-                            Cancelar
-                        </button>
-                    </div>
+                    <ConfirmarNaTela pergunta="Excluir este cultivo? Sua conta e suas conversas continuam." rotuloConfirmar="Excluir" textoOcupado="Excluindo..."
+                        aoConfirmar={excluirCultivo} aoCancelar={() => { setConfirmandoApagar(false); requestAnimationFrame(() => excluirRef.current?.focus()); }} />
                 )}
             </div>}
         </div>

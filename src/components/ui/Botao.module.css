@@ -1,0 +1,172 @@
+/* Botão do design system (components/ui/Botao.tsx). Cores e raios vêm de styles/variables.css.
+   Os seletores levam duas classes (.botao.variante) de propósito: assim vencem as regras de link
+   das páginas (ex.: ".painel a { color: ... }", uma classe e um elemento), que tingiam o texto
+   do botão quando ele é um link. */
+.botao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.botao.botao {
+    letter-spacing: normal;
+    text-decoration: none;
+    /* Não herda as maiúsculas de onde estiver (ex.: a linha "CULTIVAI" abaixo da resposta) */
+    text-transform: none;
+}
+
+.botao svg {
+    flex-shrink: 0;
+}
+
+.botao:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.botao[aria-busy="true"] {
+    cursor: wait;
+}
+
+/* --- Tamanhos. A altura mínima é o alvo de toque (WCAG 2.5.8 pede 24 px; aqui, 36 a 52) --- */
+.botao.p {
+    min-height: 2.25rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.85rem;
+    gap: 0.35rem;
+}
+
+.botao.m {
+    min-height: 2.75rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.95rem;
+}
+
+.botao.g {
+    min-height: 3.25rem;
+    padding: 0.9rem 1.6rem;
+    font-size: 1.05rem;
+}
+
+.botao.apenasIcone {
+    padding: 0;
+}
+
+.apenasIcone.p {
+    width: 2.25rem;
+}
+
+.apenasIcone.m {
+    width: 2.75rem;
+}
+
+.apenasIcone.g {
+    width: 3.25rem;
+}
+
+.botao.pilula {
+    border-radius: var(--radius-pill);
+}
+
+.botao.larguraTotal {
+    width: 100%;
+}
+
+/* --- Variantes --- */
+.botao.principal {
+    background: var(--primary);
+    color: var(--white);
+    box-shadow: var(--shadow-primary-sm);
+}
+
+.botao.principal:hover:not(:disabled) {
+    background: var(--primary-dark);
+}
+
+.botao.secundario {
+    border-color: var(--primary);
+    background: var(--primary-tint);
+    color: var(--primary-dark);
+}
+
+.botao.secundario:hover:not(:disabled) {
+    background: var(--primary-tint-strong);
+}
+
+.botao.neutro {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+}
+
+.botao.neutro:hover:not(:disabled) {
+    background: var(--bg);
+}
+
+.botao.discreto {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.botao.discreto:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+/* Botão que liga e desliga (aria-pressed) ou abre algo (aria-expanded): ligado fica verde */
+.botao.neutro[aria-pressed="true"],
+.botao.neutro[aria-expanded="true"],
+.botao.discreto[aria-pressed="true"] {
+    border-color: var(--primary);
+    background: var(--primary-tint);
+    color: var(--primary-dark);
+}
+
+.botao.perigo {
+    background: var(--erro-forte);
+    color: var(--white);
+}
+
+.botao.perigo:hover:not(:disabled) {
+    background: var(--erro);
+}
+
+.botao.perigoDiscreto {
+    border-color: var(--erro-borda);
+    background: transparent;
+    color: var(--erro);
+}
+
+.botao.perigoDiscreto:hover:not(:disabled) {
+    background: var(--erro-fundo);
+}
+
+/* Sobre o verde-escuro (cartão de boas-vindas do Painel) */
+.botao.claro {
+    background: var(--white);
+    color: var(--primary-dark);
+}
+
+.botao.claro:hover:not(:disabled) {
+    background: var(--primary-soft);
+}
+
+/* No celular, os botões pequenos crescem para o dedo (40 px) */
+@media (max-width: 768px) {
+    .botao.p {
+        min-height: 2.5rem;
+    }
+
+    .apenasIcone.p {
+        width: 2.5rem;
+    }
+}

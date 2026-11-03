@@ -5,6 +5,7 @@ import folha from "@/assets/leaves-of-a-plant.png";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Botao from "@/components/ui/Botao";
 import styles from "./Navbar.module.css";
 
 // Seções da página inicial (src/app/(public)/page.js)
@@ -66,11 +67,7 @@ export default function Navbar() {
           onMouseOut={(e) => e.target.style.color = 'var(--text-secondary)'}>
           Entrar
         </Link>
-        <Link href="/cadastro" style={{ textDecoration: 'none', background: 'var(--primary)', color: 'var(--white)', padding: '0.6rem 1.4rem', borderRadius: 'var(--radius-2xl)', fontWeight: '600', transition: 'all 0.3s', boxShadow: 'var(--shadow-sm)' }}
-          onMouseOver={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = 'var(--shadow-md)'; }}
-          onMouseOut={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'var(--shadow-sm)'; }}>
-          Criar conta
-        </Link>
+        <Botao href="/cadastro" pilula>Criar conta</Botao>
       </div>
     </nav>
   )

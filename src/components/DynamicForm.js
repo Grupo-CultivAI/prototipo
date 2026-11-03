@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Botao from '@/components/ui/Botao';
 
 // salvar: grava o dado no cultivo da conversa (o chat sabe qual é).
 export default function DynamicForm({ data, onSubmit, onSkip, submittedData, salvar }) {
@@ -84,23 +85,8 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                 ))}
                 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        style={{ flex: 1, padding: '0.8rem', background: 'var(--primary)', color: 'var(--white)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                        {isSubmitting ? 'Salvando...' : 'Salvar Dados'}
-                    </button>
-                    {onSkip && (
-                        <button
-                            type="button"
-                            onClick={onSkip}
-                            disabled={isSubmitting}
-                            style={{ flex: 1, padding: '0.8rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                        >
-                            Pular
-                        </button>
-                    )}
+                    <Botao type="submit" larguraTotal carregando={isSubmitting} textoCarregando="Salvando...">Salvar dados</Botao>
+                    {onSkip && <Botao variante="neutro" larguraTotal onClick={onSkip} disabled={isSubmitting}>Pular</Botao>}
                 </div>
             </form>
         </div>

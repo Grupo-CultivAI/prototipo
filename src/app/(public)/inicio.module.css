@@ -41,41 +41,6 @@
     margin-top: 2rem;
 }
 
-.botaoPrincipal,
-.botaoSecundario {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.9rem 1.6rem;
-    border-radius: var(--radius-pill);
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-}
-
-.botaoPrincipal {
-    background: var(--primary);
-    color: var(--white);
-    box-shadow: var(--shadow-primary);
-}
-
-.botaoPrincipal:hover,
-.botaoPrincipal:focus-visible {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-}
-
-.botaoSecundario {
-    border: 1px solid var(--primary);
-    color: var(--primary-dark);
-    background: var(--white);
-}
-
-.botaoSecundario:hover,
-.botaoSecundario:focus-visible {
-    background: var(--primary-tint);
-}
-
 /* --- Abertura --- */
 .abertura {
     display: grid;
@@ -321,16 +286,8 @@
     color: var(--text-primary);
 }
 
-.contato .botaoPrincipal {
+.botaoContato {
     margin-top: 0.4rem;
-    background: var(--white);
-    color: var(--primary-dark);
-    box-shadow: none;
-}
-
-.contato .botaoPrincipal:hover,
-.contato .botaoPrincipal:focus-visible {
-    background: var(--primary-soft);
 }
 
 /* --- Rodapé --- */

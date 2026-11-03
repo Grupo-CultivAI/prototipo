@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LocateFixed, X } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+import Botao from "@/components/ui/Botao";
 import styles from "./MapaDoPonto.module.css";
 
 // Mapa do formulário do cultivo para marcar o ponto exato da área (opcional). Mapa do
@@ -103,13 +104,9 @@ export default function MapaDoPonto({ valor, centro, aoMudar }) {
     <div className={styles.caixa}>
       <div ref={caixaRef} className={styles.mapa} role="application" aria-label="Mapa para marcar o ponto da área" />
       <div className={styles.acoes}>
-        <button type="button" onClick={usarLocalizacao} className={styles.botao}>
-          <LocateFixed size={16} aria-hidden="true" /> Usar minha localização
-        </button>
+        <Botao variante="secundario" tamanho="p" icone={LocateFixed} onClick={usarLocalizacao}>Usar minha localização</Botao>
         {valor && (
-          <button type="button" onClick={() => { aoMudarRef.current(null); setStatus(""); }} className={styles.botaoSecundario}>
-            <X size={16} aria-hidden="true" /> Tirar o ponto
-          </button>
+          <Botao variante="neutro" tamanho="p" icone={X} onClick={() => { aoMudarRef.current(null); setStatus(""); }}>Tirar o ponto</Botao>
         )}
         <span className={styles.status} role="status">
           {status || (valor ? `Ponto marcado: ${valor.lat.toFixed(5)}, ${valor.lng.toFixed(5)}. Arraste para ajustar.` : "Toque no mapa no lugar da sua área.")}
