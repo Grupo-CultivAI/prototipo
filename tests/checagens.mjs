@@ -9,6 +9,7 @@ import { problemaDeAtribuicao, datasDe } from '../src/lib/atribuicao.ts';
 import { semDesculpaNoInicio, INICIO_DA_REVISAO } from '../src/lib/revisao.ts';
 import { estacaoERegiao, regrasDoClima } from '../src/lib/estacao.ts';
 import { normalizar, semCulturaAnterior } from '../src/lib/zarc-formato.mjs';
+import { numeroDoAmbiente } from '../src/lib/ambiente.ts';
 
 let falhas = 0;
 let total = 0;
@@ -149,6 +150,16 @@ for (const [pergunta, cultura, fica] of ANTERIOR) {
     const sobra = semCulturaAnterior(normalizar(pergunta));
     confere('ZARC', `"${pergunta}": ${cultura} ${fica ? 'fica' : 'sai'}`, sobra.includes(cultura) === fica, `ficou: "${sobra}"`);
 }
+
+// --- Limites lidos de variáveis de ambiente (src/lib/ambiente.ts) ---
+// Uma variável criada na Vercel sem valor não pode virar limite 0, que bloquearia todo mundo.
+const AMBIENTE = [[undefined, 20], ['', 20], ['abc', 20], ['0', 20], ['-5', 20], ['35', 35], [' 40 ', 40], ['12.7', 12]];
+for (const [valor, esperado] of AMBIENTE) {
+    if (valor === undefined) delete process.env.TESTE_LIMITE; else process.env.TESTE_LIMITE = valor;
+    const lido = numeroDoAmbiente('TESTE_LIMITE', 20);
+    confere('variáveis de ambiente', `valor ${JSON.stringify(valor)} vira ${esperado}`, lido === esperado, `virou ${lido}`);
+}
+delete process.env.TESTE_LIMITE;
 
 console.log(falhas ? `\n${falhas} de ${total} checagens falharam.` : `Checagens das respostas do chat: ${total} casos, todos certos.`);
 process.exit(falhas ? 1 : 0);
