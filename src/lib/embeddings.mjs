@@ -26,24 +26,35 @@ const LOTE = 90; // o Pinecone aceita até 96 textos por chamada
 
 /**
  * @param {string[]} textos
- * @param {{ tipo: 'query' | 'passage', apiKey: string, tentativas?: number }} opcoes
- *   tipo "query" para a pergunta, "passage" para os trechos da base.
+ * @param {{ tipo: 'query' | 'passage', apiKey: string, tentativas?: number, prazoMs?: number }} opcoes
+ *   tipo "query" para a pergunta, "passage" para os trechos da base. prazoMs: quanto esperar
+ *   por cada chamada (o chat usa um prazo curto; a ingestão, com lotes de 90 textos, o padrão).
  * @returns {Promise<number[][]>}
  */
-export async function gerarEmbeddings(textos, { tipo, apiKey, tentativas = 1 }) {
+export async function gerarEmbeddings(textos, { tipo, apiKey, tentativas = 1, prazoMs = 30_000 }) {
     const vetores = [];
     for (let i = 0; i < textos.length; i += LOTE) {
         const lote = textos.slice(i, i + LOTE);
         for (let t = 1; ; t++) {
-            const res = await fetch('https://api.pinecone.io/embed', {
-                method: 'POST',
-                headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json', 'X-Pinecone-API-Version': '2025-04' },
-                body: JSON.stringify({
-                    model: MODELO_EMBEDDING,
-                    parameters: { input_type: tipo, dimension: DIMENSOES, truncate: 'END' },
-                    inputs: lote.map((text) => ({ text })),
-                }),
-            });
+            // Sem prazo, um Pinecone travado prendia a pergunta do chat até a Vercel encerrar a
+            // função (revisão de engenharia, 03/11/2026).
+            let res;
+            try {
+                res = await fetch('https://api.pinecone.io/embed', {
+                    method: 'POST',
+                    headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json', 'X-Pinecone-API-Version': '2025-04' },
+                    signal: AbortSignal.timeout(prazoMs),
+                    body: JSON.stringify({
+                        model: MODELO_EMBEDDING,
+                        parameters: { input_type: tipo, dimension: DIMENSOES, truncate: 'END' },
+                        inputs: lote.map((text) => ({ text })),
+                    }),
+                });
+            } catch (e) {
+                if (e?.name !== 'TimeoutError' || t >= tentativas) throw e;
+                await new Promise((r) => setTimeout(r, Math.min(60_000, 5_000 * 2 ** (t - 1))));
+                continue;
+            }
             if (res.ok) {
                 const dados = (await res.json()).data ?? [];
                 const valores = dados.map((d) => d.values);

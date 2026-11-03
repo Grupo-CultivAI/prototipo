@@ -101,3 +101,9 @@ export function palavrasDaCultura(nome) {
         .split(',').map(normalizar).filter((p) => p && !p.startsWith('acrocomia'));
     return [n.split(' ')[0], ...entreParenteses];
 }
+
+// "Depois do milho, o que eu planto no inverno?": tira da pergunta (já normalizada) a cultura
+// que vem logo depois de "depois do", "após a" ou "dps da", que é a de antes, e não a que se
+// quer plantar. Usada por src/lib/zarc.ts.
+/** @param {string} texto */
+export const semCulturaAnterior = (texto) => texto.replace(/\b(?:depois|apos|dps)\s+(?:d[aoe]s?\s+|[ao]s?\s+)?\S+/g, ' ');

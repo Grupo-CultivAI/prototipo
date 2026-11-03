@@ -9,7 +9,7 @@
 import ZarcMunicipio from '@/models/ZarcMunicipio';
 import { proximaEtapa } from '@/lib/perfil';
 import {
-    GRUPO_DO_PERFIL, NOME_DO_GRUPO, decodificarFaixas, janelasEmTexto, melhorRisco, normalizar, palavrasDaCultura,
+    GRUPO_DO_PERFIL, NOME_DO_GRUPO, decodificarFaixas, janelasEmTexto, melhorRisco, normalizar, palavrasDaCultura, semCulturaAnterior,
 } from '@/lib/zarc-formato.mjs';
 
 type Janelas = string | Partial<Record<'A' | 'M' | 'G', string>>;
@@ -35,8 +35,8 @@ const LINHAS_NO_CONTEXTO = 8;
 // "Depois do milho, o que eu planto no inverno?": o milho é a cultura de antes, não a que se quer
 // plantar. Em 02/11/2026 essa pergunta trouxe só as janelas do milho, e a IA indicou milheto e
 // crotalária (de verão) para o inverno do Paraná. Com "inverno" na pergunta, entram as culturas
-// de inverno que o ZARC tem e que também servem de cobertura.
-const semCulturaAnterior = (texto: string) => texto.replace(/\b(?:depois|apos|dps)\s+(?:d[aoe]s?\s+|[ao]s?\s+)?\S+/g, ' ');
+// de inverno que o ZARC tem e que também servem de cobertura. (semCulturaAnterior fica em
+// zarc-formato.mjs, que os testes em node conseguem importar.)
 const DE_INVERNO = ['Aveia', 'Centeio'];
 
 const contem = (texto: string, palavra: string) => ` ${texto} `.includes(` ${palavra} `);

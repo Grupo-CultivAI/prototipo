@@ -1,4 +1,5 @@
 import TentativaAcesso from '@/models/TentativaAcesso';
+import { numeroDoAmbiente } from '@/lib/ambiente';
 
 // Sem limite, um robô podia testar milhares de senhas numa conta. Conta por email (protege
 // a conta) e por IP (protege o sistema de quem tenta muitas contas a partir do mesmo lugar).
@@ -6,6 +7,11 @@ const JANELA_MS = 15 * 60 * 1000;
 const LIMITES = {
     login: { email: 5, ip: 20 },
     recuperacao: { email: 3, ip: 10 },
+    // Cada conta nova ganha o próprio limite de perguntas por dia: sem freio no cadastro, um
+    // script criava contas à vontade e esgotava a cota da IA de todo o app (revisão de
+    // engenharia, 03/11/2026). Uma turma numa oficina cadastra pelo mesmo wi-fi (um IP só),
+    // por isso o padrão é folgado e ajustável na Vercel (LIMITE_CADASTROS_POR_IP).
+    cadastro: { email: 5, ip: numeroDoAmbiente('LIMITE_CADASTROS_POR_IP', 20) },
 } as const;
 
 type Tipo = keyof typeof LIMITES;

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { normalizarEmail, problemaNaSenha } from '@/lib/senha';
+import { excedeuLimite, registrarTentativa, ipDe, MINUTOS_DE_ESPERA } from '@/lib/tentativas';
 
 // O detalhe técnico fica no log da Vercel; para a pessoa, o que fazer.
 const SERVIDOR_FORA = 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.';
@@ -34,6 +35,14 @@ export async function POST(req) {
             );
         }
 
+        const ip = ipDe(req);
+        if (await excedeuLimite('cadastro', email, ip)) {
+            return NextResponse.json(
+                { message: `Muitas contas criadas daqui em pouco tempo. Aguarde ${MINUTOS_DE_ESPERA} minutos e tente de novo.` },
+                { status: 429, headers: { 'Retry-After': String(MINUTOS_DE_ESPERA * 60) } }
+            );
+        }
+
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return NextResponse.json(
@@ -51,6 +60,8 @@ export async function POST(req) {
             senha: hashedPassword,
             aceitouPrivacidadeEm: new Date(),
         });
+        // Só conta o cadastro feito: erro de digitação ou senha curta não gasta o limite.
+        await registrarTentativa('cadastro', email, ip);
 
         return NextResponse.json(
             { message: 'Usuário cadastrado com sucesso!', user: { id: newUser._id, nome: newUser.nome, email: newUser.email } },

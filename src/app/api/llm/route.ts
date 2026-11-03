@@ -12,6 +12,8 @@ import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
 import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
+import { problemaDeAtribuicao } from '@/lib/atribuicao';
+import { FIM_DA_REVISAO, INICIO_DA_REVISAO, semDesculpaNoInicio } from '@/lib/revisao';
 import { estacaoERegiao, regrasDoClima } from '@/lib/estacao';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, segundosAteMeiaNoite } from '@/lib/limites';
@@ -20,6 +22,9 @@ import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, seg
 // O limiar de relevância (LIMIAR_RELEVANCIA) vem de src/lib/embeddings.mjs, junto com o modelo:
 // a escala dos scores muda de um modelo para outro.
 const TRECHOS_NO_CONTEXTO = 3;
+// Cada etapa da busca na base (embedding da pergunta e consulta ao índice). Normalmente leva
+// menos de 1 s; passado o prazo, a resposta sai sem a base, com o aviso na tela.
+const PRAZO_DA_BUSCA_MS = 8_000;
 const MENSAGENS_DE_HISTORICO = 4;
 const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 // A previsão só entra no prompt em perguntas sobre o trabalho no campo. Em 27/10/2026, com
@@ -145,11 +150,12 @@ function textoParaBusca(pergunta: string, perguntaAnterior: string | null): stri
 // faltam na base (npm run relatorio-chat). null = a busca não aconteceu.
 async function buscarTrechos(texto: string, cfg: { pinecone: string; host: string }): Promise<{ trechos: Trecho[]; maiorScore: number | null; falha?: FalhaDaBusca }> {
     try {
-        const [vector] = await gerarEmbeddings([texto], { tipo: 'query', apiKey: cfg.pinecone });
+        const [vector] = await gerarEmbeddings([texto], { tipo: 'query', apiKey: cfg.pinecone, prazoMs: PRAZO_DA_BUSCA_MS });
 
         const res = await fetch(`https://${cfg.host}/query`, {
             method: 'POST',
             headers: { 'Api-Key': cfg.pinecone, 'Content-Type': 'application/json', 'X-Pinecone-Api-Version': '2025-04' },
+            signal: AbortSignal.timeout(PRAZO_DA_BUSCA_MS),
             body: JSON.stringify({ vector, topK: 5, namespace: NAMESPACE_DA_BASE, includeMetadata: true }),
         });
         if (!res.ok) throw new Error(`Pinecone ${res.status}: ${await res.text()}`);
@@ -182,67 +188,6 @@ function motivoDaFalha(mensagem: string): FalhaDaBusca {
     return /month|monthly|quota|mensal|RESOURCE_EXHAUSTED/i.test(mensagem) ? 'cota' : 'limite';
 }
 
-// Números sob "📘 Segundo a Embrapa" precisam constar dos trechos enviados. Em 25/10/2026 o
-// modelo atribuiu à Embrapa uma redução de "60%" que não existe em nenhum documento da base.
-const NUMERO = /\d+(?:[.,]\d+)*\s?%?/g;
-const numerosRelevantes = (texto: string) =>
-    (texto.match(NUMERO) ?? []).map((n) => n.replace(/\s/g, '')).filter((n) => /\d{2,}|[.,]\d|%/.test(n));
-const semSeparador = (n: string) => n.replace(/[.,%]/g, '');
-// Texto sob um marcador de origem, até o próximo marcador
-const blocosAtribuidos = (resposta: string, marcador: '📘' | '🗓') =>
-    [...resposta.matchAll(marcador === '📘' ? /📘([\s\S]*?)(?=📘|🌱|🗓|$)/gu : /🗓([\s\S]*?)(?=📘|🌱|🗓|$)/gu)].map((m) => m[1]).join('\n');
-const numerosSemRespaldo = (atribuido: string, fonte: string) => {
-    const daFonte = new Set(numerosRelevantes(fonte).map(semSeparador));
-    return [...new Set(numerosRelevantes(atribuido).filter((n) => !daFonte.has(semSeparador(n))))];
-};
-
-// O pedido de revisão vai ao modelo como mensagem de usuário, e o modelo achava que era o
-// produtor reclamando: em 03/11/2026 o nemotron da NVIDIA começou a resposta revisada com "Você
-// tem toda a razão. Peço desculpas pelo erro." O produtor nunca vê a primeira resposta.
-const INICIO_DA_REVISAO = 'REVISÃO INTERNA DO CULTIVAI (o produtor não vê esta mensagem nem a resposta anterior). Problemas encontrados: ';
-const FIM_DA_REVISAO = ' Escreva a resposta para o produtor como se fosse a primeira: não peça desculpas, não agradeça a correção e não diga que houve erro ou revisão.';
-// Se o modelo se desculpar mesmo assim, as frases de desculpa do começo saem.
-const DESCULPA_NO_INICIO = /^\s*(?:(?:voc[êe] tem (?:toda a )?raz[ãa]o|tem toda a raz[ãa]o|pe[çc]o desculpas|me desculpe|desculpe(?:-me)? pel[oa] \S+|perd[ãa]o pel[oa] \S+|obrigad[oa] pela corre[çc][ãa]o)[^.!?\n]*[.!?]\s*)+/i;
-
-// "11 / 9", "11/09" e "11 de setembro" viram "11/09". Em 03/11/2026 a IA escreveu sob "🗓️" uma
-// janela por extenso ("15 de setembro a 30 de outubro") que não estava no ZARC, e a checagem,
-// que só lia dd/mm, deixou passar.
-const MES_POR_NOME: Record<string, string> = { janeiro: '01', fevereiro: '02', 'março': '03', marco: '03', abril: '04', maio: '05', junho: '06', julho: '07', agosto: '08', setembro: '09', outubro: '10', novembro: '11', dezembro: '12' };
-const datasDe = (texto: string) => [
-    ...[...texto.matchAll(/\b(\d{1,2})\s*\/\s*(\d{1,2})\b/g)].map((m) => `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}`),
-    ...[...texto.matchAll(/\b(\d{1,2})º?\s+de\s+(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/gi)]
-        .map((m) => `${m[1].padStart(2, '0')}/${MES_POR_NOME[m[2].toLowerCase()]}`),
-];
-
-// O mesmo vale para as datas sob "🗓️ Segundo o ZARC": precisam estar nas janelas enviadas.
-function problemaDeAtribuicao(resposta: string, contexto: string, zarc: string | null, previsao: string | null): string | null {
-    const problemas: string[] = [];
-    const daEmbrapa = blocosAtribuidos(resposta, '📘');
-    if (daEmbrapa.trim()) {
-        if (!contexto) {
-            problemas.push('Nenhum trecho da Embrapa foi fornecido para esta pergunta, então o marcador "📘 Segundo a Embrapa" não pode ser usado; use "🌱 Prática agronômica geral".');
-        } else {
-            // O bloco vai até o próximo marcador e pode pegar a frase da previsão de chuva.
-            const semRespaldo = numerosSemRespaldo(daEmbrapa, `${contexto}\n${previsao ?? ''}`);
-            if (semRespaldo.length && zarc && !numerosSemRespaldo(semRespaldo.join(' '), zarc).length) {
-                problemas.push('As datas de plantio vêm do ZARC, do Ministério da Agricultura, e não da Embrapa: tire-as de depois de "📘" e coloque-as depois de "🗓️ Segundo o ZARC (Ministério da Agricultura):".');
-            } else if (semRespaldo.length) problemas.push(`Estes números aparecem depois de "📘 Segundo a Embrapa", mas não constam dos trechos da Embrapa fornecidos: ${semRespaldo.join(', ')}. Tire esses números.`);
-        }
-    }
-    // Sob "🗓️" só as datas (dd/mm) são conferidas. O bloco vai até o próximo marcador e pode
-    // pegar a frase da previsão de chuva, cujas datas também valem. Indicar o aplicativo com o
-    // marcador, sem datas, não é problema.
-    const doZarc = blocosAtribuidos(resposta, '🗓');
-    const validas = new Set(datasDe(`${zarc ?? ''}\n${previsao ?? ''}`));
-    const datasSemRespaldo = [...new Set(datasDe(doZarc).filter((d) => !validas.has(d)))];
-    if (datasSemRespaldo.length) {
-        problemas.push(zarc
-            ? `Estas datas aparecem depois de "🗓️ Segundo o ZARC", mas não constam das janelas do ZARC fornecidas: ${datasSemRespaldo.join(', ')}. Copie as datas exatamente como estão nas janelas.`
-            : 'Não há dados do ZARC para esta pergunta, então nenhuma data oficial pode ser dada depois de "🗓️"; indique o aplicativo Zarc Plantio Certo.');
-    }
-    return problemas.length ? `${problemas.join(' ')} Reescreva a resposta completa. Não invente valores.` : null;
-}
-
 const hoje = () => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
 
 const marcarComoFalha = (id: unknown) =>
@@ -267,23 +212,6 @@ export async function POST(req: Request) {
 
         await dbConnect();
 
-        const [ultimoMinuto, feitasHoje] = await Promise.all([
-            perguntasDesde(userId, 60_000),
-            perguntasDeHoje(userId),
-        ]);
-        if (ultimoMinuto >= LIMITE_POR_MINUTO || feitasHoje >= LIMITE_POR_DIA) {
-            const diario = feitasHoje >= LIMITE_POR_DIA;
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: diario
-                        ? `Você atingiu o limite de ${LIMITE_POR_DIA} perguntas de hoje. Ele renova à meia-noite (horário de Brasília).`
-                        : 'Você fez várias perguntas seguidas. Aguarde cerca de 1 minuto e tente novamente.',
-                },
-                { status: 429, headers: { 'Retry-After': String(diario ? segundosAteMeiaNoite() : 60) } },
-            );
-        }
-
         // A GEMINI_API_KEY deixou de ser obrigatória: só serve ao modelo Gemini da fila MODELOS_IA.
         const pineconeKey = process.env.PINECONE_API_KEY;
         const pineconeHost = (process.env.PINECONE_INDEX_HOST || '').replace(/^https?:\/\//, '');
@@ -305,10 +233,34 @@ export async function POST(req: Request) {
         ]);
 
         // Gravada antes das chamadas para contar no limite de uso mesmo se algo falhar: cada
-        // tentativa já gasta um embedding da cota diária do Gemini. Se falhar, é marcada e
+        // tentativa já gasta um embedding e uma resposta da cota gratuita. Se falhar, é marcada e
         // deixa de aparecer no histórico e no contexto das próximas perguntas.
         const enviado = resumoEnviado(body.submittedData);
         perguntaId = (await ChatMessage.create({ userId, conversaId: conversa._id, text: userPrompt, sender: 'user', ...(enviado ? { metadata: { submittedData: enviado } } : {}) }))._id;
+
+        // O limite é contado depois de gravar, já com esta pergunta. Antes contava-se primeiro e
+        // gravava-se depois: vários pedidos ao mesmo tempo liam a mesma contagem e passavam todos,
+        // e um script esgotava a cota da IA de todo o app (revisão de engenharia, 03/11/2026).
+        // Agora cada pedido enxerga os que gravaram antes dele, e o que passa do limite se apaga.
+        const [ultimoMinuto, feitasHoje] = await Promise.all([
+            perguntasDesde(userId, 60_000),
+            perguntasDeHoje(userId),
+        ]);
+        if (ultimoMinuto > LIMITE_POR_MINUTO || feitasHoje > LIMITE_POR_DIA) {
+            await ChatMessage.deleteOne({ _id: perguntaId });
+            perguntaId = null;
+            const diario = feitasHoje > LIMITE_POR_DIA;
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: diario
+                        ? `Você atingiu o limite de ${LIMITE_POR_DIA} perguntas de hoje. Ele renova à meia-noite (horário de Brasília).`
+                        : 'Você fez várias perguntas seguidas. Aguarde cerca de 1 minuto e tente novamente.',
+                },
+                { status: 429, headers: { 'Retry-After': String(diario ? segundosAteMeiaNoite() : 60) } },
+            );
+        }
+
         await Conversa.updateOne({ _id: conversa._id }, {
             $inc: { perguntas: 1 },
             $set: { ultimaMensagemEm: new Date(), ...(!conversa.titulo && tituloDe(userPrompt) ? { titulo: tituloDe(userPrompt) } : {}) },
@@ -457,7 +409,7 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: `${INICIO_DA_REVISAO}${problema}${FIM_DA_REVISAO}` }]);
             geracao.revisada = true;
             if (revisada.texto) {
-                answer = revisada.texto.replace(DESCULPA_NO_INICIO, '');
+                answer = semDesculpaNoInicio(revisada.texto);
                 geracao.modelo = revisada.modelo;
                 geracao.tokensEntrada += revisada.tokensEntrada ?? 0;
                 geracao.tokensSaida += revisada.tokensSaida ?? 0;
@@ -523,8 +475,8 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
             semBase: falhaDaBusca,
             mensagemId: resposta._id,
             conversaId: conversa._id,
-            // feitasHoje foi contado antes de gravar esta pergunta
-            restantesHoje: Math.max(0, LIMITE_POR_DIA - feitasHoje - 1),
+            // feitasHoje já inclui esta pergunta
+            restantesHoje: Math.max(0, LIMITE_POR_DIA - feitasHoje),
         });
 
     } catch (err) {
