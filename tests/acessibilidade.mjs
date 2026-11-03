@@ -112,6 +112,11 @@ async function abrirNavegador() {
                     await pagina.waitForSelector('[aria-busy="true"]', { state: 'detached', timeout: 15000 }).catch(() => {});
                     await pagina.evaluate(() => document.querySelector('nextjs-portal')?.remove());
                     if (estado) await estado.acao(pagina);
+                    // A barra de Salvar do formulário fica presa no pé da tela e, conforme a rolagem,
+                    // passa por cima de botões do formulário, que o axe conta como alvos "cobertos".
+                    // Acontecia ou não conforme a altura da tela e a fonte do sistema (no Linux do
+                    // CI, sim). No fim da página a barra fica no seu lugar, depois do formulário.
+                    await pagina.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
                     await transicoesTerminadas(pagina);
                     const resultado = await new AxeBuilder({ page: pagina }).withTags(REGRAS).analyze();
                     conferidas++;
@@ -145,6 +150,12 @@ async function abrirNavegador() {
         console.log(`        onde: ${[...new Set(r.ondes)].join('; ')}`);
         for (const [alvo, motivo] of [...r.alvos].slice(0, 5)) console.log(`        - ${alvo}${motivo ? `: ${motivo}` : ''}`);
         console.log('');
+        // No GitHub Actions, cada problema vira também uma anotação, que aparece na página do PR
+        if (process.env.GITHUB_ACTIONS) {
+            const [alvo, motivo] = [...r.alvos][0] ?? ['', ''];
+            const texto = `${r.help} | onde: ${[...new Set(r.ondes)].join('; ')} | ${alvo}: ${motivo}`.replace(/\r?\n/g, ' ');
+            console.log(`::${REPROVA.has(r.impact) ? 'error' : 'warning'} title=Acessibilidade (${IMPACTO[r.impact] ?? r.impact}) ${r.id}::${texto}`);
+        }
     }
     const reprovados = lista.filter((r) => REPROVA.has(r.impact));
     if (!lista.length) console.log('Nenhum problema encontrado.');
