@@ -112,6 +112,11 @@ async function abrirNavegador() {
                     await pagina.waitForSelector('[aria-busy="true"]', { state: 'detached', timeout: 15000 }).catch(() => {});
                     await pagina.evaluate(() => document.querySelector('nextjs-portal')?.remove());
                     if (estado) await estado.acao(pagina);
+                    // A barra de Salvar do formulário fica presa no pé da tela e, conforme a rolagem,
+                    // passa por cima de botões do formulário, que o axe conta como alvos "cobertos".
+                    // Acontecia ou não conforme a altura da tela e a fonte do sistema (no Linux do
+                    // CI, sim). No fim da página a barra fica no seu lugar, depois do formulário.
+                    await pagina.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
                     await transicoesTerminadas(pagina);
                     const resultado = await new AxeBuilder({ page: pagina }).withTags(REGRAS).analyze();
                     conferidas++;
