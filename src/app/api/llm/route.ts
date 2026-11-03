@@ -12,7 +12,7 @@ import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
 import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
-import { estacaoERegiao } from '@/lib/estacao';
+import { estacaoERegiao, regrasDoClima } from '@/lib/estacao';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
 import { LIMITE_POR_DIA, LIMITE_POR_MINUTO, perguntasDeHoje, perguntasDesde, segundosAteMeiaNoite } from '@/lib/limites';
 
@@ -25,6 +25,8 @@ const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 // A previsão só entra no prompt em perguntas sobre o trabalho no campo. Em 27/10/2026, com
 // ela sempre presente, a IA comentou a chuva numa pergunta sobre nematoides.
 const PERGUNTA_DE_CAMPO = /plant|semea|semeio|adub|aplic|pulveriz|colh|chuv|chov|irrig|previs|geada|semana|amanh/i;
+// Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
+const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
 
 // Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
 // do cultivo (Meus Cultivos), para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
@@ -341,6 +343,22 @@ DADOS QUE FALTAM
 - Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda primeiro com o que for possível (nunca só com a pergunta), termine com uma pergunta curta sobre esse dado (por exemplo, "Qual é o tipo de solo da sua propriedade?"), sem outras perguntas, e, na última linha, sozinha, escreva [PEDIR: código]. Exemplo: [PEDIR: ${faltando[0]}]. Peça no máximo dois.
 - Não peça nada em cumprimentos, agradecimentos, perguntas que não dependem desses dados ou quando o produtor já disse o dado na conversa (nesse caso, use o que ele disse).` : '';
 
+        // Só as regras que valem para esta pergunta: em 03/11/2026, as que não valiam somavam
+        // ~530 dos ~3.300 tokens de entrada de uma pergunta típica, e a Groq gratuita aguenta 8
+        // mil tokens por minuto por modelo, somando todos os usuários.
+        const regraDaPrevisao = previsao ? `
+- Se a pergunta for sobre plantar, semear, adubar, aplicar algum produto ou colher nos próximos dias, inclua uma frase com a previsão abaixo, no formato "A previsão indica chuva de cerca de X mm na quinta (dd/mm); ela pode mudar." (ou que não há chuva prevista). Se a chuva ajuda ou atrapalha, diga só o que tiver base nos trechos da Embrapa ou em prática agronômica conhecida, sem exagerar. Em outras perguntas, não fale da previsão.` : '';
+        const regrasDoZarc = zarc ? `
+- Use "🗓️ Segundo o ZARC (Ministério da Agricultura):" antes das janelas de plantio da seção ÉPOCA DE PLANTIO OFICIAL. Essas datas são do Ministério da Agricultura, não da Embrapa: nunca as coloque depois de "📘". Copie as datas exatamente. Destaque a janela de risco 20% (a mais segura) e explique em poucas palavras que o risco é a chance de perder a lavoura por clima (seca, geada, calor). Quanto maior a porcentagem, maior a chance de perda: os períodos de 30% e 40% nunca "reduzem o risco"; são opções mais arriscadas, fora da janela de 20%.
+- Nunca dê datas oficiais de plantio que não estejam nessa seção. Se ela não trouxer a cultura perguntada, diga que não tem a janela oficial dessa cultura para o município.` : '';
+        // Também decide o quadro do ZARC abaixo da resposta (quadroZarc)
+        const temQuadroZarc = Boolean(epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt));
+        const regraDoQuadro = temQuadroZarc ? `
+- Não fale do aplicativo Zarc Plantio Certo nem do Proagro ou do seguro rural: um quadro abaixo da resposta já mostra a janela oficial, o aplicativo e essa informação.` : '';
+        const regrasDeClima = regrasDoClima((propriedade as any)?.estado).map((r) => `\n${r}`).join('');
+        const regraDePerene = LAVOURA_PERENE.test(`${userPrompt} ${busca} ${perfil ?? ''}`) ? `
+- Nas entrelinhas do café e de outras lavouras perenes, prefira plantas de cobertura baixas, controladas com roçada: culturas altas, como o milho, fazem sombra e disputam água e adubo com a lavoura.` : '';
+
         const systemPrompt = `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.
 
 COMO RESPONDER
@@ -348,27 +366,20 @@ COMO RESPONDER
 - Escreva unidades e nutrientes por extenso: "por hectare", "quilos por hectare", "nitrogênio, fósforo e potássio". Nunca use "ha⁻¹" nem "kg/ha", nem só as letras N, P e K.
 - Comece pela resposta. Pergunta curta, do jeito que se fala ("meu feijão tá dando pouco"): até ~150 palavras e no máximo 3 ou 4 opções, as mais importantes. Pergunta detalhada: até ~250 palavras. Plano de rotação pedido pelo produtor: até ~400. Use listas curtas quando ajudar.
 - Se a mensagem for só um cumprimento ou agradecimento, responda em uma ou duas frases, sem marcadores.
-- Considere o perfil da propriedade, o clima e a data abaixo quando forem relevantes (época de plantio, tipo de solo, região). Não repita o perfil de volta para o produtor.
-- Se a pergunta for sobre plantar, semear, adubar, aplicar algum produto ou colher nos próximos dias, inclua uma frase com a previsão abaixo, no formato "A previsão indica chuva de cerca de X mm na quinta (dd/mm); ela pode mudar." (ou que não há chuva prevista). Se a chuva ajuda ou atrapalha, diga só o que tiver base nos trechos da Embrapa ou em prática agronômica conhecida, sem exagerar. Em outras perguntas, não fale da previsão.
+- Considere o perfil da propriedade, o clima e a data abaixo quando forem relevantes (época de plantio, tipo de solo, região). Não repita o perfil de volta para o produtor.${regraDaPrevisao}
 - Leve em conta a conversa anterior: perguntas curtas como "e para soja?" continuam o assunto em andamento.${instrucaoDePedido}
 
 ÉPOCA, REGIÃO E NOMES DAS PLANTAS
 - Antes de indicar uma planta, confira a estação e o clima da região (seção ESTAÇÃO E REGIÃO abaixo). Não indique para uma época uma planta que não aguenta o clima dela.
-- Sem a região no perfil, não indique plantas que só vão bem no frio (aveia, ervilhaca, nabo forrageiro, tremoço, azevém) como se servissem em todo lugar. Prefira as que servem na maior parte do país na época das chuvas, como crotalária, feijão-de-porco, guandu e milheto, e diga que a escolha depende da região.
-- Plantas de cobertura de inverno (aguentam frio e geada): aveia-preta, nabo forrageiro, ervilhaca, tremoço, centeio, azevém. De verão (precisam de calor e morrem com a geada): milheto, crotalária, mucuna, feijão-de-porco, guandu, sorgo.
-- No Sul e nas partes altas do Sudeste, o inverno tem geada: para o inverno, indique só plantas de inverno. Onde o inverno é seco (Cerrado, que cobre boa parte de MG, GO, MT, MS, TO e DF, e boa parte do Nordeste), sem irrigação quase nada cresce de maio a setembro: não indique plantio nesses meses, nem de plantas de inverno. Lá a cobertura (milheto, sorgo, braquiária, crotalária) é semeada no fim das chuvas, logo depois da colheita.
+- Plantas de cobertura de inverno (aguentam frio e geada): aveia-preta, nabo forrageiro, ervilhaca, tremoço, centeio, azevém. De verão (precisam de calor e morrem com a geada): milheto, crotalária, mucuna, feijão-de-porco, guandu, sorgo.${regrasDeClima}
 - Soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
-- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.
-- Nas entrelinhas do café e de outras lavouras perenes, prefira plantas de cobertura baixas, controladas com roçada: culturas altas, como o milho, fazem sombra e disputam água e adubo com a lavoura.
+- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}
 - Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" (sempre com essas palavras) antes do que vier dos trechos da Embrapa abaixo.
-- Use "🌱 Prática agronômica geral:" antes de complementos de conhecimento geral.
-- Use "🗓️ Segundo o ZARC (Ministério da Agricultura):" antes das janelas de plantio da seção ÉPOCA DE PLANTIO OFICIAL. Essas datas são do Ministério da Agricultura, não da Embrapa: nunca as coloque depois de "📘". Copie as datas exatamente. Destaque a janela de risco 20% (a mais segura) e explique em poucas palavras que o risco é a chance de perder a lavoura por clima (seca, geada, calor). Quanto maior a porcentagem, maior a chance de perda: os períodos de 30% e 40% nunca "reduzem o risco"; são opções mais arriscadas, fora da janela de 20%.
-- Nunca dê datas oficiais de plantio que não estejam nessa seção. Se ela não trouxer a cultura perguntada, diga que não tem a janela oficial dessa cultura para o município.
-- Não fale do aplicativo Zarc Plantio Certo nem do Proagro ou do seguro rural: um quadro abaixo da resposta já mostra a janela oficial, o aplicativo e essa informação.
+- Use "🌱 Prática agronômica geral:" antes de complementos de conhecimento geral.${regrasDoZarc}${regraDoQuadro}
 - Nunca misture as origens na mesma frase.
 - Quando os trechos da Embrapa trouxerem algo útil para a pergunta, use-o sob "📘" — é a parte mais valiosa da resposta, porque vem de pesquisa.
 - Depois de "📘", só use números (percentuais, produtividades, doses, anos, prazos) que aparecem escritos nos trechos. Se o trecho não traz o número, descreva sem número.
@@ -474,8 +485,8 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
         answer = pedido.texto;
         // Quadro do ZARC abaixo da resposta: a janela oficial (quando há) e a indicação do
         // aplicativo. Vem dos dados, não do modelo, então aparece sempre que a pergunta pede.
-        const quadroZarc = epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt)
-            ? { local: epoca?.local, linhas: epoca?.linhas ?? [], aviso: epoca?.aviso }
+        const quadroZarc = temQuadroZarc
+            ?{ local: epoca?.local, linhas: epoca?.linhas ?? [], aviso: epoca?.aviso }
             : undefined;
         // O prompt pede para não falar do aplicativo; se o modelo falar, o parágrafo sai,
         // para não repetir o quadro.
