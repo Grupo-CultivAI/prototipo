@@ -80,9 +80,11 @@ scripts/
 tests/
   verificar-base.mjs        → suíte de verificação da indexação (ver tests/README.md)
   acessibilidade.mjs        → axe-core em todas as telas, no celular e no computador (npm run acessibilidade; roda no CI)
+  tokens.mjs                → reprova cor escrita fora dos tokens do design system (npm run checar-tokens; roda no CI)
   casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
-docs/design-system.md       → tokens (src/styles/variables.css), componentes de src/components/ui e as regras de uso
+docs/design-system.md       → tokens (src/styles/variables.css), componentes de src/components/ui e as regras de uso;
+                              catálogo vivo em /componentes, só no npm run dev
 ```
 
 ## Como funciona
@@ -313,7 +315,7 @@ npm run start   # inicia o servidor de produção
 npm run lint    # roda o ESLint
 ```
 
-**Integração contínua:** a cada PR e a cada push na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda lint, build, checagem de tipos e a checagem de acessibilidade. Um PR com erro aparece com ❌ no GitHub antes do merge. O fluxo usa um `JWT_SECRET` falso e um MongoDB descartável, criado e apagado a cada execução; nenhuma chave real fica no GitHub.
+**Integração contínua:** a cada PR e a cada push na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda lint, a checagem de cores (só pelos tokens do design system), build, checagem de tipos e a checagem de acessibilidade. Um PR com erro aparece com ❌ no GitHub antes do merge. O fluxo usa um `JWT_SECRET` falso e um MongoDB descartável, criado e apagado a cada execução; nenhuma chave real fica no GitHub.
 
 **Acessibilidade:** `tests/acessibilidade.mjs` abre todas as telas (as públicas e as logadas, inclusive cada bloco do formulário do cultivo e a lista de conversas), no celular e no computador, e passa o [axe-core](https://github.com/dequelabs/axe-core) com as regras WCAG 2.2 A e AA. Reprova com problema grave ou crítico; os moderados e menores aparecem no relatório. Para rodar à mão, com o servidor no ar e **apontado para um banco de teste** (o teste cria uma conta `@exemplo.invalido`):
 

@@ -1,5 +1,6 @@
-# Confere cada PR antes do merge: lint, checagem de tipos, build e acessibilidade. Antes, quem
-# descobria um build quebrado era a Vercel, já no deploy. Gratuito para repositórios públicos.
+# Confere cada PR antes do merge: lint, cores pelos tokens, checagem de tipos, build e
+# acessibilidade. Antes, quem descobria um build quebrado era a Vercel, já no deploy. Gratuito
+# para repositórios públicos.
 name: CI
 
 on:
@@ -33,6 +34,9 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
+      # Cor nova entra como token em src/styles/variables.css (docs/design-system.md)
+      - name: Cores só pelos tokens
+        run: npm run checar-tokens
       - name: Build
         run: npm run build
       # Depois do build: é ele que gera o next-env.d.ts (fora do git), com os tipos dos
