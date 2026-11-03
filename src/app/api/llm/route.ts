@@ -481,8 +481,9 @@ ${contexto || '(nenhum trecho relevante encontrado)'}`;
 
     } catch (err) {
         if (perguntaId) await marcarComoFalha(perguntaId);
-        const errorMessage = err instanceof Error ? err.message : 'Erro interno no servidor.';
-        console.error('❌ Erro crítico capturado na rota /api/llm:', errorMessage);
-        return NextResponse.json({ success: false, message: errorMessage }, { status: 500 });
+        // O detalhe fica só no log: antes ele ia para a tela, com texto técnico (do banco, de um
+        // serviço externo) que não ajuda o produtor e expõe o funcionamento interno.
+        console.error('❌ Erro crítico capturado na rota /api/llm:', err);
+        return NextResponse.json({ success: false, message: 'O CultivAI não conseguiu responder agora. Tente de novo em instantes.' }, { status: 500 });
     }
 }

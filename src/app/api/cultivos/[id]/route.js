@@ -14,13 +14,13 @@ const naoEncontrado = () => NextResponse.json({ message: 'Cultivo não encontrad
 export async function GET(req, { params }) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         await dbConnect();
         const cultivo = await cultivoDoUsuario(userId, (await params).id);
         return cultivo ? NextResponse.json({ success: true, cultivo }) : naoEncontrado();
     } catch (err) {
         console.error('Erro ao ler cultivo:', err);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }
 
@@ -28,7 +28,7 @@ export async function GET(req, { params }) {
 export async function PATCH(req, { params }) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
 
         const resultado = perfilParcialSchema.safeParse(await req.json().catch(() => null));
         if (!resultado.success) {
@@ -49,7 +49,7 @@ export async function PATCH(req, { params }) {
         return NextResponse.json({ success: true, cultivo });
     } catch (err) {
         console.error('Erro ao alterar cultivo:', err);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Não conseguimos falar com o servidor agora. Tente de novo em alguns instantes.' }, { status: 500 });
     }
 }
 
@@ -57,7 +57,7 @@ export async function PATCH(req, { params }) {
 export async function DELETE(req, { params }) {
     try {
         const userId = await getUserIdFromToken();
-        if (!userId) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: 'Não autenticado.' }, { status: 401 });
         await dbConnect();
         const cultivo = await cultivoDoUsuario(userId, (await params).id);
         if (!cultivo) return naoEncontrado();

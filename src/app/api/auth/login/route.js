@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import bcrypt from 'bcryptjs';
-import { SignJWT } from 'jose';
 import { normalizarEmail } from '@/lib/senha';
+import { senhaConfere } from '@/lib/conferirSenha';
+import { gravarCookieSessao } from '@/lib/cookieSessao';
 import { excedeuLimite, registrarTentativa, limparTentativas, ipDe, MINUTOS_DE_ESPERA } from '@/lib/tentativas';
 
 // O detalhe técnico fica no log da Vercel; para a pessoa, o que fazer.
@@ -13,7 +12,6 @@ const SERVIDOR_FORA = 'Não conseguimos falar com o servidor agora. Tente de nov
 if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is not set');
 }
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function POST(req) {
     try {
@@ -21,7 +19,7 @@ export async function POST(req) {
         const { email: emailDigitado, senha } = await req.json();
         const email = String(emailDigitado ?? '').trim();
 
-        if (!email || !senha) {
+        if (!email || typeof senha !== 'string' || !senha) {
             return NextResponse.json(
                 { message: 'Preencha todos os campos.' },
                 { status: 400 }
@@ -39,8 +37,8 @@ export async function POST(req) {
 
         // O cadastro grava o email em minúsculas; contas antigas podem ter maiúsculas.
         const user = await User.findOne({ email: chaveEmail }) ?? await User.findOne({ email });
-        const authOk = user && await bcrypt.compare(senha, user.senha);
-        if (!authOk) {
+        // O bcrypt roda mesmo sem conta, para o tempo da resposta não revelar se o email existe.
+        if (!(await senhaConfere(senha, user))) {
             await registrarTentativa('login', chaveEmail, ip);
             return NextResponse.json(
                 { message: 'Email ou senha incorretos' },
@@ -49,15 +47,6 @@ export async function POST(req) {
         }
         await limparTentativas('login', chaveEmail);
 
-        // Gerar JWT com a biblioteca jose
-        const alg = 'HS256';
-        const jwt = await new SignJWT({ id: user._id.toString(), email: user.email, nome: user.nome })
-            .setProtectedHeader({ alg })
-            .setIssuedAt()
-            .setExpirationTime('7d')
-            .sign(JWT_SECRET);
-
-        // Setting cookie explicitly ensuring we return a Response first and Next.js sets it headers
         const response = NextResponse.json(
             {
                 success: true,
@@ -67,15 +56,7 @@ export async function POST(req) {
             { status: 200 }
         );
 
-        response.cookies.set('authToken', jwt, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60, // 7 days
-            path: '/',
-        });
-
-        return response;
+        return gravarCookieSessao(response, user);
     } catch (error) {
         console.error('Login Error:', error);
         return NextResponse.json(
