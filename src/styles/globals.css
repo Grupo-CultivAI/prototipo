@@ -33,12 +33,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(6, 64, 43, 0.2);
-  border-radius: 4px;
+  background: var(--scrollbar);
+  border-radius: var(--radius-xs);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 64, 43, 0.4);
+  background: var(--scrollbar-hover);
 }
 
 main {
@@ -49,10 +49,6 @@ main {
 }
 
 /* TYPOGRAPHY */
-.title {
-  color: var(--primary-dark);
-}
-
 h1,
 h2,
 h3,
@@ -85,46 +81,4 @@ p {
   color: var(--text-secondary);
 }
 
-.small-text {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
 
-/* GLOBAL BUTTONS */
-.button {
-  width: 100%;
-  padding: 0.875rem 1.5rem;
-  background: var(--primary);
-  border: 2px solid var(--primary);
-  color: var(--white);
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.button:hover {
-  background: var(--white);
-  color: var(--primary);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.button:active {
-  transform: translateY(0);
-}
-
-/* UTILITIES */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: var(--shadow-glass);
-}

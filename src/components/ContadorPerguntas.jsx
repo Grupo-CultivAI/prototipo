@@ -13,7 +13,7 @@ export default function ContadorPerguntas({ restantes, limite }) {
   const [aberta, setAberta] = useState(false);
   const usadas = Math.max(0, limite - restantes);
   const fracao = limite > 0 ? Math.min(1, usadas / limite) : 0;
-  const cor = restantes <= 5 ? "rgb(185, 28, 28)" : restantes <= 10 ? "rgb(217, 119, 6)" : "var(--primary)";
+  const cor = restantes <= 5 ? "var(--erro)" : restantes <= 10 ? "var(--aviso-icone)" : "var(--primary)";
 
   const resumo = restantes === 0
     ? "Limite de perguntas de hoje atingido"

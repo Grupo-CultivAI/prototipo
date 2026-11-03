@@ -9,7 +9,7 @@
     padding: 2rem 1.5rem;
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--z-navegacao);
 }
 
 .marca {
@@ -30,7 +30,7 @@
 
 .link {
     padding: 1rem;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     text-decoration: none;
     transition: all 0.3s ease;
     display: flex;
@@ -47,9 +47,9 @@
 .ativo,
 .ativo:hover {
     background: var(--primary-dark);
-    color: white;
+    color: var(--white);
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(6, 64, 43, 0.15);
+    box-shadow: var(--shadow-strong);
 }
 
 .icone {
@@ -67,10 +67,10 @@
 .sair {
     width: 100%;
     padding: 1rem;
-    background: #FEF2F2;
+    background: var(--erro-fundo);
     color: var(--erro);
-    border: 1px solid #FEE2E2;
-    border-radius: 12px;
+    border: 1px solid var(--erro-fundo-forte);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
@@ -81,7 +81,7 @@
 }
 
 .sair:hover {
-    background: #FEE2E2;
+    background: var(--erro-fundo-forte);
     transform: translateY(-2px);
 }
 
@@ -103,8 +103,8 @@
         padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
         border-right: none;
         border-top: 1px solid var(--border);
-        box-shadow: 0 -4px 16px rgba(6, 64, 43, 0.08);
-        z-index: 50;
+        box-shadow: var(--shadow-up);
+        z-index: var(--z-navegacao-celular);
     }
 
     .marca {

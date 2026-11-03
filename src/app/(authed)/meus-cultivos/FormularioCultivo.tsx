@@ -82,17 +82,17 @@ function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description
             <button type="button" onClick={() => aoAlternar(id)} aria-expanded={aberta} style={{
                 width: '100%', border: 'none', font: 'inherit', textAlign: 'left',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
-                background: aberta ? 'var(--primary)' : '#FDFDFD',
+                background: aberta ? 'var(--primary)' : 'var(--surface-muted)',
                 borderBottom: aberta ? '1px solid var(--border)' : 'none',
-                transition: 'all 0.3s', borderRadius: aberta ? '16px 16px 0 0' : '16px', color: aberta ? 'white' : 'var(--text-primary)'
+                transition: 'all 0.3s', borderRadius: aberta ? 'var(--radius-lg) var(--radius-lg) 0 0' : 'var(--radius-lg)', color: aberta ? 'var(--white)' : 'var(--text-primary)'
             }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ display: 'inline-flex', padding: '10px', background: aberta ? 'rgba(255,255,255,0.2)' : 'var(--surface)', borderRadius: '12px', color: aberta ? 'white' : 'var(--primary)' }}>
+                    <span style={{ display: 'inline-flex', padding: '10px', background: aberta ? 'var(--on-dark-faint)' : 'var(--surface)', borderRadius: 'var(--radius-md)', color: aberta ? 'var(--white)' : 'var(--primary)' }}>
                         <Icon size={24} aria-hidden="true" />
                     </span>
                     <span>
                         <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700 }}>{title}</span>
-                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'rgba(255,255,255,0.95)' : 'var(--text-secondary)' }}>{description}</span>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'var(--on-dark-muted)' : 'var(--text-secondary)' }}>{description}</span>
                     </span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
@@ -305,7 +305,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
         setOpenSection(openSection === section ? '' : section);
     };
 
-    const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '1rem', background: '#FDFDFD', transition: 'border 0.2s' };
+    const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '1rem', background: 'var(--surface-muted)', transition: 'border 0.2s' };
     const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
     const errorStyle = { color: 'var(--erro)', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
     const dicaStyle = { display: 'block', marginBottom: '0.8rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' };
@@ -360,12 +360,12 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
             <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
                 {/* --- 1. LOCALIZAÇÃO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <CabecalhoSecao situacao={situacaoDo('localizacao')} aberta={openSection === 'localizacao'} aoAlternar={toggleSection} id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
                     {openSection === 'localizacao' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', padding: '1rem', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '12px', alignItems: 'flex-start', gap: '12px' }}>
+                                <div style={{ display: 'flex', padding: '1rem', background: 'var(--primary-tint-weak)', borderRadius: 'var(--radius-md)', alignItems: 'flex-start', gap: '12px' }}>
                                     <Info size={20} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
                                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4' }}>
                                         Digite o CEP para preencher o estado e a cidade, ou escolha os dois abaixo. A IA usa a cidade para o clima, a previsão de chuva e a época de plantio oficial (ZARC) do seu município.
@@ -409,7 +409,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 </div>
 
                 {/* --- 2. SOLO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <CabecalhoSecao situacao={situacaoDo('solo')} aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo" description="Tipo de terra, acidez e drenagem: pesam na escolha da cultura e da adubação." />
                     {openSection === 'solo' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
@@ -460,7 +460,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 </div>
 
                 {/* --- 3. HISTÓRICO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <CabecalhoSecao situacao={situacaoDo('historico')} aberta={openSection === 'historico'} aoAlternar={toggleSection} id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
                     {openSection === 'historico' && (
                         <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
@@ -533,7 +533,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                             field.onChange(prob === SEM_PROBLEMAS ? [SEM_PROBLEMAS] : [...marcados.filter((x: string) => x !== SEM_PROBLEMAS), prob]);
                                         };
                                         return <>{['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', SEM_PROBLEMAS].map(prob => (
-                                            <label key={prob} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
+                                            <label key={prob} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'var(--surface-muted)', padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
                                                 <input type="checkbox" checked={marcados.includes(prob)} onChange={(e) => alternar(prob, e.target.checked)} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
                                                 {prob}
                                             </label>
@@ -571,7 +571,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 </div>
 
                 {/* --- 4. OBJETIVOS --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <CabecalhoSecao situacao={situacaoDo('objetivo')} aberta={openSection === 'objetivo'} aoAlternar={toggleSection} id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
                     {openSection === 'objetivo' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -590,7 +590,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                 <span id="rotulo-metas" style={labelStyle}>Metas Principais (múltipla escolha)</span>
                                 <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }} role="group" aria-labelledby="rotulo-metas">
                                     {['Aumentar produtividade', 'Recuperar solo', 'Reduzir custos', 'Diversificar produção', 'Transição para orgânico'].map(obj => (
-                                        <label key={obj} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#FDFDFD', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', cursor: 'pointer' }}>
+                                        <label key={obj} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'var(--surface-muted)', padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
                                             <input type="checkbox" value={obj} {...register('objetivos')} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
                                             {obj}
                                         </label>
@@ -606,7 +606,7 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 </div>
 
                 {/* --- 5. PLANO DE ROTAÇÃO --- */}
-                <div id="plano" style={{ border: '1px solid var(--border)', borderRadius: '16px', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+                <div id="plano" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                     <CabecalhoSecao situacao={situacaoDo('plano')} aberta={openSection === 'plano'} aoAlternar={toggleSection} id="plano" icon={ListChecks} title="5. Plano de rotação" description="A sequência que você quer seguir nas próximas safras." />
                     {openSection === 'plano' && (
                         <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -646,11 +646,11 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     </div>
                     <div className={styles.acoesFormulario}>
                         <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}
-                            style={{ background: 'transparent', color: 'var(--primary-dark)', padding: '1.1rem 2rem', borderRadius: '100px', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '700', fontSize: '1rem', opacity: saving ? 0.7 : 1 }}>
+                            style={{ background: 'transparent', color: 'var(--primary-dark)', padding: '1.1rem 2rem', borderRadius: 'var(--radius-pill)', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '700', fontSize: '1rem', opacity: saving ? 0.7 : 1 }}>
                             {id ? 'Salvar' : 'Cadastrar'}
                         </button>
                         <button type="button" disabled={saving} onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}
-                            style={{ background: 'var(--primary)', color: 'var(--white)', padding: '1.25rem 2.5rem', borderRadius: '100px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1.05rem', transition: 'all 0.3s', opacity: saving ? 0.7 : 1, boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)' }}>
+                            style={{ background: 'var(--primary)', color: 'var(--white)', padding: '1.25rem 2.5rem', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1.05rem', transition: 'all 0.3s', opacity: saving ? 0.7 : 1, boxShadow: 'var(--shadow-primary)' }}>
                             {saving ? 'Salvando...' : 'Salvar e pedir análise à IA'}
                         </button>
                     </div>
@@ -660,18 +660,18 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
             {id && <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                 {!confirmandoApagar ? (
                     <button type="button" onClick={() => setConfirmandoApagar(true)}
-                        style={{ background: 'none', border: 'none', padding: 0, color: '#B91C1C', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem' }}>
+                        style={{ background: 'none', border: 'none', padding: 0, color: 'var(--erro)', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem' }}>
                         Excluir este cultivo
                     </button>
                 ) : (
                     <div role="group" aria-label="Confirmar exclusão do cultivo" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
                         <span>Excluir este cultivo? Sua conta e suas conversas continuam.</span>
                         <button type="button" onClick={excluirCultivo} disabled={saving}
-                            style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: 'none', background: '#DC2626', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--erro-forte)', color: 'var(--white)', fontWeight: 600, cursor: 'pointer' }}>
                             Excluir
                         </button>
                         <button type="button" onClick={() => setConfirmandoApagar(false)}
-                            style={{ padding: '0.6rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
                             Cancelar
                         </button>
                     </div>

@@ -23,7 +23,7 @@ export default function Sidebar() {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.marca}>
-                <div style={{ background: 'var(--primary-dark)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--primary-dark)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Image src={folha} alt="Logo CultivAI" width={24} height={24} style={{ filter: 'brightness(0) invert(1)' }} />
                 </div>
                 <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>CultivAI</h2>

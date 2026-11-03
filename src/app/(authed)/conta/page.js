@@ -75,9 +75,9 @@ export default function Conta() {
                 Os dados da sua conta no CultivAI.
             </p>
 
-            <div className={styles.cartaoConta} style={{ background: 'var(--surface)', borderRadius: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
+            <div className={styles.cartaoConta} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
-                    <div style={{ width: '80px', height: '80px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'white', fontWeight: 'bold', boxShadow: '0 8px 16px rgba(22,163,74,0.2)' }}>
+                    <div style={{ width: '80px', height: '80px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'var(--white)', fontWeight: 'bold', boxShadow: 'var(--shadow-primary-sm)' }}>
                         {user.nome.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -103,7 +103,7 @@ export default function Conta() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2.5rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
                     <Link href={`/redefinir-senha?email=${encodeURIComponent(user.email)}&voltar=/conta`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: '10px', border: '1px solid var(--primary)', color: 'var(--primary-dark)', fontWeight: 600, textDecoration: 'none' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary)', color: 'var(--primary-dark)', fontWeight: 600, textDecoration: 'none' }}>
                         <KeyRound size={18} aria-hidden="true" /> Trocar senha
                     </Link>
                     {/* No celular, este é o lugar do "Sair" (saiu da navegação do rodapé) */}
@@ -114,14 +114,14 @@ export default function Conta() {
             </div>
 
             {/* Exclusão da conta: direito previsto na LGPD, sem precisar pedir à equipe. */}
-            <section className={styles.cartaoConta} style={{ marginTop: '2rem', background: 'var(--surface)', borderRadius: '24px', border: '1px solid rgba(220, 38, 38, 0.3)' }}>
-                <h2 style={{ fontSize: '1.2rem', color: '#B91C1C', marginBottom: '0.5rem' }}>Excluir minha conta</h2>
+            <section className={styles.cartaoConta} style={{ marginTop: '2rem', background: 'var(--surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--erro-borda)' }}>
+                <h2 style={{ fontSize: '1.2rem', color: 'var(--erro)', marginBottom: '0.5rem' }}>Excluir minha conta</h2>
                 <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
                     Apaga a sua conta e tudo o que está guardado nela: os seus cultivos, as conversas e as avaliações. Não dá para desfazer.
                 </p>
                 {!excluindo ? (
                     <button type="button" onClick={() => setExcluindo(true)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: '10px', border: '1px solid #DC2626', background: 'transparent', color: '#B91C1C', fontWeight: 600, cursor: 'pointer' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--erro-forte)', background: 'transparent', color: 'var(--erro)', fontWeight: 600, cursor: 'pointer' }}>
                         <Trash2 size={18} aria-hidden="true" /> Excluir minha conta
                     </button>
                 ) : (
@@ -131,11 +131,11 @@ export default function Conta() {
                         {erro && <AvisoFormulario>{erro}</AvisoFormulario>}
                         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                             <button type="submit" disabled={aguardando}
-                                style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', border: 'none', background: '#DC2626', color: 'white', fontWeight: 600, cursor: aguardando ? 'wait' : 'pointer', opacity: aguardando ? 0.7 : 1 }}>
+                                style={{ padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--erro-forte)', color: 'var(--white)', fontWeight: 600, cursor: aguardando ? 'wait' : 'pointer', opacity: aguardando ? 0.7 : 1 }}>
                                 {aguardando ? 'Excluindo...' : 'Excluir definitivamente'}
                             </button>
                             <button type="button" onClick={() => { setExcluindo(false); setSenha(''); setErro(''); }}
-                                style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
+                                style={{ padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>
                                 Cancelar
                             </button>
                         </div>
