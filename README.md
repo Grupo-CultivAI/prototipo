@@ -52,7 +52,8 @@ src/
       cultivos/               GET → lista; POST → novo cultivo. [id]: GET, PATCH (só os campos enviados), DELETE; [id]/plano: POST { mensagemId } → plano de rotação tirado de uma resposta
       municipios/[codigo]/    GET → centro do município (malha do IBGE), para o mapa do formulário
       user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
-  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), AvisoFormulario
+  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), BotaoSair
+    ui/                       design system: Botao, Aviso, Selo, ConfirmarNaTela (ver docs/design-system.md)
   lib/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)
@@ -81,7 +82,7 @@ tests/
   acessibilidade.mjs        → axe-core em todas as telas, no celular e no computador (npm run acessibilidade; roda no CI)
   casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
-docs/design-system.md       → tokens de cor, raio, sombra e camada (src/styles/variables.css) e as regras de uso
+docs/design-system.md       → tokens (src/styles/variables.css), componentes de src/components/ui e as regras de uso
 ```
 
 ## Como funciona

@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
 import Input from "@/components/Input"
-import AvisoFormulario from "@/components/AvisoFormulario"
+import Botao from "@/components/ui/Botao"
+import Aviso from "@/components/ui/Aviso"
 import { REGRA_SENHA, problemaNaSenha } from "@/lib/senha"
 import styles from "../conta.module.css"
 
@@ -100,15 +101,13 @@ function Formulario() {
         autoComplete="new-password" required invalido={invalido("confirmar")} />
 
       {erro && (
-        <AvisoFormulario>
+        <Aviso tipo="erro">
           {erro.texto}
           {erro.linkInvalido && <> <Link href="/esqueci-senha" style={{ color: "inherit", fontWeight: 700 }}>Pedir novo link</Link></>}
-        </AvisoFormulario>
+        </Aviso>
       )}
 
-      <button type="submit" disabled={loading} className={styles.botao}>
-        {loading ? "Salvando..." : "Salvar senha nova"}
-      </button>
+      <Botao type="submit" tamanho="g" larguraTotal carregando={loading} textoCarregando="Salvando...">Salvar senha nova</Botao>
     </form>
 
     <p className={styles.rodape}>

@@ -56,33 +56,8 @@
     flex-shrink: 0;
 }
 
-.iconeSair {
-    display: none;
-}
-
 .rodape {
     margin-top: auto;
-}
-
-.sair {
-    width: 100%;
-    padding: 1rem;
-    background: var(--erro-fundo);
-    color: var(--erro);
-    border: 1px solid var(--erro-fundo-forte);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.sair:hover {
-    background: var(--erro-fundo-forte);
-    transform: translateY(-2px);
 }
 
 /* No celular a barra lateral vira uma navegação fixa no rodapé: com 280px de
@@ -116,8 +91,7 @@
         gap: 0.25rem;
     }
 
-    .link,
-    .sair {
+    .link {
         flex: 1;
         flex-direction: column;
         justify-content: center;
@@ -138,16 +112,6 @@
     .rodape {
         display: none;
     }
-
-    .sair,
-    .sair:hover {
-        width: 100%;
-        transform: none;
-    }
-
-    .iconeSair {
-        display: block;
-    }
 }
 
 /* Celular deitado: só os ícones, para sobrar altura para o conteúdo. */
@@ -157,8 +121,7 @@
         padding-bottom: calc(0.2rem + env(safe-area-inset-bottom));
     }
 
-    .link,
-    .sair {
+    .link {
         padding: 0.3rem 0.25rem;
     }
 

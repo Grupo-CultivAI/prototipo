@@ -15,6 +15,7 @@ import ChatMessage from '@/models/ChatMessage';
 import MapaPropriedade from './MapaPropriedade';
 import CalendarioPlantio from './CalendarioPlantio';
 import Previsao from './Previsao';
+import Botao from '@/components/ui/Botao';
 import styles from './painel.module.css';
 
 // Painel: a tela de entrada depois do login. Mostra os cultivos no mapa e, do cultivo escolhido
@@ -147,9 +148,7 @@ export default async function Painel({ searchParams }) {
                         {local && <> · <MapPin size={14} aria-hidden="true" /> {local}</>}
                     </p>
                 </div>
-                <Link href="/chatbot" className={styles.botaoPrincipal}>
-                    <MessageCircle size={18} aria-hidden="true" /> Perguntar ao assistente
-                </Link>
+                <Botao href="/chatbot" pilula icone={MessageCircle}>Perguntar ao assistente</Botao>
             </header>
 
             {semCadastro ? (
@@ -163,7 +162,7 @@ export default async function Painel({ searchParams }) {
                             <li><Repeat size={18} aria-hidden="true" /> a sua rotação de culturas, e respostas do assistente feitas para a sua terra.</li>
                         </ul>
                         <div className={styles.botoes}>
-                            <Link href="/meus-cultivos/novo" className={styles.botaoClaro}>Cadastrar meu cultivo <ArrowRight size={18} aria-hidden="true" /></Link>
+                            <Botao href="/meus-cultivos/novo" variante="claro" pilula iconeDepois={ArrowRight}>Cadastrar meu cultivo</Botao>
                             <Link href="/chatbot" className={styles.linkClaro}>Ou faça uma pergunta agora</Link>
                         </div>
                     </div>

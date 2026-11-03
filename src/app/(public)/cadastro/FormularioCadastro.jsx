@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
 import Input from "@/components/Input"
-import AvisoFormulario from "@/components/AvisoFormulario"
+import Botao from "@/components/ui/Botao"
+import Aviso from "@/components/ui/Aviso"
 import { CHAVE_EMAIL_CADASTRADO } from "@/lib/cadastro"
 import { REGRA_SENHA, problemaNaSenha } from "@/lib/senha"
 import styles from "../conta.module.css"
@@ -107,15 +108,13 @@ export default function FormularioCadastro() {
             </label>
 
             {erro && (
-              <AvisoFormulario>
+              <Aviso tipo="erro">
                 {erro.texto}
                 {erro.emailJaCadastrado && <> <Link href="/login" style={{ color: 'inherit', fontWeight: 700 }}>Entrar</Link></>}
-              </AvisoFormulario>
+              </Aviso>
             )}
 
-            <button type="submit" disabled={loading} className={styles.botao}>
-              {loading ? 'Criando conta...' : 'Criar conta'}
-            </button>
+            <Botao type="submit" tamanho="g" larguraTotal carregando={loading} textoCarregando="Criando conta...">Criar conta</Botao>
           </form>
 
           <p className={styles.rodape}>

@@ -29,31 +29,6 @@
     gap: 0.5rem;
 }
 
-.botao,
-.botaoSecundario {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.55rem 0.9rem;
-    border-radius: var(--radius-md);
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.botao {
-    border: 1px solid var(--primary);
-    background: var(--primary-tint);
-    color: var(--primary-dark);
-}
-
-.botaoSecundario {
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-secondary);
-}
-
 .status {
     color: var(--text-secondary);
     font-size: 0.85rem;

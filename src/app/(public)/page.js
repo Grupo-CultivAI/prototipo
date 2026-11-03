@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookOpen, CalendarDays, CloudRain, Sprout, Mic, ShieldCheck, UserPlus, ClipboardList, MessageCircle, Mail } from "lucide-react";
 import { usuarioLogado } from "@/lib/sessao";
 import { linkFaleConosco } from "@/lib/faleConosco";
+import Botao from "@/components/ui/Botao";
 import styles from "./inicio.module.css";
 
 // Página inicial: explica o CultivAI a quem chega pela primeira vez, antes do login ou do
@@ -54,8 +55,8 @@ export default async function Inicio() {
             As respostas se baseiam em pesquisas da Embrapa e no calendário oficial de plantio.
           </p>
           <div className={styles.botoes}>
-            <Link href={principal.href} className={styles.botaoPrincipal}>{principal.texto}</Link>
-            {!logado && <Link href="/login" className={styles.botaoSecundario}>Já tenho conta</Link>}
+            <Botao href={principal.href} tamanho="g" pilula>{principal.texto}</Botao>
+            {!logado && <Botao href="/login" variante="secundario" tamanho="g" pilula>Já tenho conta</Botao>}
           </div>
         </div>
         <div className={styles.aberturaImagem}>
@@ -114,7 +115,7 @@ export default async function Inicio() {
           ))}
         </ol>
         <div className={styles.botoesCentro}>
-          <Link href={principal.href} className={styles.botaoPrincipal}>{logado ? "Abrir o CultivAI" : "Começar agora"}</Link>
+          <Botao href={principal.href} tamanho="g" pilula>{logado ? "Abrir o CultivAI" : "Começar agora"}</Botao>
         </div>
       </section>
 
@@ -148,7 +149,7 @@ export default async function Inicio() {
           <Mail size={32} aria-hidden="true" />
           <h3>Fale conosco</h3>
           <p>Dúvidas, sugestões ou quer levar o CultivAI para a sua comunidade? Escreva para a equipe.</p>
-          <a href={FALE_CONOSCO} className={styles.botaoPrincipal}>Fale conosco</a>
+          <Botao href={FALE_CONOSCO} variante="claro" tamanho="g" pilula className={styles.botaoContato}>Fale conosco</Botao>
         </div>
       </section>
 

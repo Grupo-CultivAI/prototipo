@@ -49,35 +49,6 @@
     gap: 1rem;
 }
 
-.botao {
-    width: 100%;
-    padding: 1.1rem;
-    margin-top: 0.25rem;
-    border: none;
-    border-radius: var(--radius-md);
-    background: var(--primary);
-    color: var(--white);
-    font-weight: 600;
-    font-size: 1.05rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-primary-sm);
-    transition: background 0.2s, opacity 0.2s;
-}
-
-.botao:hover:not(:disabled) {
-    background: var(--primary-dark);
-}
-
-.botao:disabled {
-    opacity: 0.7;
-    cursor: wait;
-}
-
-.botao:focus-visible {
-    outline: 3px solid var(--primary-line);
-    outline-offset: 2px;
-}
-
 .linkPequeno {
     font-size: 0.85rem;
     color: var(--primary);

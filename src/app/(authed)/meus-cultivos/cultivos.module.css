@@ -37,38 +37,6 @@
     line-height: 1.5;
 }
 
-.botaoPrincipal {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.8rem 1.3rem;
-    border-radius: var(--radius-pill);
-    background: var(--primary);
-    color: var(--white);
-    font-weight: 600;
-    text-decoration: none;
-    box-shadow: var(--shadow-primary);
-    transition: transform 0.2s, background 0.2s;
-}
-
-.botaoPrincipal:hover,
-.botaoPrincipal:focus-visible {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-}
-
-.aviso {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-left: 3px solid var(--primary);
-    border-radius: var(--radius-md);
-    background: var(--primary-tint);
-    color: var(--primary-dark);
-    font-weight: 600;
-}
-
 /* --- Sem cultivos --- */
 .vazio {
     display: flex;
@@ -262,81 +230,10 @@
     border-top: 1px solid var(--border);
 }
 
-.acao,
-.acaoPrincipal,
-.acaoPerigo {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.5rem 0.85rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--text-primary);
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.acao:hover,
-.acao:focus-visible {
-    background: var(--bg);
-}
-
-.acaoPrincipal {
-    border-color: var(--primary);
-    background: var(--primary-tint);
-    color: var(--primary-dark);
-}
-
-.acaoPrincipal:hover,
-.acaoPrincipal:focus-visible {
-    background: var(--primary-tint-strong);
-}
-
-.acaoPerigo {
-    border-color: transparent;
-    color: var(--erro);
-}
-
-.acaoPerigo:hover,
-.acaoPerigo:focus-visible {
-    background: var(--erro-fundo);
-}
-
 .conversas {
     margin-left: auto;
     color: var(--text-secondary);
     font-size: 0.8rem;
-}
-
-.confirmar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    font-size: 0.85rem;
-}
-
-.botaoPerigo {
-    padding: 0.5rem 0.85rem;
-    border: none;
-    border-radius: var(--radius-md);
-    background: var(--erro-forte);
-    color: var(--white);
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.erro {
-    width: 100%;
-    color: var(--erro);
 }
 
 @media (max-width: 900px) {
@@ -354,9 +251,8 @@
         padding: 1.1rem;
     }
 
-    .botaoPrincipal {
+    .botaoCadastrar {
         width: 100%;
-        justify-content: center;
     }
 
     .conversas {

@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DynamicForm from "@/components/DynamicForm";
 import ContadorPerguntas from "@/components/ContadorPerguntas";
-import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, Ellipsis, BookOpen, TriangleAlert, CalendarDays, Lightbulb, Info } from "lucide-react";
+import Botao from "@/components/ui/Botao";
+import Aviso from "@/components/ui/Aviso";
+import ConfirmarNaTela from "@/components/ui/ConfirmarNaTela";
+import { Copy, Check, Trash2, MessageSquarePlus, Printer, Mic, ThumbsUp, ThumbsDown, History, Volume2, Square, Sprout, ListChecks, Ellipsis, BookOpen, CalendarDays, Lightbulb, Info } from "lucide-react";
 import styles from "../paginas.module.css";
 import { itensFaltando, nomeDoCultivo, CHAVE_PEDIR_ANALISE, PERGUNTA_DE_ANALISE } from "@/lib/perfil";
 
@@ -207,17 +210,10 @@ export default function ChatCultivAI() {
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [menuAberto]);
-  // "Apagar conversa" confirma na própria tela, como as exclusões de Meus Cultivos e Minha Conta
-  // (antes era a janela do navegador). O foco vai para "Cancelar" e, ao fechar, volta ao botão
-  // que abriu a confirmação.
+  // "Apagar conversa" confirma na própria tela (ConfirmarNaTela), como as exclusões de Meus
+  // Cultivos e Minha Conta. Ao fechar, o foco volta ao botão que abriu a confirmação.
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
-  const [apagando, setApagando] = useState(false);
-  const [erroApagar, setErroApagar] = useState("");
   const origemApagarRef = useRef(null);
-  const cancelarApagarRef = useRef(null);
-  useEffect(() => {
-    if (confirmandoApagar) cancelarApagarRef.current?.focus();
-  }, [confirmandoApagar]);
   // O reconhecimento de fala do navegador funciona no Chrome e no Edge (inclusive no Android),
   // sem custo. Onde não existe, o botão do microfone não aparece.
   const [temVoz] = useState(() => !!reconhecimentoDeVoz());
@@ -440,7 +436,6 @@ export default function ChatCultivAI() {
 
   const pedirApagar = (origem) => {
     origemApagarRef.current = origem;
-    setErroApagar("");
     setConfirmandoApagar(true);
   };
 
@@ -449,26 +444,21 @@ export default function ChatCultivAI() {
     origemApagarRef.current?.focus();
   };
 
+  // Se falhar, o erro aparece na própria confirmação, que continua aberta
   const apagarConversa = async () => {
-    setApagando(true);
-    setErroApagar("");
-    try {
-      const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.message);
-      setListaAberta(false);
-      pararFala();
-      setConversaId(d.conversaId ?? null);
-      setCultivoId(cultivoDe(d.propriedadeId, cultivos));
-      setMessages(conversaNova());
-      setAnuncio("Conversa apagada.");
-      fecharConfirmacao();
-    } catch (err) {
-      console.error("Erro ao apagar conversa", err);
-      setErroApagar("Não deu para apagar agora. Confira a internet e tente de novo.");
-    } finally {
-      setApagando(false);
+    const r = await fetch(`/api/chat/history${conversaId ? `?conversa=${conversaId}` : ""}`, { method: 'DELETE' }).catch(() => null);
+    const d = await r?.json().catch(() => ({}));
+    if (!r?.ok) {
+      console.error("Erro ao apagar conversa", d?.message);
+      throw new Error("Não deu para apagar agora. Confira a internet e tente de novo.");
     }
+    setListaAberta(false);
+    pararFala();
+    setConversaId(d.conversaId ?? null);
+    setCultivoId(cultivoDe(d.propriedadeId, cultivos));
+    setMessages(conversaNova());
+    setAnuncio("Conversa apagada.");
+    fecharConfirmacao();
   };
 
   const sendMessageToAPI = async (questionText, currentProp, submittedData = null, respostaAoPedido = false) => {
@@ -709,53 +699,27 @@ export default function ChatCultivAI() {
           </div>
         </div>
         <div className={styles.chatAcoes}>
-          <button
-            onClick={alternarLista}
-            title="Ver as conversas anteriores"
-            aria-label="Conversas anteriores"
-            aria-expanded={listaAberta}
-            aria-controls="lista-conversas"
-            className={`${styles.botaoCabecalho} ${listaAberta ? styles.botaoCabecalhoAtivo : ""}`}
-          >
-            <History size={16} />
+          {/* No celular só os ícones aparecem (o texto some, .rotuloBotao); o aria-label dá o nome */}
+          <Botao variante="neutro" tamanho="p" icone={History} onClick={alternarLista} title="Ver as conversas anteriores"
+            aria-label="Conversas anteriores" aria-expanded={listaAberta} aria-controls="lista-conversas">
             <span className={styles.rotuloBotao}>Conversas</span>
-          </button>
-          <button
-            onClick={() => novaConversa()}
-            title="Começar uma conversa nova. Esta fica guardada."
-            aria-label="Nova conversa"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary)', background: 'var(--primary-tint)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
-          >
-            <MessageSquarePlus size={16} />
+          </Botao>
+          <Botao variante="secundario" tamanho="p" icone={MessageSquarePlus} onClick={() => novaConversa()}
+            title="Começar uma conversa nova. Esta fica guardada." aria-label="Nova conversa">
             <span className={styles.rotuloBotao}>Nova conversa</span>
-          </button>
+          </Botao>
           {/* No celular, Apagar e Imprimir ficam no menu "Mais", longe de "Nova conversa" */}
-          <button
-            onClick={(e) => pedirApagar(e.currentTarget)}
-            title="Apagar esta conversa"
-            aria-expanded={confirmandoApagar}
-            className={styles.soComputador}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'var(--erro-fundo)'; e.currentTarget.style.color = 'var(--erro)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          >
-            <Trash2 size={16} />
+          <Botao variante="neutro" tamanho="p" icone={Trash2} onClick={(e) => pedirApagar(e.currentTarget)}
+            title="Apagar esta conversa" aria-expanded={confirmandoApagar} className={styles.soComputador}>
             <span className={styles.rotuloBotao}>Apagar conversa</span>
-          </button>
-          <button
-            onClick={() => window.print()}
-            title="Imprimir ou salvar a conversa em PDF"
-            className={styles.soComputador}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
-          >
-            <Printer size={16} />
+          </Botao>
+          <Botao variante="neutro" tamanho="p" icone={Printer} onClick={() => window.print()}
+            title="Imprimir ou salvar a conversa em PDF" className={styles.soComputador}>
             <span className={styles.rotuloBotao}>Imprimir</span>
-          </button>
+          </Botao>
           <div className={`${styles.menuMais} ${styles.soCelular}`} ref={menuRef}>
-            <button type="button" className={styles.botaoCabecalho} onClick={() => setMenuAberto((v) => !v)}
-              aria-label="Mais opções" aria-expanded={menuAberto} aria-controls="menu-mais">
-              <Ellipsis size={16} aria-hidden="true" />
-            </button>
+            <Botao variante="neutro" tamanho="p" apenasIcone icone={Ellipsis} rotulo="Mais opções" onClick={() => setMenuAberto((v) => !v)}
+              aria-expanded={menuAberto} aria-controls="menu-mais" />
             {menuAberto && (
               <div id="menu-mais" className={styles.menuMaisLista}>
                 <button type="button" onClick={() => { setMenuAberto(false); window.print(); }}>
@@ -769,32 +733,17 @@ export default function ChatCultivAI() {
           </div>
           {/* Ferramenta da equipe: só no npm run dev. Na Vercel, NODE_ENV é "production". */}
           {process.env.NODE_ENV === 'development' && (
-            <button
-              onClick={copyHistory}
-              className={styles.soComputador}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: copied ? 'var(--primary-tint)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+            <Botao variante="neutro" tamanho="p" icone={copied ? Check : Copy} onClick={copyHistory} className={styles.soComputador}>
               <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar histórico (teste)'}</span>
-            </button>
+            </Botao>
           )}
         </div>
       </div>
 
       {confirmandoApagar && (
-        <div role="group" aria-labelledby="pergunta-apagar" className={styles.confirmarApagar}
-          onKeyDown={(e) => { if (e.key === "Escape" && !apagando) fecharConfirmacao(); }}>
-          <p id="pergunta-apagar">
-            <Trash2 size={16} aria-hidden="true" /> Apagar esta conversa? As mensagens dela não poderão ser recuperadas.
-          </p>
-          <div>
-            <button type="button" className={styles.botaoApagar} onClick={apagarConversa} disabled={apagando}>
-              {apagando ? "Apagando..." : "Apagar"}
-            </button>
-            <button type="button" ref={cancelarApagarRef} onClick={fecharConfirmacao} disabled={apagando}>Cancelar</button>
-          </div>
-          {erroApagar && <p role="alert" className={styles.erroApagar}>{erroApagar}</p>}
-        </div>
+        <ConfirmarNaTela aparencia="faixa" tamanho="m" icone={Trash2} className={styles.confirmarApagar}
+          pergunta="Apagar esta conversa? As mensagens dela não poderão ser recuperadas."
+          rotuloConfirmar="Apagar" textoOcupado="Apagando..." aoConfirmar={apagarConversa} aoCancelar={fecharConfirmacao} />
       )}
 
       {listaAberta && (
@@ -859,9 +808,9 @@ export default function ChatCultivAI() {
 
               {/* A busca nos documentos não aconteceu: a resposta veio só de conhecimento geral. */}
               {msg.sender === "bot" && msg.semBase && (
-                <p className={styles.avisoSemBase} role="note">
-                  <TriangleAlert size={15} aria-hidden="true" className={styles.iconeAviso} /> Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
-                </p>
+                <Aviso tipo="alerta" papel="note" className={styles.avisoSemBase}>
+                  Esta resposta não consultou os documentos da Embrapa: {MOTIVO_SEM_BASE[msg.semBase] ?? MOTIVO_SEM_BASE.erro}
+                </Aviso>
               )}
 
               {/* Vem dos dados do ZARC, não do texto da IA: aparece mesmo se ela não citar. */}
@@ -903,38 +852,35 @@ export default function ChatCultivAI() {
               {msg.sender === "bot" && (
                 <span className={styles.acoesMensagem}>
                   {temFala && msg.text !== PENSANDO && (
-                    <button type="button" onClick={() => ouvir(msg)} aria-pressed={falandoId === msg.id} title={falandoId === msg.id ? "Parar a leitura" : "Ouvir a resposta"} className={falandoId === msg.id ? styles.avaliada : undefined}>
-                      {falandoId === msg.id ? <Square size={15} /> : <Volume2 size={15} />}
-                    </button>
+                    <Botao variante="discreto" tamanho="p" apenasIcone icone={falandoId === msg.id ? Square : Volume2}
+                      rotulo={falandoId === msg.id ? "Parar a leitura" : "Ouvir a resposta"} aria-pressed={falandoId === msg.id} onClick={() => ouvir(msg)} />
                   )}
                   {respostaGravada(msg) && <>
-                  <button type="button" onClick={() => avaliar(msg, "boa")} aria-pressed={msg.avaliacao === "boa"} title="Resposta útil" className={msg.avaliacao === "boa" ? styles.avaliada : undefined}>
-                    <ThumbsUp size={15} />
-                  </button>
-                  <button type="button" onClick={() => avaliar(msg, "ruim")} aria-pressed={msg.avaliacao === "ruim"} title="Resposta ruim ou errada" className={msg.avaliacao === "ruim" ? styles.avaliada : undefined}>
-                    <ThumbsDown size={15} />
-                  </button>
+                  <Botao variante="discreto" tamanho="p" apenasIcone icone={ThumbsUp} rotulo="Resposta útil"
+                    aria-pressed={msg.avaliacao === "boa"} onClick={() => avaliar(msg, "boa")} />
+                  <Botao variante="discreto" tamanho="p" apenasIcone icone={ThumbsDown} rotulo="Resposta ruim ou errada"
+                    aria-pressed={msg.avaliacao === "ruim"} onClick={() => avaliar(msg, "ruim")} />
                   </>}
                   {msg.text !== PENSANDO && (
-                    <button type="button" onClick={() => copiarResposta(msg)} title={copiadoId === msg.id ? "Copiado!" : "Copiar a resposta"} aria-label={copiadoId === msg.id ? "Resposta copiada" : "Copiar a resposta"}>
-                      {copiadoId === msg.id ? <Check size={15} /> : <Copy size={15} />}
-                    </button>
+                    <Botao variante="discreto" tamanho="p" apenasIcone icone={copiadoId === msg.id ? Check : Copy}
+                      rotulo={copiadoId === msg.id ? "Resposta copiada" : "Copiar a resposta"} onClick={() => copiarResposta(msg)} />
                   )}
                   {propriedade && respostaGravada(msg) && pareceUmPlano(msg.text) && (
-                    <button type="button" onClick={() => salvarPlano(msg)} disabled={planos[msg.id]?.carregando}
-                      title={`Guardar esta sequência como plano de rotação de ${nomeDoCultivo(propriedade)}`} className={styles.botaoPlano}>
-                      <ListChecks size={15} /> <span>{planos[msg.id]?.carregando ? "Salvando..." : "Salvar como plano"}</span>
-                    </button>
+                    <Botao variante="neutro" tamanho="p" icone={ListChecks} onClick={() => salvarPlano(msg)}
+                      carregando={planos[msg.id]?.carregando} textoCarregando="Salvando..."
+                      title={`Guardar esta sequência como plano de rotação de ${nomeDoCultivo(propriedade)}`}>
+                      Salvar como plano
+                    </Botao>
                   )}
                 </span>
               )}
             </div>
             {planos[msg.id]?.ok && (
-              <p className={styles.avisoPlano} role="status">
+              <Aviso tipo="sucesso" className={styles.avisoPlano}>
                 {planos[msg.id].texto} <Link href={`/meus-cultivos/${propriedade?._id}#plano`}>Ver e ajustar o plano</Link>
-              </p>
+              </Aviso>
             )}
-            {planos[msg.id]?.erro && <p className={styles.avisoPlanoErro} role="alert">{planos[msg.id].erro}</p>}
+            {planos[msg.id]?.erro && <Aviso tipo="erro" className={styles.avisoPlano}>{planos[msg.id].erro}</Aviso>}
           </div>
         ))}
         {conversaVazia && (propriedade ? faltando.length > 0 : true) && (
@@ -991,27 +937,12 @@ export default function ChatCultivAI() {
           style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem', color: 'var(--text-primary)' }}
         />
         {temVoz && (
-          <button
-            type="button"
-            onClick={alternarVoz}
-            title={ouvindo ? "Parar de ouvir" : "Falar a pergunta"}
-            aria-pressed={ouvindo}
-            className={`${styles.botaoVoz} ${ouvindo ? styles.ouvindo : ""}`}
-          >
-            <Mic size={20} />
-          </button>
+          <Botao variante="discreto" pilula apenasIcone icone={Mic} rotulo={ouvindo ? "Parar de ouvir" : "Falar a pergunta"}
+            aria-pressed={ouvindo} onClick={alternarVoz} className={`${styles.botaoVoz} ${ouvindo ? styles.ouvindo : ""}`} />
         )}
-        <button
-          onClick={() => handleSendMessage()}
-          disabled={aguardando}
-          aria-busy={aguardando}
-          className={styles.botaoEnviar}
-          style={{ background: 'var(--primary)', color: 'var(--white)', borderRadius: 'var(--radius-pill)', border: 'none', cursor: aguardando ? 'wait' : 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: 'var(--shadow-primary-sm)', opacity: aguardando ? 0.75 : 1 }}
-          onMouseOver={(e) => { if (aguardando) return; e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
-          onMouseOut={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = 'var(--primary)'; }}
-        >
-          {aguardando ? 'Aguarde...' : 'Enviar'}
-        </button>
+        <Botao pilula className={styles.botaoEnviar} onClick={() => handleSendMessage()} carregando={aguardando} textoCarregando="Aguarde...">
+          Enviar
+        </Botao>
       </div>
     </div>
   );
