@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, KeyRound } from 'lucide-react';
-import Input from '@/components/Input';
+import { Entrada } from '@/components/ui/Campo';
 import BotaoSair from '@/components/BotaoSair';
 import Botao from '@/components/ui/Botao';
 import Aviso from '@/components/ui/Aviso';
@@ -120,7 +120,7 @@ export default function Conta() {
                     <Botao variante="perigoDiscreto" icone={Trash2} onClick={() => setExcluindo(true)}>Excluir minha conta</Botao>
                 ) : (
                     <form onSubmit={excluirConta} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '420px' }}>
-                        <Input ref={senhaRef} label="Para confirmar, digite a sua senha" type="password" value={senha}
+                        <Entrada ref={senhaRef} rotulo="Para confirmar, digite a sua senha" type="password" value={senha}
                             onChange={(e) => { setSenha(e.target.value); setErro(''); }} autoComplete="current-password" invalido={Boolean(erro)} />
                         {erro && <Aviso tipo="erro">{erro}</Aviso>}
                         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>

@@ -3,7 +3,7 @@ import { Suspense, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2 } from "lucide-react"
-import Input from "@/components/Input"
+import { Entrada } from "@/components/ui/Campo"
 import Botao from "@/components/ui/Botao"
 import Aviso from "@/components/ui/Aviso"
 import { REGRA_SENHA, problemaNaSenha } from "@/lib/senha"
@@ -90,14 +90,14 @@ function Formulario() {
 
     <form onSubmit={salvar} noValidate className={styles.formulario}>
       {!codigo && (<>
-        <Input ref={emailRef} label="Email" type="email" value={email} onChange={alterar(setEmail)} placeholder="seuemail@exemplo.com"
+        <Entrada ref={emailRef} rotulo="Email" type="email" value={email} onChange={alterar(setEmail)} placeholder="seuemail@exemplo.com"
           autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required invalido={invalido("email")} />
-        <Input ref={senhaAtualRef} label="Senha atual" type="password" value={senhaAtual} onChange={alterar(setSenhaAtual)}
+        <Entrada ref={senhaAtualRef} rotulo="Senha atual" type="password" value={senhaAtual} onChange={alterar(setSenhaAtual)}
           autoComplete="current-password" required invalido={invalido("senhaAtual")} />
       </>)}
-      <Input ref={novaSenhaRef} label="Senha nova" type="password" value={novaSenha} onChange={alterar(setNovaSenha)}
+      <Entrada ref={novaSenhaRef} rotulo="Senha nova" type="password" value={novaSenha} onChange={alterar(setNovaSenha)}
         autoComplete="new-password" required minLength={8} dica={REGRA_SENHA} invalido={invalido("novaSenha")} />
-      <Input ref={confirmarRef} label="Confirmar senha nova" type="password" value={confirmar} onChange={alterar(setConfirmar)}
+      <Entrada ref={confirmarRef} rotulo="Confirmar senha nova" type="password" value={confirmar} onChange={alterar(setConfirmar)}
         autoComplete="new-password" required invalido={invalido("confirmar")} />
 
       {erro && (

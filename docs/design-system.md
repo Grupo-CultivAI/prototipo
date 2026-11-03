@@ -105,6 +105,41 @@ Para apagar ou excluir algo, no lugar do `confirm()` do navegador. O foco vai pa
 
 `aparencia="faixa"` destaca em vermelho-claro (usado no chat); o padrão, `linha`, cabe dentro de um cartão.
 
-## Ainda por fazer
+### Campo, Entrada, Selecao e AreaTexto
 
-Os componentes de formulário (campo, opções clicáveis, bloco do formulário, barra de ações) e os tamanhos de texto e espaçamentos entram no próximo PR. Ficam fora do `Botao`, de propósito, os itens de menu e de lista (menu "Mais" e lista de conversas do chat), o anel do contador de perguntas e o botão de mostrar a senha.
+O rótulo, a dica e o erro já chegam ligados ao controle (`htmlFor`/`id`, `aria-describedby`, `aria-invalid`): o leitor de tela lê o nome do campo e a mensagem, e tocar no rótulo leva ao campo. Funcionam com o `register` do react-hook-form.
+
+```tsx
+import Campo, { Entrada, Selecao, AreaTexto, classeDoControle } from '@/components/ui/Campo';
+
+<Entrada rotulo="Nome do cultivo" obrigatorio erro={errors.nome?.message} dica="Aparece na lista e no chat." {...register('nome')} />
+<Entrada rotulo="Senha" type="password" acessorio={<Link href="/esqueci-senha">Esqueci a senha</Link>} />  // com mostrar/esconder
+<Selecao rotulo="Estado" obrigatorio {...register('estado')}><option value="">Selecione...</option></Selecao>
+<AreaTexto rotulo="Observações" opcional rows={4} {...register('observacoes')} />
+<Campo rotulo="Cidade" obrigatorio>{(ligacao) => <BuscaCidade idCampo={ligacao.id} classe={ligacao.className} ... />}</Campo>
+```
+
+`obrigatorio` mostra o `*` (escondido do leitor de tela, que ouve "obrigatório" pelo `aria-required`); `opcional` mostra "(opcional)" ou o texto dado; `invalido` marca o erro sem mensagem (quando ela está num `Aviso`). Para linhas com vários controles sem rótulo visível (safras, etapas do plano), `classeDoControle(true)` dá a aparência compacta; nesses, o nome vai em `aria-label`.
+
+### Opcoes e Marcar
+
+```tsx
+<Opcoes rotulo="O que pretende plantar?" opcoes={CULTURAS} marcadas={[valor]} alternar={escolher} />  // botões com aria-pressed, num grupo com nome
+<Marcar {...register('objetivos')} value="Recuperar solo">Recuperar solo</Marcar>                  // caixa de marcar num cartão
+```
+
+### Bloco
+
+O bloco que abre e fecha do formulário do cultivo: cabeçalho com ícone, título, descrição e o `Selo` da situação, que fica embaixo da descrição para nunca alargar a página. O título leva o id `secao-<id>`.
+
+### BarraDeAcoes
+
+A barra presa no pé da tela com a mensagem do envio e os botões. Reserva espaço para o foco não cair atrás dela (`scroll-padding`). No celular, os botões ficam no tamanho médio; use `<TextoAdaptavel longo="Salvar e pedir análise à IA" curto="Salvar e analisar" />` para um texto curto.
+
+## Letra grande e telas estreitas
+
+Medidas em `rem` crescem com a letra que a pessoa escolheu no aparelho. Para algo mudar de arranjo quando falta espaço, prefira quebrar linha (`flex-wrap`) ou uma consulta de contêiner em `rem` (`@container (max-width: 20rem)`), como o campo do chat, a uma media query em `px`: ela não percebe a letra aumentada. Para conferir, há o roteiro do teste com personas (letra em 130% num celular de 360 px e em 150% num de 320 px).
+
+## Fora dos componentes, de propósito
+
+Os itens de menu e de lista (menu "Mais" e lista de conversas do chat), as sugestões de pergunta do chat e o anel do contador de perguntas têm estilo próprio na tela.

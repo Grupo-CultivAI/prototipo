@@ -39,12 +39,12 @@
     height: calc(100vh - 6rem);
 }
 
-/* Título e ações na primeira linha; contador e cultivo embaixo do título */
+/* Título e ações na primeira linha; contador e cultivo embaixo. Quando título e ações não
+   cabem lado a lado (celular pequeno ou letra do aparelho aumentada), as ações descem para a
+   linha de baixo: antes, com a grade fixa, elas ficavam por cima do título. */
 .chatCabecalho {
-    display: grid;
-    /* O título tem espaço garantido; se faltar, as ações quebram linha */
-    grid-template-columns: minmax(24rem, 1fr) auto;
-    grid-template-areas: "titulo acoes" "info info";
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem 1rem;
     padding: 1.5rem 2rem;
@@ -63,15 +63,18 @@
 }
 
 .chatTituloBloco {
-    grid-area: titulo;
+    flex: 1 1 24rem;
+    min-width: 0;
 }
 
 .chatInfo {
-    grid-area: info;
+    flex: 1 0 100%;
+    order: 2;
 }
 
 .chatAcoes {
-    grid-area: acoes;
+    order: 1;
+    margin-left: auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -181,8 +184,16 @@
     outline-offset: 2px;
 }
 
+/* Estilo aqui, e não no código da tela: o topo compacto do chat precisa mudar o flex dele */
 .campoTexto {
     display: block;
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    color: var(--text-primary);
+    font-size: var(--texto-base);
     min-height: var(--altura-campo);
     max-height: calc(5 * 1.4rem + 1.6rem);
     padding: 0.8rem 1.5rem;
@@ -202,6 +213,39 @@
 /* O Enviar é um Botao (components/ui): aqui só a altura da linha do campo e o espaço lateral */
 .chat .chatEntrada .botaoEnviar {
     padding: 0 2rem;
+}
+
+/* Com a linha estreita (celular pequeno, letra aumentada), o Enviar fica só com o ícone: com o
+   texto, o campo da pergunta ficava com uma letra por linha e o botão saía da tela. Medido na
+   própria linha (container), em rem: cresce junto com a letra. */
+.chatEntrada {
+    container-name: entrada;
+    container-type: inline-size;
+}
+
+.iconeEnviar {
+    display: none;
+}
+
+@container entrada (max-width: 20rem) {
+    .chat .chatEntrada .botaoEnviar {
+        padding: 0;
+        width: var(--altura-campo);
+    }
+
+    .textoEnviar {
+        display: none;
+    }
+
+    /* Menos recuo dentro do campo: cada caractere conta para digitar */
+    .campoTexto {
+        padding-left: 0.75rem;
+        padding-right: 0.5rem;
+    }
+
+    .iconeEnviar {
+        display: inline;
+    }
 }
 
 /* Enviar e microfone (Botao) com a altura de uma linha do campo, que muda no celular deitado */
@@ -470,27 +514,70 @@
     text-decoration: underline;
 }
 
-/* --- Formulário do cultivo: opções clicáveis (culturas, próxima cultura) --- */
-.opcoes {
+/* --- Formulário do cultivo: a página e o arranjo dos campos dentro dos blocos (os campos, as
+   opções, os blocos e a barra de salvar vêm de components/ui) --- */
+.paginaFormulario {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 var(--espaco-4) 4rem;
+}
+
+.blocosDoFormulario {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: var(--espaco-5);
 }
 
-.opcao {
-    padding: 0.55rem 0.9rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    background: var(--surface-muted);
+.camposDoBloco {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--espaco-5);
+}
+
+.camposEmColuna {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espaco-5);
+}
+
+.linhaInteira {
+    grid-column: 1 / -1;
+}
+
+/* Rótulo, "(opcional)" e dica de um grupo de campos (role="group"), no lugar do <label> */
+.rotuloGrupo {
+    display: block;
+    margin-bottom: 0.6rem;
     color: var(--text-primary);
-    font-size: 0.95rem;
-    cursor: pointer;
+    font-size: var(--texto-md);
+    font-weight: 600;
 }
 
-.opcaoMarcada {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: var(--white);
+.opcionalGrupo {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.dicaGrupo {
+    display: block;
+    margin: -0.2rem 0 0.8rem;
+    color: var(--text-secondary);
+    font-size: var(--texto-sm);
+    line-height: 1.4;
+}
+
+.linhaAcrescentar {
+    display: flex;
+    gap: var(--espaco-2);
+    margin-top: 0.8rem;
+}
+
+.erroDaLinha {
+    display: block;
+    color: var(--erro);
+    font-size: var(--texto-sm);
+    font-weight: 600;
 }
 
 /* Indicador de perfil completo, no topo do formulário do cultivo */
@@ -515,14 +602,6 @@
     height: 100%;
     background: var(--primary);
     transition: width 0.3s;
-}
-
-.acoesFormulario {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1rem;
 }
 
 /* --- Lista que o botão "Conversas" abre --- */
@@ -698,7 +777,8 @@
         font-size: 1.8rem;
     }
 
-    .grade2 {
+    .grade2,
+    .camposDoBloco {
         grid-template-columns: minmax(0, 1fr);
     }
 
@@ -712,9 +792,12 @@
     }
 
     .chatCabecalho {
-        grid-template-columns: minmax(0, 1fr) auto;
         padding: 0.75rem 1rem;
         margin-bottom: 0.75rem;
+    }
+
+    .chatTituloBloco {
+        flex-basis: 10rem;
     }
 
     .chatAcoes {
@@ -961,21 +1044,6 @@
     accent-color: var(--primary);
 }
 
-.botaoTirar {
-    display: inline-flex;
-    padding: 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-}
-
-.botaoTirar:hover {
-    color: var(--erro);
-    border-color: var(--erro-borda);
-}
-
 @media (max-width: 768px) {
     /* No celular, cada linha vira um bloco: período e ano lado a lado, a cultura embaixo */
     .linhaSafra {
@@ -1049,33 +1117,48 @@
     box-shadow: inset 0 0 0 1px var(--erro-borda);
 }
 
-/* Botões de salvar presos ao pé da tela; no celular, logo acima da navegação do rodapé */
-.barraSalvar {
-    position: sticky;
-    bottom: 0;
-    z-index: var(--z-barra);
-    padding-bottom: 1rem;
-    background: var(--bg);
+
+
+/* Topo compacto do chat quando a coluna é estreita: celular pequeno ou letra do aparelho
+   aumentada (medido em rem, cresce junto com a letra). Com o topo inteiro, ele passava da
+   altura do chat e empurrava o campo da pergunta para trás do menu de baixo. */
+.chat {
+    container-name: chat;
+    container-type: inline-size;
 }
 
-@media (max-width: 768px), (max-height: 500px) {
-    /* A navegação do rodapé tem ~77px; o estilo no código dá 1,5rem de folga em cima, que no
-       celular deixava a barra alta demais */
-    .barraSalvar {
-        bottom: calc(4.6rem + env(safe-area-inset-bottom)); /* um pouco por baixo da navegação, sem fresta */
-        margin: 0 -0.75rem !important;
-        padding: 0.6rem 0.75rem !important;
-        gap: 0.5rem !important;
-        box-shadow: var(--shadow-up);
+@container chat (max-width: 22rem) {
+    .chatTitulo {
+        font-size: 1.1rem;
     }
 
-    .barraSalvar > div:empty {
+    .chatCabecalho {
+        gap: 0.3rem 0.75rem;
+    }
+
+    .ajudaSemCultivo {
         display: none;
     }
 
-    .barraSalvar button {
-        flex: 1;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+    /* O campo da pergunta ocupa a linha inteira, e o microfone e o Enviar vão para baixo dele:
+       lado a lado, sobravam uns cinco caracteres por linha para digitar */
+    .chat .chatEntrada {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        border-radius: var(--radius-2xl);
+    }
+
+    .chat .campoTexto {
+        flex: 1 0 100%;
+    }
+
+    /* Fora da vista, mas lido: é o nome do botão do anel */
+    .textoContador {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
     }
 }

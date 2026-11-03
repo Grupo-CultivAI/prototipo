@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Botao from '@/components/ui/Botao';
+import { Entrada, Selecao } from '@/components/ui/Campo';
 
 // salvar: grava o dado no cultivo da conversa (o chat sabe qual é).
 export default function DynamicForm({ data, onSubmit, onSkip, submittedData, salvar }) {
@@ -56,32 +57,20 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                 {data.mensagem || "Precisamos de mais alguns detalhes para dar uma resposta melhor."}
             </p>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {data.campos_necessarios.map((campo, index) => (
-                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{campo.label}</label>
-                        {campo.tipo === 'select' ? (
-                            <select
-                                required
-                                value={formData[campo.chave] || ''}
-                                onChange={(e) => handleChange(campo.chave, e.target.value)}
-                                style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
-                            >
-                                <option value="" disabled>Selecione uma opção</option>
-                                {campo.opcoes?.map((op, i) => (
-                                    <option key={i} value={op.valor ?? op}>{op.rotulo ?? op}</option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input
-                                required
-                                type={campo.tipo === 'number' ? 'number' : 'text'}
-                                step={campo.tipo === 'number' ? 'any' : undefined}
-                                value={formData[campo.chave] || ''}
-                                onChange={(e) => handleChange(campo.chave, e.target.value)}
-                                style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
-                            />
-                        )}
-                    </div>
+                {/* Campo do design system: o rótulo fica ligado ao campo (antes, o leitor de tela não
+                    sabia o que cada campo pedia) */}
+                {data.campos_necessarios.map((campo, index) => campo.tipo === 'select' ? (
+                    <Selecao key={index} rotulo={campo.label} required value={formData[campo.chave] || ''}
+                        onChange={(e) => handleChange(campo.chave, e.target.value)}>
+                        <option value="" disabled>Selecione uma opção</option>
+                        {campo.opcoes?.map((op, i) => (
+                            <option key={i} value={op.valor ?? op}>{op.rotulo ?? op}</option>
+                        ))}
+                    </Selecao>
+                ) : (
+                    <Entrada key={index} rotulo={campo.label} required type={campo.tipo === 'number' ? 'number' : 'text'}
+                        step={campo.tipo === 'number' ? 'any' : undefined} value={formData[campo.chave] || ''}
+                        onChange={(e) => handleChange(campo.chave, e.target.value)} />
                 ))}
                 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>

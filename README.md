@@ -52,8 +52,8 @@ src/
       cultivos/               GET → lista; POST → novo cultivo. [id]: GET, PATCH (só os campos enviados), DELETE; [id]/plano: POST { mensagemId } → plano de rotação tirado de uma resposta
       municipios/[codigo]/    GET → centro do município (malha do IBGE), para o mapa do formulário
       user/                   GET → dados do usuário logado; DELETE → "Excluir minha conta" (pede a senha e apaga tudo)
-  components/               → Sidebar, Navbar, DynamicForm, Input (campo acessível das telas de conta), BotaoSair
-    ui/                       design system: Botao, Aviso, Selo, ConfirmarNaTela (ver docs/design-system.md)
+  components/               → Sidebar, Navbar, DynamicForm, BuscaCidade, MapaDoPonto, BotaoSair
+    ui/                       design system: Botao, Aviso, Selo, ConfirmarNaTela, Campo (Entrada, Selecao, AreaTexto), Opcoes, Bloco, BarraDeAcoes (ver docs/design-system.md)
   lib/
     mongodb.js                conexão cacheada com o MongoDB
     auth.js                   leitura/validação do cookie JWT (usado por todas as rotas autenticadas)

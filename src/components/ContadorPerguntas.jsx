@@ -43,7 +43,8 @@ export default function ContadorPerguntas({ restantes, limite }) {
             strokeDasharray={VOLTA} strokeDashoffset={VOLTA * (1 - fracao)} transform="rotate(-90 10 10)"
           />
         </svg>
-        <span style={{ color: restantes <= 5 ? cor : undefined }}>{resumo}</span>
+        {/* No topo compacto do chat o texto some da vista, mas segue como nome do botão */}
+        <span className={styles.textoContador} style={{ color: restantes <= 5 ? cor : undefined }}>{resumo}</span>
       </button>
       {/* Sempre no DOM (o leitor de tela lê pelo aria-describedby); visível só quando aberta */}
       <span id={id} role="tooltip" className={styles.dicaPerguntas} hidden={!aberta}>{dica}</span>

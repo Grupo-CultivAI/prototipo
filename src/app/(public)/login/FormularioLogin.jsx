@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import Input from "@/components/Input"
+import { Entrada } from "@/components/ui/Campo"
 import Botao from "@/components/ui/Botao"
 import Aviso from "@/components/ui/Aviso"
 import { CHAVE_EMAIL_CADASTRADO, emailCadastrado } from "@/lib/cadastro"
@@ -79,9 +79,9 @@ export default function FormularioLogin({ contaExcluida = false }) {
           {vindoDoCadastro && !erro && <Aviso tipo="sucesso">Conta criada. Agora é só digitar sua senha para entrar.</Aviso>}
           {contaExcluida && !vindoDoCadastro && !erro && <Aviso tipo="sucesso">Sua conta e todos os seus dados foram excluídos.</Aviso>}
 
-          <Input
+          <Entrada
             ref={emailRef}
-            label="Email"
+            rotulo="Email"
             type="email"
             value={email}
             onChange={alterar(setEmail)}
@@ -95,9 +95,9 @@ export default function FormularioLogin({ contaExcluida = false }) {
             invalido={invalido("email")}
           />
 
-          <Input
+          <Entrada
             ref={senhaRef}
-            label="Senha"
+            rotulo="Senha"
             type="password"
             value={senha}
             onChange={alterar(setSenha)}

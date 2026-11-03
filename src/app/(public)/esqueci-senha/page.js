@@ -2,7 +2,7 @@
 import { useState, useRef } from "react"
 import Link from "next/link"
 import { MailCheck } from "lucide-react"
-import Input from "@/components/Input"
+import { Entrada } from "@/components/ui/Campo"
 import Botao from "@/components/ui/Botao"
 import Aviso from "@/components/ui/Aviso"
 import styles from "../conta.module.css"
@@ -61,7 +61,7 @@ export default function EsqueciSenha() {
           </div>
 
           <form onSubmit={pedirLink} noValidate className={styles.formulario}>
-            <Input ref={emailRef} label="Email" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro("") }}
+            <Entrada ref={emailRef} rotulo="Email" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro("") }}
               placeholder="seuemail@exemplo.com" autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off"
               spellCheck={false} required invalido={Boolean(erro)} />
 

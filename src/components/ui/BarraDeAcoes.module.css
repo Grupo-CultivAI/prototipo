@@ -1,0 +1,92 @@
+/* Barra de ações presa no pé da tela (components/ui/BarraDeAcoes.tsx) */
+.barra {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-barra);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espaco-4);
+    margin-top: var(--espaco-5);
+    padding: var(--espaco-5) 0 var(--espaco-4);
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+/* Espaço reservado embaixo para o foco não cair atrás da barra (WCAG 2.4.11) */
+:global(html):has(.barra) {
+    scroll-padding-bottom: 7rem;
+}
+
+.mensagem,
+.mensagemErro {
+    font-size: var(--texto-lg);
+    font-weight: 600;
+}
+
+.mensagem {
+    color: var(--primary-dark);
+}
+
+.mensagemErro {
+    color: var(--erro);
+}
+
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--espaco-4);
+}
+
+.curto {
+    display: none;
+}
+
+@media (max-width: 768px), (max-height: 500px) {
+    /* Logo acima da navegação do rodapé (cerca de 4,8rem), um pouco por baixo dela, sem fresta */
+    .barra {
+        bottom: calc(4.6rem + env(safe-area-inset-bottom));
+        margin: var(--espaco-5) -0.75rem 0;
+        padding: 0.6rem 0.75rem;
+        gap: var(--espaco-2);
+        box-shadow: var(--shadow-up);
+    }
+
+    :global(html):has(.barra) {
+        scroll-padding-bottom: calc(4.6rem + 6rem + env(safe-area-inset-bottom));
+    }
+
+    .mensagem:empty,
+    .mensagemErro:empty {
+        display: none;
+    }
+
+    .acoes {
+        flex: 1;
+        flex-wrap: nowrap;
+        gap: var(--espaco-2);
+    }
+
+    /* Os botões dividem a largura e ficam no tamanho médio, com o texto curto */
+    .acoes > * {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .barra .acoes > button {
+        min-height: 2.75rem;
+        padding: 0.6rem 0.75rem;
+        font-size: var(--texto-md);
+    }
+
+    .longo {
+        display: none;
+    }
+
+    .curto {
+        display: inline;
+    }
+}

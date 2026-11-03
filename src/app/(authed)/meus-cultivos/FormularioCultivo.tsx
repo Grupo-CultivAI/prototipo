@@ -4,14 +4,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, History, Target, ChevronDown, ChevronUp, Droplets, Info, ArrowLeft, ListChecks, Plus, X, Trash2 } from 'lucide-react';
+import { MapPin, History, Target, Droplets, ArrowLeft, ListChecks, Plus, X, Trash2 } from 'lucide-react';
 import styles from '../paginas.module.css';
 import { ESTADOS, formularioPerfilSchema, type PerfilFormulario, type PerfilValidado } from '@/lib/perfilSchema';
 import { ITENS_DO_PERFIL, itensFaltando, CULTURAS_COMUNS, PERIODOS_DA_SAFRA, normalizarCultura, semRepetir, nomeDoCultivo, rotuloDaSafra, CHAVE_PEDIR_ANALISE } from '@/lib/perfil';
 import BuscaCidade from '@/components/BuscaCidade';
 import MapaDoPonto from '@/components/MapaDoPonto';
 import Botao from '@/components/ui/Botao';
-import Selo from '@/components/ui/Selo';
+import Aviso from '@/components/ui/Aviso';
+import Bloco from '@/components/ui/Bloco';
+import Campo, { Entrada, Selecao, AreaTexto, classeDoControle } from '@/components/ui/Campo';
+import Opcoes, { Marcar } from '@/components/ui/Opcoes';
+import BarraDeAcoes, { TextoAdaptavel } from '@/components/ui/BarraDeAcoes';
+import type { TipoSelo } from '@/components/ui/Selo';
 import ConfirmarNaTela from '@/components/ui/ConfirmarNaTela';
 
 const SEM_PROBLEMAS = 'Nenhum';
@@ -57,57 +62,8 @@ function primeiraMensagem(erro: any, nivel = 0): string {
     return 'confira os dados.';
 }
 
-// Botões que marcam e desmarcam, no lugar de texto separado por vírgula.
-// rotuloId: o id do texto que dá nome ao grupo (lido pelo leitor de tela antes das opções)
-const Opcoes = ({ opcoes, marcadas, alternar, rotuloId }: any) => (
-    <div className={styles.opcoes} role="group" aria-labelledby={rotuloId}>
-        {opcoes.map((o: string) => (
-            <button key={o} type="button" aria-pressed={marcadas.includes(o)} onClick={() => alternar(o)}
-                className={`${styles.opcao} ${marcadas.includes(o) ? styles.opcaoMarcada : ''}`}>
-                {o}
-            </button>
-        ))}
-    </div>
-);
-
-
-
-// Cabeçalho de cada bloco do formulário. Fica fora da página: definido dentro dela, o React
-// o recriava a cada tecla digitada. É um botão dentro do título (padrão de bloco sanfonado),
-// e não uma div clicável, para abrir também pelo teclado e pelo leitor de tela.
-// situacao: "Completo", "Faltam 2", "Corrigir"... no cabeçalho, para ver o que falta sem abrir cada bloco.
-type Situacao = { texto: string; tipo: 'ok' | 'falta' | 'erro' | 'neutro' };
-function CabecalhoSecao({ id, aberta, aoAlternar, icon: Icon, title, description, situacao }: {
-    id: string; aberta: boolean; aoAlternar: (id: string) => void; icon: React.ElementType; title: string; description: string; situacao?: Situacao;
-}) {
-    return (
-        <h3 id={`secao-${id}`} style={{ margin: 0 }}>
-            <button type="button" onClick={() => aoAlternar(id)} aria-expanded={aberta} style={{
-                width: '100%', border: 'none', font: 'inherit', textAlign: 'left',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', cursor: 'pointer',
-                background: aberta ? 'var(--primary)' : 'var(--surface-muted)',
-                borderBottom: aberta ? '1px solid var(--border)' : 'none',
-                transition: 'all 0.3s', borderRadius: aberta ? 'var(--radius-lg) var(--radius-lg) 0 0' : 'var(--radius-lg)', color: aberta ? 'var(--white)' : 'var(--text-primary)'
-            }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ display: 'inline-flex', padding: '10px', background: aberta ? 'var(--on-dark-faint)' : 'var(--surface)', borderRadius: 'var(--radius-md)', color: aberta ? 'var(--white)' : 'var(--primary)' }}>
-                        <Icon size={24} aria-hidden="true" />
-                    </span>
-                    <span>
-                        <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700 }}>{title}</span>
-                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 400, color: aberta ? 'var(--on-dark-muted)' : 'var(--text-secondary)' }}>{description}</span>
-                    </span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                    {situacao && (
-                        <Selo tipo={situacao.tipo}>{situacao.texto}</Selo>
-                    )}
-                    {aberta ? <ChevronUp size={24} aria-hidden="true" /> : <ChevronDown size={24} color="var(--text-secondary)" aria-hidden="true" />}
-                </span>
-            </button>
-        </h3>
-    );
-}
+// Situação de cada bloco no cabeçalho ("Completo", "Faltam 2", "Corrigir"), para ver o que falta sem abrir.
+type Situacao = { texto: string; tipo: TipoSelo };
 
 // Formulário de um cultivo de Meus Cultivos: sem id, cadastra um novo (/meus-cultivos/novo);
 // com id, edita (/meus-cultivos/[id]).
@@ -298,15 +254,9 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
         setOpenSection(openSection === section ? '' : section);
     };
 
-    const inputStyle = { width: '100%', padding: '1.2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '1rem', background: 'var(--surface-muted)', transition: 'border 0.2s' };
-    const labelStyle = { display: 'block', marginBottom: '0.6rem', fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' };
-    const errorStyle = { color: 'var(--erro)', fontSize: '0.85rem', marginTop: '0.4rem', display: 'block' };
-    const dicaStyle = { display: 'block', marginBottom: '0.8rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' };
-    const inputCompacto = { ...inputStyle, padding: '0.75rem 0.9rem', minWidth: 0 };
-
     if (naoEncontrado) {
         return (
-            <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
+            <div className={styles.paginaFormulario}>
                 <Link href="/meus-cultivos" className={styles.voltar}><ArrowLeft size={16} aria-hidden="true" /> Meus Cultivos</Link>
                 <h1 className={styles.tituloPagina} style={{ fontWeight: '800', color: 'var(--primary-dark)' }}>Cultivo não encontrado</h1>
                 <p style={{ color: 'var(--text-secondary)', marginTop: '0.8rem' }}>Ele pode ter sido excluído. Volte para Meus Cultivos para ver os seus cultivos.</p>
@@ -314,8 +264,10 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
         );
     }
 
+    const bloco = (nome: string) => ({ id: nome, aberto: openSection === nome, aoAlternar: toggleSection, situacao: situacaoDo(nome) });
+
     return (
-        <div style={{ padding: '0 1rem', width: '100%', maxWidth: '900px', margin: '0 auto', paddingBottom: '4rem' }}>
+        <div className={styles.paginaFormulario}>
             <Link href="/meus-cultivos" className={styles.voltar}><ArrowLeft size={16} aria-hidden="true" /> Meus Cultivos</Link>
             <h1 className={styles.tituloPagina} style={{ marginBottom: '0.8rem', fontWeight: '800', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>
                 {id ? (valores.nome?.trim() || 'Editar cultivo') : 'Novo cultivo'}
@@ -330,12 +282,9 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
             )}
 
             <div className={styles.progressoPerfil}>
-                <label htmlFor="nome-cultivo" style={labelStyle}>Nome do cultivo *</label>
-                <input id="nome-cultivo" placeholder="Ex.: Sítio Boa Vista, talhão do fundo" maxLength={60} {...register('nome')} aria-invalid={errors.nome ? true : undefined} aria-describedby={errors.nome ? 'erro-nome' : undefined} style={inputStyle} />
-                {errors.nome && <span id="erro-nome" style={errorStyle}>{errors.nome.message}</span>}
-                <span style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    É o nome que aparece na lista, no Painel e no chat, para você saber de qual área está falando.
-                </span>
+                <Entrada rotulo="Nome do cultivo" obrigatorio id="nome-cultivo" placeholder="Ex.: Sítio Boa Vista, talhão do fundo" maxLength={60}
+                    erro={errors.nome?.message} dica="É o nome que aparece na lista, no Painel e no chat, para você saber de qual área está falando."
+                    {...register('nome')} />
             </div>
 
             <div className={styles.progressoPerfil}>
@@ -350,257 +299,185 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                 )}
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={(e) => e.preventDefault()} className={styles.blocosDoFormulario}>
 
-                {/* --- 1. LOCALIZAÇÃO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('localizacao')} aberta={openSection === 'localizacao'} aoAlternar={toggleSection} id="localizacao" icon={MapPin} title="1. Localização e Clima" description="Para a IA considerar o clima e a época do ano na sua região." />
-                    {openSection === 'localizacao' && (
-                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', padding: '1rem', background: 'var(--primary-tint-weak)', borderRadius: 'var(--radius-md)', alignItems: 'flex-start', gap: '12px' }}>
-                                    <Info size={20} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                                        Digite o CEP para preencher o estado e a cidade, ou escolha os dois abaixo. A IA usa a cidade para o clima, a previsão de chuva e a época de plantio oficial (ZARC) do seu município.
-                                    </p>
-                                </div>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-cep" style={labelStyle}>CEP <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
-                                <input id="campo-cep" placeholder="00000-000" inputMode="numeric" maxLength={9} {...register('cep', { onChange: (e) => buscarCep(e.target.value) })} aria-invalid={errors.cep ? true : undefined} aria-describedby={errors.cep ? 'erro-cep' : undefined} style={inputStyle} />
-                                {errors.cep && <span id="erro-cep" style={errorStyle}>{errors.cep.message}</span>}
-                                {statusCep && <span className={styles.statusCep} role="status">{statusCep}</span>}
-                            </div>
-                            <div>
-                                <label htmlFor="campo-estado" style={labelStyle}>Estado *</label>
-                                {/* Trocar o estado à mão apaga a cidade, que era de outro estado */}
-                                <select id="campo-estado" {...register('estado', { onChange: () => escolherCidade({ nome: '', codigo: '' }) })} aria-invalid={errors.estado ? true : undefined} aria-describedby={errors.estado ? 'erro-estado' : undefined} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                                </select>
-                                {errors.estado && <span id="erro-estado" style={errorStyle}>{errors.estado.message}</span>}
-                            </div>
-                            <div>
-                                <label htmlFor="campo-cidade" style={labelStyle}>Cidade *</label>
-                                <BuscaCidade idCampo="campo-cidade" descritoPor={errors.cidade ? 'erro-cidade' : undefined} uf={valores.estado} valor={valores.cidade} codigo={valores.codigoMunicipio} aoEscolher={escolherCidade} estilo={inputStyle} invalido={Boolean(errors.cidade)} />
-                                {errors.cidade && <span id="erro-cidade" style={errorStyle}>{errors.cidade.message}</span>}
-                            </div>
-                            <div>
-                                <label htmlFor="campo-tamanho" style={labelStyle}>Tamanho da área (hectares)</label>
-                                <input id="campo-tamanho" type="number" placeholder="Ex: 50" {...register('tamanho')} style={inputStyle} />
-                            </div>
-                            <div style={{ gridColumn: '1 / -1' }} role="group" aria-labelledby="rotulo-ponto">
-                                <span id="rotulo-ponto" style={labelStyle}>Ponto exato da área <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></span>
-                                <span style={dicaStyle}>
-                                    Em município grande, o tempo no centro da cidade pode ser bem diferente do da sua área. Com o ponto marcado, a previsão do tempo usa o lugar exato.
-                                </span>
-                                <MapaDoPonto valor={valores.coordenadas?.lat != null ? (valores.coordenadas as { lat: number; lng: number }) : null} centro={centro}
-                                    aoMudar={(p: { lat: number; lng: number } | null) => setValue('coordenadas', p, { shouldDirty: true })} />
-                            </div>
+                <Bloco {...bloco('localizacao')} icone={MapPin} titulo={TITULO_DO_BLOCO.localizacao} descricao="Para a IA considerar o clima e a época do ano na sua região.">
+                    <div className={styles.camposDoBloco}>
+                        <div className={styles.linhaInteira}>
+                            <Aviso tipo="info" papel={null}>
+                                Digite o CEP para preencher o estado e a cidade, ou escolha os dois abaixo. A IA usa a cidade para o clima, a previsão de chuva e a época de plantio oficial (ZARC) do seu município.
+                            </Aviso>
                         </div>
-                    )}
-                </div>
-
-                {/* --- 2. SOLO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('solo')} aberta={openSection === 'solo'} aoAlternar={toggleSection} id="solo" icon={Droplets} title="2. Solo" description="Tipo de terra, acidez e drenagem: pesam na escolha da cultura e da adubação." />
-                    {openSection === 'solo' && (
-                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
-                            <div>
-                                <label htmlFor="campo-tipoSolo" style={labelStyle}>Tipo de Solo</label>
-                                <select id="campo-tipoSolo" {...register('tipoSolo')} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    <option value="arenoso">Arenoso (Aquece rápido, escorrega água)</option>
-                                    <option value="argiloso">Argiloso (Retém água e nutrientes)</option>
-                                    <option value="siltoso">Siltoso (Fácil erosão, muito fino)</option>
-                                    <option value="misto">Misto (Equilíbrio)</option>
-                                    <option value="nao_sei">Não sei</option>
-                                </select>
-                                {errors.tipoSolo && <span style={errorStyle}>{errors.tipoSolo.message}</span>}
-                                <span style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                                    Influencia a retenção de água e nutrientes. Dica: aperte um punhado de terra úmida. Se esfarela, é arenoso; se forma uma &quot;cobrinha&quot; que dobra sem quebrar, é argiloso.
-                                </span>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-phSolo" style={labelStyle}>pH do Solo <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(3.5 a 9)</span></label>
-                                <input id="campo-phSolo" type="number" step="0.1" placeholder="Ex: 6.5" {...register('phSolo')} aria-invalid={errors.phSolo ? true : undefined} aria-describedby={errors.phSolo ? 'erro-phSolo' : undefined} style={inputStyle} />
-                                {errors.phSolo && <span id="erro-phSolo" style={errorStyle}>{errors.phSolo.message}</span>}
-                            </div>
-                            <div>
-                                <label htmlFor="campo-materiaOrganica" style={labelStyle}>Matéria Orgânica</label>
-                                <select id="campo-materiaOrganica" {...register('materiaOrganica')} style={inputStyle}>
-                                    <option value="">Não sei informar</option>
-                                    <option value="Baixa">Baixa</option>
-                                    <option value="Média">Média</option>
-                                    <option value="Alta">Alta</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-drenagem" style={labelStyle}>Drenagem (Escoamento da água)</label>
-                                <select id="campo-drenagem" {...register('drenagem')} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    <option value="Boa">Boa (Seca em tempo adequado)</option>
-                                    <option value="Média">Média</option>
-                                    <option value="Ruim">Ruim (Apoça água frequentemente)</option>
-                                </select>
-                            </div>
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                                <input type="checkbox" id="analiseSolo" {...register('analiseSolo')} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
-                                <label htmlFor="analiseSolo" style={{ fontSize: '1rem', color: 'var(--text-primary)', cursor: 'pointer' }}>Possui análise de solo recente? (últimos 12 meses)</label>
-                            </div>
+                        <div>
+                            <Entrada rotulo="CEP" opcional id="campo-cep" placeholder="00000-000" inputMode="numeric" maxLength={9} erro={errors.cep?.message}
+                                {...register('cep', { onChange: (e) => buscarCep(e.target.value) })} />
+                            {statusCep && <span className={styles.statusCep} role="status">{statusCep}</span>}
                         </div>
-                    )}
-                </div>
+                        {/* Trocar o estado à mão apaga a cidade, que era de outro estado */}
+                        <Selecao rotulo="Estado" obrigatorio id="campo-estado" erro={errors.estado?.message}
+                            {...register('estado', { onChange: () => escolherCidade({ nome: '', codigo: '' }) })}>
+                            <option value="">Selecione...</option>
+                            {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                        </Selecao>
+                        <Campo rotulo="Cidade" obrigatorio id="campo-cidade" erro={errors.cidade?.message}>
+                            {(ligacao) => (
+                                <BuscaCidade idCampo={ligacao.id} descritoPor={ligacao['aria-describedby']} classe={ligacao.className} invalido={Boolean(errors.cidade)}
+                                    uf={valores.estado} valor={valores.cidade} codigo={valores.codigoMunicipio} aoEscolher={escolherCidade} />
+                            )}
+                        </Campo>
+                        <Entrada rotulo="Tamanho da área (hectares)" id="campo-tamanho" type="number" placeholder="Ex: 50" {...register('tamanho')} />
+                        <div className={styles.linhaInteira} role="group" aria-labelledby="rotulo-ponto">
+                            <span id="rotulo-ponto" className={styles.rotuloGrupo}>Ponto exato da área <span className={styles.opcionalGrupo}>(opcional)</span></span>
+                            <span className={styles.dicaGrupo}>
+                                Em município grande, o tempo no centro da cidade pode ser bem diferente do da sua área. Com o ponto marcado, a previsão do tempo usa o lugar exato.
+                            </span>
+                            <MapaDoPonto valor={valores.coordenadas?.lat != null ? (valores.coordenadas as { lat: number; lng: number }) : null} centro={centro}
+                                aoMudar={(p: { lat: number; lng: number } | null) => setValue('coordenadas', p, { shouldDirty: true })} />
+                        </div>
+                    </div>
+                </Bloco>
 
-                {/* --- 3. HISTÓRICO --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('historico')} aberta={openSection === 'historico'} aoAlternar={toggleSection} id="historico" icon={History} title="3. Histórico e Manejo da Área" description="Culturas anteriores, forma de plantio, irrigação e desafios." />
-                    {openSection === 'historico' && (
-                        <div className={styles.grade2} style={{ padding: '2rem', gap: '1.5rem' }}>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <span id="rotulo-culturas" style={labelStyle}>Culturas plantadas nos últimos anos <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(toque para marcar)</span></span>
-                                <Controller name="culturasHistorico" control={control} render={({ field }) => {
-                                    const marcadas = field.value || [];
-                                    const alternar = (c: string) => field.onChange(marcadas.includes(c) ? marcadas.filter((x: string) => x !== c) : [...marcadas, c]);
-                                    const acrescentar = () => {
-                                        const c = normalizarCultura(novaCultura);
-                                        if (c) field.onChange(semRepetir([...marcadas, c]));
-                                        setNovaCultura('');
+                <Bloco {...bloco('solo')} icone={Droplets} titulo={TITULO_DO_BLOCO.solo} descricao="Tipo de terra, acidez e drenagem: pesam na escolha da cultura e da adubação.">
+                    <div className={styles.camposDoBloco}>
+                        <Selecao rotulo="Tipo de Solo" id="campo-tipoSolo" erro={errors.tipoSolo?.message} {...register('tipoSolo')}
+                            dica={<>Influencia a retenção de água e nutrientes. Dica: aperte um punhado de terra úmida. Se esfarela, é arenoso; se forma uma &quot;cobrinha&quot; que dobra sem quebrar, é argiloso.</>}>
+                            <option value="">Selecione...</option>
+                            <option value="arenoso">Arenoso (Aquece rápido, escorrega água)</option>
+                            <option value="argiloso">Argiloso (Retém água e nutrientes)</option>
+                            <option value="siltoso">Siltoso (Fácil erosão, muito fino)</option>
+                            <option value="misto">Misto (Equilíbrio)</option>
+                            <option value="nao_sei">Não sei</option>
+                        </Selecao>
+                        <Entrada rotulo="pH do Solo" opcional="3.5 a 9" id="campo-phSolo" type="number" step="0.1" placeholder="Ex: 6.5" erro={errors.phSolo?.message} {...register('phSolo')} />
+                        <Selecao rotulo="Matéria Orgânica" id="campo-materiaOrganica" {...register('materiaOrganica')}>
+                            <option value="">Não sei informar</option>
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                        </Selecao>
+                        <Selecao rotulo="Drenagem (Escoamento da água)" id="campo-drenagem" {...register('drenagem')}>
+                            <option value="">Selecione...</option>
+                            <option value="Boa">Boa (Seca em tempo adequado)</option>
+                            <option value="Média">Média</option>
+                            <option value="Ruim">Ruim (Apoça água frequentemente)</option>
+                        </Selecao>
+                        <Marcar id="analiseSolo" className={styles.linhaInteira} {...register('analiseSolo')}>Possui análise de solo recente? (últimos 12 meses)</Marcar>
+                    </div>
+                </Bloco>
+
+                <Bloco {...bloco('historico')} icone={History} titulo={TITULO_DO_BLOCO.historico} descricao="Culturas anteriores, forma de plantio, irrigação e desafios.">
+                    <div className={styles.camposDoBloco}>
+                        <div className={styles.linhaInteira}>
+                            <Controller name="culturasHistorico" control={control} render={({ field }) => {
+                                const marcadas = field.value || [];
+                                const alternar = (c: string) => field.onChange(marcadas.includes(c) ? marcadas.filter((x: string) => x !== c) : [...marcadas, c]);
+                                const acrescentar = () => {
+                                    const c = normalizarCultura(novaCultura);
+                                    if (c) field.onChange(semRepetir([...marcadas, c]));
+                                    setNovaCultura('');
+                                };
+                                return (
+                                    <>
+                                        <Opcoes rotulo={<>Culturas plantadas nos últimos anos <span className={styles.opcionalGrupo}>(toque para marcar)</span></>}
+                                            rotuloId="rotulo-culturas" opcoes={semRepetir([...CULTURAS_COMUNS, ...marcadas])} marcadas={marcadas} alternar={alternar} />
+                                        <div className={styles.linhaAcrescentar}>
+                                            <input value={novaCultura} onChange={(e) => setNovaCultura(e.target.value)} placeholder="Outra cultura" aria-label="Outra cultura, que não está na lista"
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }} className={classeDoControle(true)} />
+                                            <Botao variante="neutro" icone={Plus} onClick={acrescentar}>Acrescentar</Botao>
+                                        </div>
+                                    </>
+                                );
+                            }} />
+                        </div>
+                        <Entrada rotulo="Tempo com as culturas atuais (anos)" id="campo-tempoCulturaAtual" type="number" placeholder="Ex: 3"
+                            erro={errors.tempoCulturaAtual?.message} {...register('tempoCulturaAtual')} />
+                        <Selecao rotulo="Histórico de uso de fertilizantes" id="campo-usoFertilizantes" {...register('usoFertilizantes')}>
+                            <option value="">Selecione...</option>
+                            <option value="Baixo">Baixo (Mais orgânico/natural)</option>
+                            <option value="Médio">Médio (Uso padrão da região)</option>
+                            <option value="Alto">Alto (Sistema intensivo)</option>
+                        </Selecao>
+                        <Selecao rotulo="Sistema de plantio" id="campo-sistemaPlantio" {...register('sistemaPlantio')}>
+                            <option value="">Selecione...</option>
+                            <option value="Plantio direto">Plantio direto (sem revolver o solo, sobre a palha)</option>
+                            <option value="Convencional">Convencional (aração e gradagem)</option>
+                            <option value="Cultivo mínimo">Cultivo mínimo (revolve pouco o solo)</option>
+                            <option value="Não sei">Não sei</option>
+                        </Selecao>
+                        <Selecao rotulo="Irrigação" id="campo-irrigacao" {...register('irrigacao')}>
+                            <option value="">Selecione...</option>
+                            <option value="Não irrigo">Não irrigo (só chuva)</option>
+                            <option value="Aspersão">Aspersão</option>
+                            <option value="Gotejamento">Gotejamento</option>
+                            <option value="Sulco ou inundação">Sulco ou inundação</option>
+                            <option value="Outro">Outro</option>
+                        </Selecao>
+                        <div className={styles.linhaInteira}>
+                            <span id="rotulo-problemas" className={styles.rotuloGrupo}>Problemas recentes observados (múltipla escolha)</span>
+                            <div className={styles.grade2} style={{ gap: '1rem' }} role="group" aria-labelledby="rotulo-problemas">
+                                {/* "Nenhum" exclui os demais, e marcar um problema desmarca "Nenhum". */}
+                                <Controller name="problemasRecentes" control={control} render={({ field }) => {
+                                    const marcados = field.value || [];
+                                    const alternar = (prob: string, marcar: boolean) => {
+                                        if (!marcar) return field.onChange(marcados.filter((x: string) => x !== prob));
+                                        field.onChange(prob === SEM_PROBLEMAS ? [SEM_PROBLEMAS] : [...marcados.filter((x: string) => x !== SEM_PROBLEMAS), prob]);
                                     };
-                                    return (
-                                        <>
-                                            <Opcoes rotuloId="rotulo-culturas" opcoes={semRepetir([...CULTURAS_COMUNS, ...marcadas])} marcadas={marcadas} alternar={alternar} />
-                                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                                                <input value={novaCultura} onChange={(e) => setNovaCultura(e.target.value)} placeholder="Outra cultura" aria-label="Outra cultura, que não está na lista"
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }}
-                                                    style={{ ...inputStyle, padding: '0.8rem 1rem', minWidth: 0 }} />
-                                                <Botao variante="neutro" icone={Plus} onClick={acrescentar} style={{ flexShrink: 0 }}>Acrescentar</Botao>
-                                            </div>
-                                        </>
-                                    );
+                                    return <>{['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', SEM_PROBLEMAS].map(prob => (
+                                        <Marcar key={prob} checked={marcados.includes(prob)} onChange={(e) => alternar(prob, e.target.checked)}>{prob}</Marcar>
+                                    ))}</>;
                                 }} />
                             </div>
-                            <div>
-                                <label htmlFor="campo-tempoCulturaAtual" style={labelStyle}>Tempo com as culturas atuais (anos)</label>
-                                <input id="campo-tempoCulturaAtual" type="number" placeholder="Ex: 3" {...register('tempoCulturaAtual')} aria-invalid={errors.tempoCulturaAtual ? true : undefined} aria-describedby={errors.tempoCulturaAtual ? 'erro-tempoCulturaAtual' : undefined} style={inputStyle} />
-                                {errors.tempoCulturaAtual && <span id="erro-tempoCulturaAtual" style={errorStyle}>{errors.tempoCulturaAtual.message}</span>}
-                            </div>
-                            <div>
-                                <label htmlFor="campo-usoFertilizantes" style={labelStyle}>Histórico de uso de fertilizantes</label>
-                                <select id="campo-usoFertilizantes" {...register('usoFertilizantes')} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    <option value="Baixo">Baixo (Mais orgânico/natural)</option>
-                                    <option value="Médio">Médio (Uso padrão da região)</option>
-                                    <option value="Alto">Alto (Sistema intensivo)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-sistemaPlantio" style={labelStyle}>Sistema de plantio</label>
-                                <select id="campo-sistemaPlantio" {...register('sistemaPlantio')} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    <option value="Plantio direto">Plantio direto (sem revolver o solo, sobre a palha)</option>
-                                    <option value="Convencional">Convencional (aração e gradagem)</option>
-                                    <option value="Cultivo mínimo">Cultivo mínimo (revolve pouco o solo)</option>
-                                    <option value="Não sei">Não sei</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-irrigacao" style={labelStyle}>Irrigação</label>
-                                <select id="campo-irrigacao" {...register('irrigacao')} style={inputStyle}>
-                                    <option value="">Selecione...</option>
-                                    <option value="Não irrigo">Não irrigo (só chuva)</option>
-                                    <option value="Aspersão">Aspersão</option>
-                                    <option value="Gotejamento">Gotejamento</option>
-                                    <option value="Sulco ou inundação">Sulco ou inundação</option>
-                                    <option value="Outro">Outro</option>
-                                </select>
-                            </div>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <span id="rotulo-problemas" style={labelStyle}>Problemas recentes observados (múltipla escolha)</span>
-                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }} role="group" aria-labelledby="rotulo-problemas">
-                                    {/* "Nenhum" exclui os demais, e marcar um problema desmarca "Nenhum". */}
-                                    <Controller name="problemasRecentes" control={control} render={({ field }) => {
-                                        const marcados = field.value || [];
-                                        const alternar = (prob: string, marcar: boolean) => {
-                                            if (!marcar) return field.onChange(marcados.filter((x: string) => x !== prob));
-                                            field.onChange(prob === SEM_PROBLEMAS ? [SEM_PROBLEMAS] : [...marcados.filter((x: string) => x !== SEM_PROBLEMAS), prob]);
-                                        };
-                                        return <>{['Queda de produtividade', 'Pragas', 'Doenças', 'Solo fraco', SEM_PROBLEMAS].map(prob => (
-                                            <label key={prob} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'var(--surface-muted)', padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
-                                                <input type="checkbox" checked={marcados.includes(prob)} onChange={(e) => alternar(prob, e.target.checked)} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
-                                                {prob}
-                                            </label>
-                                        ))}</>;
-                                    }} />
-                                </div>
-                            </div>
-                            <div style={{ gridColumn: '1 / -1' }} role="group" aria-labelledby="rotulo-safras">
-                                <span id="rotulo-safras" style={labelStyle}>Linha do tempo das safras <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></span>
-                                <span style={dicaStyle}>O que foi plantado em cada safra. Assim o assistente e o Painel mostram a rotação de verdade, na ordem.</span>
-                                {safras.fields.map((campo, i) => (
-                                    <div key={campo.id}>
-                                        <div className={styles.linhaSafra}>
-                                            <select {...register(`safras.${i}.periodo`)} style={inputCompacto} aria-label="Período da safra">
-                                                {PERIODOS_DA_SAFRA.map((p) => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
-                                            </select>
-                                            <select {...register(`safras.${i}.ano`, { valueAsNumber: true })} style={inputCompacto} aria-label="Ano do plantio">
-                                                {ANOS.map((ano) => <option key={ano} value={ano}>{ano}</option>)}
-                                            </select>
-                                            <input list="culturas-sugeridas" placeholder="Cultura" {...register(`safras.${i}.cultura`)} style={inputCompacto} aria-label="Cultura plantada" />
-                                            <Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta safra" onClick={() => safras.remove(i)} />
-                                        </div>
-                                        <span className={styles.rotuloSafra}>
-                                            {valores.safras?.[i]?.ano ? rotuloDaSafra({ ano: valores.safras[i].ano, periodo: valores.safras[i].periodo }) : ''}
-                                            {errors.safras?.[i]?.cultura && <span style={errorStyle}>{errors.safras[i]?.cultura?.message}</span>}
-                                        </span>
+                        </div>
+                        <div className={styles.linhaInteira} role="group" aria-labelledby="rotulo-safras">
+                            <span id="rotulo-safras" className={styles.rotuloGrupo}>Linha do tempo das safras <span className={styles.opcionalGrupo}>(opcional)</span></span>
+                            <span className={styles.dicaGrupo}>O que foi plantado em cada safra. Assim o assistente e o Painel mostram a rotação de verdade, na ordem.</span>
+                            {safras.fields.map((campo, i) => (
+                                <div key={campo.id}>
+                                    <div className={styles.linhaSafra}>
+                                        <select {...register(`safras.${i}.periodo`)} className={classeDoControle(true)} aria-label="Período da safra">
+                                            {PERIODOS_DA_SAFRA.map((p) => <option key={p.valor} value={p.valor}>{p.rotulo}</option>)}
+                                        </select>
+                                        <select {...register(`safras.${i}.ano`, { valueAsNumber: true })} className={classeDoControle(true)} aria-label="Ano do plantio">
+                                            {ANOS.map((ano) => <option key={ano} value={ano}>{ano}</option>)}
+                                        </select>
+                                        <input list="culturas-sugeridas" placeholder="Cultura" {...register(`safras.${i}.cultura`)} className={classeDoControle(true)} aria-label="Cultura plantada"
+                                            aria-invalid={errors.safras?.[i]?.cultura ? true : undefined} />
+                                        <Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta safra" onClick={() => safras.remove(i)} />
                                     </div>
-                                ))}
-                                <Botao variante="neutro" tamanho="p" icone={Plus} onClick={() => safras.append({ cultura: '', ano: ANO_ATUAL, periodo: 'verao' })}>Acrescentar safra</Botao>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* --- 4. OBJETIVOS --- */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('objetivo')} aberta={openSection === 'objetivo'} aoAlternar={toggleSection} id="objetivo" icon={Target} title="4. Próxima Safra e Objetivos" description="O que pretende plantar e aonde quer chegar." />
-                    {openSection === 'objetivo' && (
-                        <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div>
-                                <span id="rotulo-proxima" style={labelStyle}>O que pretende plantar na próxima safra?</span>
-                                <Controller name="proximaCultura" control={control} render={({ field }) => (
-                                    <Opcoes
-                                        rotuloId="rotulo-proxima"
-                                        opcoes={[...semRepetir([...CULTURAS_COMUNS, ...(field.value && field.value !== AINDA_NAO_DECIDI ? [field.value] : [])]), AINDA_NAO_DECIDI]}
-                                        marcadas={field.value ? [field.value] : []}
-                                        alternar={(c: string) => field.onChange(field.value === c ? '' : c)}
-                                    />
-                                )} />
-                            </div>
-                            <div>
-                                <span id="rotulo-metas" style={labelStyle}>Metas Principais (múltipla escolha)</span>
-                                <div className={styles.grade2} style={{ gap: '1rem', marginTop: '0.8rem' }} role="group" aria-labelledby="rotulo-metas">
-                                    {['Aumentar produtividade', 'Recuperar solo', 'Reduzir custos', 'Diversificar produção', 'Transição para orgânico'].map(obj => (
-                                        <label key={obj} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'var(--surface-muted)', padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
-                                            <input type="checkbox" value={obj} {...register('objetivos')} style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }} />
-                                            {obj}
-                                        </label>
-                                    ))}
+                                    <span className={styles.rotuloSafra}>
+                                        {valores.safras?.[i]?.ano ? rotuloDaSafra({ ano: valores.safras[i].ano, periodo: valores.safras[i].periodo }) : ''}
+                                        {errors.safras?.[i]?.cultura && <span className={styles.erroDaLinha}>{errors.safras[i]?.cultura?.message}</span>}
+                                    </span>
                                 </div>
-                            </div>
-                            <div>
-                                <label htmlFor="campo-observacoes" style={labelStyle}>Observações Adicionais <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(opcional)</span></label>
-                                <textarea id="campo-observacoes" rows={4} placeholder="Conte mais sobre sua área se desejar..." {...register('observacoes')} style={{ ...inputStyle, resize: 'vertical' }}></textarea>
+                            ))}
+                            <Botao variante="neutro" tamanho="p" icone={Plus} onClick={() => safras.append({ cultura: '', ano: ANO_ATUAL, periodo: 'verao' })}>Acrescentar safra</Botao>
+                        </div>
+                    </div>
+                </Bloco>
+
+                <Bloco {...bloco('objetivo')} icone={Target} titulo={TITULO_DO_BLOCO.objetivo} descricao="O que pretende plantar e aonde quer chegar.">
+                    <div className={styles.camposEmColuna}>
+                        <Controller name="proximaCultura" control={control} render={({ field }) => (
+                            <Opcoes rotulo="O que pretende plantar na próxima safra?" rotuloId="rotulo-proxima"
+                                opcoes={[...semRepetir([...CULTURAS_COMUNS, ...(field.value && field.value !== AINDA_NAO_DECIDI ? [field.value] : [])]), AINDA_NAO_DECIDI]}
+                                marcadas={field.value ? [field.value] : []}
+                                alternar={(c: string) => field.onChange(field.value === c ? '' : c)} />
+                        )} />
+                        <div>
+                            <span id="rotulo-metas" className={styles.rotuloGrupo}>Metas Principais (múltipla escolha)</span>
+                            <div className={styles.grade2} style={{ gap: '1rem' }} role="group" aria-labelledby="rotulo-metas">
+                                {['Aumentar produtividade', 'Recuperar solo', 'Reduzir custos', 'Diversificar produção', 'Transição para orgânico'].map(obj => (
+                                    <Marcar key={obj} value={obj} {...register('objetivos')}>{obj}</Marcar>
+                                ))}
                             </div>
                         </div>
-                    )}
-                </div>
+                        <AreaTexto rotulo="Observações Adicionais" opcional id="campo-observacoes" rows={4} placeholder="Conte mais sobre sua área se desejar..." {...register('observacoes')} />
+                    </div>
+                </Bloco>
 
-                {/* --- 5. PLANO DE ROTAÇÃO --- */}
-                <div id="plano" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
-                    <CabecalhoSecao situacao={situacaoDo('plano')} aberta={openSection === 'plano'} aoAlternar={toggleSection} id="plano" icon={ListChecks} title="5. Plano de rotação" description="A sequência que você quer seguir nas próximas safras." />
-                    {openSection === 'plano' && (
-                        <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div id="plano">
+                    <Bloco {...bloco('plano')} icone={ListChecks} titulo={TITULO_DO_BLOCO.plano} descricao="A sequência que você quer seguir nas próximas safras.">
+                        <div className={styles.camposEmColuna} style={{ gap: '1rem' }}>
                             {etapas.fields.length === 0 && (
                                 <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                     Ainda não há plano. No chat, peça ao assistente um plano de rotação para este cultivo e toque em &quot;Salvar como plano&quot; na resposta. Ou monte as etapas aqui.
@@ -611,16 +488,17 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                                     <label className={styles.etapaFeita} title="Marque quando esta etapa já tiver sido plantada">
                                         <input type="checkbox" {...register(`plano.etapas.${i}.feita`)} /> Feita
                                     </label>
-                                    <input placeholder="Quando (ex.: Safra 2025/26)" {...register(`plano.etapas.${i}.quando`)} style={inputCompacto} aria-label="Quando" />
-                                    <input list="culturas-sugeridas" placeholder="Cultura" {...register(`plano.etapas.${i}.cultura`)} style={inputCompacto} aria-label="Cultura" />
-                                    <input placeholder="Para quê (ex.: fixar nitrogênio)" {...register(`plano.etapas.${i}.objetivo`)} style={inputCompacto} aria-label="Objetivo da etapa" />
+                                    <input placeholder="Quando (ex.: Safra 2025/26)" {...register(`plano.etapas.${i}.quando`)} className={classeDoControle(true)} aria-label="Quando" />
+                                    <input list="culturas-sugeridas" placeholder="Cultura" {...register(`plano.etapas.${i}.cultura`)} className={classeDoControle(true)} aria-label="Cultura"
+                                        aria-invalid={errors.plano?.etapas?.[i]?.cultura ? true : undefined} />
+                                    <input placeholder="Para quê (ex.: fixar nitrogênio)" {...register(`plano.etapas.${i}.objetivo`)} className={classeDoControle(true)} aria-label="Objetivo da etapa" />
                                     <Botao variante="discreto" apenasIcone icone={X} rotulo="Tirar esta etapa" onClick={() => etapas.remove(i)} />
-                                    {errors.plano?.etapas?.[i]?.cultura && <span style={errorStyle}>{errors.plano.etapas[i]?.cultura?.message}</span>}
+                                    {errors.plano?.etapas?.[i]?.cultura && <span className={styles.erroDaLinha}>{errors.plano.etapas[i]?.cultura?.message}</span>}
                                 </div>
                             ))}
                             <Botao variante="neutro" tamanho="p" icone={Plus} style={{ alignSelf: 'flex-start' }} onClick={() => etapas.append({ quando: '', cultura: '', objetivo: '', feita: false })}>Acrescentar etapa</Botao>
                         </div>
-                    )}
+                    </Bloco>
                 </div>
 
                 {/* Sugestões de cultura das safras e do plano (fica fora dos blocos, que abrem e fecham) */}
@@ -628,20 +506,15 @@ export default function FormularioCultivo({ id, copiarDe }: { id?: string; copia
                     {CULTURAS_COMUNS.map((c) => <option key={c} value={c} />)}
                 </datalist>
 
-                {/* --- SUBMIT: preso ao pé da tela, para salvar sem rolar o formulário inteiro --- */}
-                <div className={styles.barraSalvar} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-                    <div role={messageErro ? 'alert' : 'status'} style={{ color: messageErro ? 'var(--erro)' : 'var(--primary-dark)', fontWeight: '600', fontSize: '1.1rem' }}>
-                        {message}
-                    </div>
-                    <div className={styles.acoesFormulario}>
-                        <Botao variante="secundario" tamanho="g" pilula disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}>
-                            {id ? 'Salvar' : 'Cadastrar'}
-                        </Botao>
-                        <Botao tamanho="g" pilula carregando={saving} textoCarregando="Salvando..." onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}>
-                            Salvar e pedir análise à IA
-                        </Botao>
-                    </div>
-                </div>
+                {/* Presa ao pé da tela, para salvar sem rolar o formulário inteiro */}
+                <BarraDeAcoes mensagem={message} erro={messageErro}>
+                    <Botao variante="secundario" tamanho="g" pilula disabled={saving} onClick={handleSubmit((d) => onSubmit(d, false), abrirPrimeiroErro)}>
+                        {id ? 'Salvar' : 'Cadastrar'}
+                    </Botao>
+                    <Botao tamanho="g" pilula carregando={saving} textoCarregando="Salvando..." onClick={handleSubmit((d) => onSubmit(d, true), abrirPrimeiroErro)}>
+                        <TextoAdaptavel longo="Salvar e pedir análise à IA" curto="Salvar e analisar" />
+                    </Botao>
+                </BarraDeAcoes>
             </form>
 
             {id && <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
