@@ -167,3 +167,20 @@ npm run checagens
 ```
 
 Roda em segundos e faz parte da CI. Cada caso é uma frase que a checagem deve marcar (errada) ou deixar passar (certa). As checagens são expressões regulares: uma mudança pequena pode quebrá-las sem aviso, e um falso positivo custa uma reescrita da resposta (cerca de 4 mil tokens da cota gratuita). Ao achar um erro novo nas respostas da IA, acrescente a frase errada e uma parecida, porém certa, antes de mexer na checagem.
+
+# Avaliação das respostas da IA (Frentes 1 e 3)
+
+`tests/avaliar-respostas.mjs` faz à IA de verdade as perguntas do teste com personas de 02/11/2026 e casos de época e região (inverno no Sul, inverno seco no Cerrado, pergunta sem região), cada uma com o perfil da persona.
+
+- **Reprova** se uma resposta não vier (HTTP diferente de 200), tiver um erro agronômico conhecido (`src/lib/errosAgronomicos.ts`) ou agrotóxico com dose, ou não cumprir o que o caso espera (por exemplo, indicar planta de inverno na pergunta de inverno do Sul, ou dar a janela oficial do feijão).
+- **Observa**, sem reprovar: legibilidade abaixo de 50 (Flesch adaptado ao português), resposta a pergunta informal com mais de 200 palavras, aviso de "não pôde ser conferido" e qual modelo respondeu.
+
+Roda toda segunda-feira às 3h (`.github/workflows/avaliacao-semanal.yml`), num banco descartável com as janelas do ZARC de `tests/dados/zarc-amostra.json` (dados abertos do MAPA, licença CC-BY). O resumo aparece na página da execução, na aba Actions. O fluxo precisa dos secrets `GROQ_API_KEY`, `PINECONE_API_KEY` e `PINECONE_INDEX_HOST` (e, opcionais, `NVIDIA_API_KEY` e `OPENWEATHER_API_KEY`); sem eles, só avisa. Localmente, com o servidor e o teste no mesmo banco local:
+
+```bash
+MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run dev                 # em outro terminal
+MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run avaliar-respostas
+MONGODB_URI=mongodb://127.0.0.1:27999/cultivai npm run avaliar-respostas -- --caso josiane
+```
+
+Gasta umas 10 perguntas da cota da IA. A pausa padrão é de 40 s entre as perguntas: com menos, a Groq estoura o limite por minuto, e a resposta vem de um modelo pior, o que mede a fila e não o prompt. Ao achar um erro novo nas respostas, acrescente o caso aqui e a frase em `tests/checagens.mjs`.

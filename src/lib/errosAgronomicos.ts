@@ -11,7 +11,11 @@
 // Inverno com geada (o mesmo grupo de src/lib/estacao.ts)
 const ESTADOS_DO_SUL = ['PR', 'SC', 'RS'];
 
-const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// A IA escreve com espaços e hífens Unicode: o espaço fino inseparável (U+202F) entre número e
+// palavra e o hífen inseparável (U+2011) em "aveia‑preta". Em 03/11/2026, metade das respostas
+// tinha um deles, e as expressões abaixo, escritas com espaço e hífen comuns, não as reconheciam.
+// Antes de conferir, todo espaço (menos a quebra de linha) vira espaço comum, e todo hífen, "-".
+const sem = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\S\n]/g, ' ').replace(/[\u2010-\u2015\u2212]/g, '-').toLowerCase();
 
 const DE_VERAO = /\b(milheto|crotalarias?|mucuna|feijao[- ]de[- ]porco|guandu|sorgo)\b/g;
 const NOME: Record<string, string> = { milheto: 'milheto', crotalaria: 'crotalária', mucuna: 'mucuna', 'feijao de porco': 'feijão-de-porco', guandu: 'guandu', sorgo: 'sorgo' };
@@ -79,8 +83,10 @@ function nomesTrocados(resposta: string): string | null {
 function leguminosaErrada(resposta: string): string | null {
     const n = sem(resposta);
     const erros: string[] = [];
-    // "crotalária, mucuna ou milheto; essas leguminosas", "milheto (leguminosa)", "milheto é uma leguminosa"
-    if (new RegExp(`\\b(${NAO_LEGUMINOSAS})\\b[^.\\n]{0,60}\\b(essas|estas|ambas|todas) (as )?leguminosas\\b|\\b(${NAO_LEGUMINOSAS})\\s*(\\(\\s*|e uma\\s+)leguminosa`).test(n)) {
+    // "crotalária, mucuna ou milheto; essas leguminosas", "milheto (leguminosa)", "milheto é uma
+    // leguminosa" e, desde 03/11/2026, "uma leguminosa de inverno (como aveia-preta ou ervilhaca)":
+    // a primeira planta depois de "como" é a que foi chamada de leguminosa.
+    if (new RegExp(`\\b(${NAO_LEGUMINOSAS})\\b[^.\\n]{0,60}\\b(essas|estas|ambas|todas) (as )?leguminosas\\b|\\b(${NAO_LEGUMINOSAS})\\s*(\\(\\s*|e uma\\s+)leguminosa|\\bleguminosas?\\b[^.\\n,;]{0,25}\\b(como|tipo)\\s+(o |a |os |as )?(${NAO_LEGUMINOSAS})\\b`).test(n)) {
         erros.push('Milheto, sorgo, aveia, centeio, trigo, braquiária e nabo forrageiro não são leguminosas: não chame essas plantas de leguminosas nem diga que elas fixam nitrogênio do ar.');
     }
     // "culturas que não sejam leguminosas (milho, soja)"
