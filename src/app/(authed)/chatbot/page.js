@@ -878,7 +878,7 @@ export default function ChatCultivAI() {
             </div>
             {planos[msg.id]?.ok && (
               <Aviso tipo="sucesso" className={styles.avisoPlano}>
-                {planos[msg.id].texto} <Link href={`/meus-cultivos/${propriedade?._id}#plano`}>Ver e ajustar o plano</Link>
+                {planos[msg.id].texto} <Link href={`/meus-cultivos/${propriedade?._id}?bloco=plano#plano`}>Ver e ajustar o plano</Link>
               </Aviso>
             )}
             {planos[msg.id]?.erro && <Aviso tipo="erro" className={styles.avisoPlano}>{planos[msg.id].erro}</Aviso>}
