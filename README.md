@@ -81,6 +81,7 @@ tests/
   acessibilidade.mjs        → axe-core em todas as telas, no celular e no computador (npm run acessibilidade; roda no CI)
   casos-verificacao.json    → amostra de perguntas e fontes esperadas
 docs-embrapa/               → pasta onde os PDFs da Embrapa são colocados manualmente antes de rodar a ingestão (não versionada no git)
+docs/design-system.md       → tokens de cor, raio, sombra e camada (src/styles/variables.css) e as regras de uso
 ```
 
 ## Como funciona

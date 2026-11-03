@@ -1,23 +1,99 @@
+/* Tokens do design system do CultivAI. Toda cor, raio, sombra e camada das telas vem daqui:
+   cor escrita direto no código fica de fora da troca de tema e de ajustes de contraste. A
+   exceção é o email de recuperação de senha (api/auth/esqueci-senha), porque programas de email
+   não entendem variáveis de CSS. Catálogo e regras de uso: docs/design-system.md. */
 :root {
-  /* Contraste com texto branco (WCAG 1.4.3 pede 4,5:1): --primary 5,02:1 (era #16A34A, 3,30:1),
+  /* --- Verde, a cor da marca ---
+     Contraste com texto branco (WCAG 1.4.3 pede 4,5:1): --primary 5,02:1 (era #16A34A, 3,30:1),
      --primary-dark 11,8:1. O verde-claro #22C55E (2,28:1) saiu. */
   --primary: #15803D;
   --primary-dark: #06402B;
-  /* Erros e ações de apagar: 6,47:1 sobre branco (o #EF4444 usado antes dava 3,76:1) */
-  --erro: #B91C1C;
+  --primary-medium: #0B6B45; /* só no degradê do cartão de boas-vindas do Painel */
+  /* Tons claros por transparência, para funcionar sobre o branco e sobre o fundo cinza. A base
+     é o verde antigo (#16A34A), que ficou só aqui, nos fundos: com ela os tons saem mais vivos. */
+  --primary-tint-weak: rgba(22, 163, 74, 0.06);   /* fundo de dica e de destaque discreto */
+  --primary-tint: rgba(22, 163, 74, 0.08);        /* item marcado, botão secundário */
+  --primary-tint-strong: rgba(22, 163, 74, 0.16); /* passar o mouse sobre um item verde-claro */
+  --primary-line: rgba(22, 163, 74, 0.35);        /* borda de aviso de sucesso e de item marcado */
+  --primary-soft: #E6F6EC;                        /* fundo verde-claro opaco (ícones, faixas) */
 
+  /* --- Neutros --- */
   --white: #FFFFFF;
   --bg: #F8FAF9;
   --surface: #FFFFFF;
+  --surface-muted: #FDFDFD; /* campos e opções de formulário, um tom abaixo do branco */
+  --surface-translucent: rgba(255, 255, 255, 0.85); /* topo da página inicial, sobre o conteúdo */
+  --surface-hover: rgba(0, 0, 0, 0.04);             /* passar o mouse sobre um botão neutro */
   --border: #EEF2EF;
+  --placeholder: #E5EAE7;   /* esboço da tela enquanto carrega */
 
   --text-primary: #1F2937;
   /* 5,6:1 ou mais em todos os fundos do app. O #6B7280 de antes passava no branco (4,83:1),
      mas não nos fundos verde-claros dos avisos e do dia de hoje no Painel (4,3:1). */
   --text-secondary: #57606C;
 
+  /* Texto e detalhes sobre o verde-escuro (cartão de boas-vindas, bloco aberto do formulário) */
+  /* 95%, e não menos: sobre o --primary (cabeçalho aberto do formulário), 90% dá 4,38:1 */
+  --on-dark-muted: rgba(255, 255, 255, 0.95);
+  --on-dark-faint: rgba(255, 255, 255, 0.2);
+  --on-dark-subtle: rgba(255, 255, 255, 0.1);
+  --on-dark-accent: #86EFAC;
+
+  /* --- Estados: erro, aviso, informação ---
+     Erros e ações de apagar: 6,47:1 sobre branco (o #EF4444 usado antes dava 3,76:1). */
+  --erro: #B91C1C;
+  --erro-forte: #DC2626;      /* fundo e borda de botão de apagar (texto branco: 4,83:1) */
+  --erro-fundo: #FEF2F2;
+  --erro-fundo-forte: #FEE2E2; /* passar o mouse sobre um botão de apagar */
+  --erro-borda: #FECACA;
+  --aviso: #92400E;           /* texto de aviso: 7,1:1 sobre branco */
+  --aviso-forte: #B45309;     /* destaque "fecha logo" no calendário de plantio */
+  --aviso-icone: #D97706;     /* ícones e filetes de aviso (não é texto) */
+  --aviso-fundo: #FFFBEB;
+  --aviso-borda: #FDE68A;
+  --info: #2563EB;            /* filete do aviso de chuva no Painel */
+
+  /* --- Gráficos: risco do ZARC no calendário de plantio e mapa do Painel --- */
+  --risco-20: #15803D;
+  --risco-30: #4FB06D;
+  --risco-40: #A7DBB5;
+  --risco-nenhum: #ECEFED;
+  --mapa-destaque: #A7DBB5;               /* estado com cultivo */
+  --mapa-onda: rgba(6, 64, 43, 0.25);     /* onda em volta do ponto do cultivo */
+
+  /* --- Raios --- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* --- Sombras --- */
   --shadow-sm: 0 1px 2px rgba(6, 64, 43, 0.05);
   --shadow-md: 0 4px 12px rgba(6, 64, 43, 0.08);
   --shadow-lg: 0 12px 30px rgba(6, 64, 43, 0.12);
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+  --shadow-strong: 0 4px 12px rgba(6, 64, 43, 0.15);     /* balão do produtor, item ativo do menu */
+  --shadow-up: 0 -6px 12px rgba(6, 64, 43, 0.06);        /* barras presas no pé da tela */
+  --shadow-float: 0 6px 18px rgba(0, 0, 0, 0.2);         /* dica flutuante */
+  --shadow-primary: 0 8px 20px rgba(22, 163, 74, 0.25);  /* botão principal grande */
+  --shadow-primary-sm: 0 4px 10px rgba(22, 163, 74, 0.2);
+  --focus-ring: 0 0 0 3px rgba(22, 163, 74, 0.2);        /* campo em foco */
+  --focus-ring-erro: 0 0 0 3px rgba(220, 38, 38, 0.2);   /* campo com erro em foco */
+  --scrollbar: rgba(6, 64, 43, 0.2);
+  --scrollbar-hover: rgba(6, 64, 43, 0.4);
+
+  /* --- Camadas (z-index), da mais baixa para a mais alta --- */
+  --z-mapa: 0;
+  --z-acima: 1;          /* um item sobre os vizinhos (dia de hoje no calendário) */
+  --z-barra: 5;          /* barra de Salvar presa no pé do formulário */
+  --z-lista: 20;         /* lista de sugestões de um campo (cidades) */
+  --z-flutuante: 30;     /* menus e dicas que abrem sobre a tela */
+  --z-navegacao: 40;     /* menu lateral e botão Fale conosco */
+  --z-navegacao-celular: 50;
+
+  /* --- Impressão --- */
+  --print-text: #000000;
+  --print-line: #BBBBBB;
 }

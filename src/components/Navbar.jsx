@@ -29,7 +29,7 @@ export default function Navbar() {
 
   return (
     <nav style={{
-      background: "rgba(255, 255, 255, 0.85)",
+      background: "var(--surface-translucent)",
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
       height: "76px",
@@ -47,7 +47,7 @@ export default function Navbar() {
 
       {/* LOGO */}
       <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-        <div style={{ background: 'var(--primary-dark)', padding: '8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--primary-dark)', padding: '8px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Image src={folha} alt="Logo CultivAI" width={28} height={28} style={{ filter: 'brightness(0) invert(1)' }} />
         </div>
         <span style={{ fontSize: '1.4rem', fontWeight: '700', fontFamily: 'var(--font-title)', color: 'var(--primary-dark)' }}>CultivAI</span>
@@ -66,7 +66,7 @@ export default function Navbar() {
           onMouseOut={(e) => e.target.style.color = 'var(--text-secondary)'}>
           Entrar
         </Link>
-        <Link href="/cadastro" style={{ textDecoration: 'none', background: 'var(--primary)', color: 'white', padding: '0.6rem 1.4rem', borderRadius: '30px', fontWeight: '600', transition: 'all 0.3s', boxShadow: 'var(--shadow-sm)' }}
+        <Link href="/cadastro" style={{ textDecoration: 'none', background: 'var(--primary)', color: 'var(--white)', padding: '0.6rem 1.4rem', borderRadius: 'var(--radius-2xl)', fontWeight: '600', transition: 'all 0.3s', boxShadow: 'var(--shadow-sm)' }}
           onMouseOver={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseOut={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'var(--shadow-sm)'; }}>
           Criar conta

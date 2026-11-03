@@ -50,7 +50,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.8rem 1.3rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     font-weight: 600;
     text-decoration: none;
     transition: transform 0.2s, background 0.2s;
@@ -58,8 +58,8 @@
 
 .painel .botaoPrincipal {
     background: var(--primary);
-    color: #fff;
-    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.25);
+    color: var(--white);
+    box-shadow: var(--shadow-primary);
 }
 
 .painel .botaoPrincipal:hover,
@@ -75,19 +75,19 @@
     justify-content: space-between;
     gap: 2rem;
     padding: 2rem;
-    border-radius: 24px;
-    background: linear-gradient(135deg, var(--primary-dark), #0B6B45);
-    color: #fff;
+    border-radius: var(--radius-2xl);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+    color: var(--white);
 }
 
 .painel .boasVindas h2 {
-    color: #fff;
+    color: var(--white);
     font-size: clamp(1.3rem, 3vw, 1.7rem);
     margin-bottom: 0.6rem;
 }
 
 .painel .boasVindas p {
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--on-dark-muted);
     line-height: 1.5;
     max-width: 40rem;
 }
@@ -109,7 +109,7 @@
 .boasVindas li svg {
     flex-shrink: 0;
     margin-top: 0.1rem;
-    color: #86EFAC;
+    color: var(--on-dark-accent);
 }
 
 .botoes {
@@ -120,32 +120,32 @@
 }
 
 .painel .botaoClaro {
-    background: #fff;
+    background: var(--white);
     color: var(--primary-dark);
 }
 
 .painel .botaoClaro:hover,
 .painel .botaoClaro:focus-visible {
-    background: #E6F6EC;
+    background: var(--primary-soft);
     transform: translateY(-2px);
 }
 
 .painel .linkClaro {
-    color: #fff;
+    color: var(--white);
     text-decoration: underline;
 }
 
 .boasVindasIcone {
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.25);
+    color: var(--on-dark-faint);
 }
 
 /* Perfil incompleto */
 .lembrete {
     padding: 0.8rem 1rem;
     border-left: 3px solid var(--primary);
-    border-radius: 12px;
-    background: rgba(22, 163, 74, 0.06);
+    border-radius: var(--radius-md);
+    background: var(--primary-tint-weak);
     color: var(--text-secondary);
     line-height: 1.45;
 }
@@ -157,9 +157,9 @@
 /* --- Avisos de plantio (janelas do ZARC abrindo ou fechando) --- */
 .avisos {
     padding: 1.1rem 1.25rem;
-    border: 1px solid #FDE68A;
-    border-radius: 18px;
-    background: #FFFBEB;
+    border: 1px solid var(--aviso-borda);
+    border-radius: var(--radius-lg);
+    background: var(--aviso-fundo);
 }
 
 .painel .avisos h2 {
@@ -168,7 +168,7 @@
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     font-size: 1.05rem;
-    color: #92400E;
+    color: var(--aviso);
 }
 
 .avisos ul {
@@ -185,7 +185,7 @@
     height: 100%;
     padding: 0.7rem 0.85rem;
     border-left: 4px solid var(--primary);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--surface);
     color: var(--text-primary);
     text-decoration: none;
@@ -207,11 +207,11 @@
 }
 
 .avisos .aviso_fecha a {
-    border-left-color: #D97706;
+    border-left-color: var(--aviso-icone);
 }
 
 .avisos .aviso_abre a {
-    border-left-color: #2563EB;
+    border-left-color: var(--info);
 }
 
 /* --- Números --- */
@@ -228,7 +228,7 @@
     gap: 0.2rem;
     padding: 1.2rem;
     border: 1px solid var(--border);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: var(--surface);
     box-shadow: var(--shadow-sm);
 }
@@ -238,8 +238,8 @@
     align-self: flex-start;
     margin-bottom: 0.5rem;
     padding: 0.5rem;
-    border-radius: 10px;
-    background: rgba(22, 163, 74, 0.1);
+    border-radius: var(--radius-md);
+    background: var(--primary-tint);
     color: var(--primary);
 }
 
@@ -265,7 +265,7 @@
     display: block;
     height: 6px;
     margin: 0.35rem 0 0.15rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--border);
     overflow: hidden;
 }
@@ -273,7 +273,7 @@
 .barra span {
     display: block;
     height: 100%;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--primary);
 }
 
@@ -290,7 +290,7 @@
 .painel .seletor a {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--surface);
     color: var(--text-primary);
     font-weight: 600;
@@ -305,7 +305,7 @@
 .painel .seletor a[aria-current='true'] {
     border-color: var(--primary-dark);
     background: var(--primary-dark);
-    color: #fff;
+    color: var(--white);
 }
 
 /* --- Cartões --- */
@@ -335,7 +335,7 @@
     min-width: 0;
     padding: 1.4rem;
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     background: var(--surface);
     box-shadow: var(--shadow-sm);
 }
@@ -415,7 +415,7 @@
 }
 
 .estadoDestaque {
-    fill: #A7DBB5;
+    fill: var(--mapa-destaque);
     stroke: var(--primary);
     stroke-width: 1.2;
     stroke-linejoin: round;
@@ -423,19 +423,19 @@
 
 .ponto {
     fill: var(--primary-dark);
-    stroke: #fff;
+    stroke: var(--white);
     stroke-width: 2;
 }
 
 /* Os outros cultivos, menores e sem a onda */
 .pontoOutro {
     fill: var(--primary);
-    stroke: #fff;
+    stroke: var(--white);
     stroke-width: 1.5;
 }
 
 .pontoOnda {
-    fill: rgba(6, 64, 43, 0.25);
+    fill: var(--mapa-onda);
     transform-box: fill-box;
     transform-origin: center;
     animation: onda 2s ease-out infinite;
@@ -519,9 +519,9 @@
 
 .selo {
     padding: 0 0.4rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--primary-dark);
-    color: #fff;
+    color: var(--white);
     font-size: 0.68rem;
     font-weight: 600;
 }
@@ -535,18 +535,18 @@
 .celula {
     position: relative;
     height: 18px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
 }
 
 /* Verde mais escuro = menor risco de perder a lavoura por clima */
-.risco20 { background: #15803D; }
-.risco30 { background: #4FB06D; }
-.risco40 { background: #A7DBB5; }
-.risco0 { background: #ECEFED; }
+.risco20 { background: var(--risco-20); }
+.risco30 { background: var(--risco-30); }
+.risco40 { background: var(--risco-40); }
+.risco0 { background: var(--risco-nenhum); }
 
 .hoje {
     box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-primary);
-    z-index: 1;
+    z-index: var(--z-acima);
 }
 
 .situacao {
@@ -556,14 +556,14 @@
 }
 
 .situacaoAgora {
-    color: #15803D;
+    color: var(--primary);
     font-weight: 600;
 }
 
 .explicacaoRisco {
     margin-top: 1rem;
     padding: 0.6rem 0.8rem;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--bg);
     color: var(--text-secondary);
     font-size: 0.8rem;
@@ -593,7 +593,7 @@
     display: inline-block;
     width: 12px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
 }
 
 .amostraHoje {
@@ -615,14 +615,14 @@
     align-items: center;
     gap: 0.2rem;
     padding: 0.9rem 0.5rem;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg);
     text-align: center;
 }
 
 .previsao .diaHoje {
-    background: rgba(22, 163, 74, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.35);
+    background: var(--primary-tint);
+    box-shadow: inset 0 0 0 1px var(--primary-line);
 }
 
 .diaNome {
@@ -663,14 +663,14 @@
     gap: 0.35rem;
     padding: 0.45rem 0.85rem;
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--bg);
     font-size: 0.9rem;
 }
 
 .rotacao .rotacaoProxima {
     border-color: var(--primary);
-    background: rgba(22, 163, 74, 0.08);
+    background: var(--primary-tint);
     color: var(--primary-dark);
     font-weight: 600;
 }
@@ -693,7 +693,7 @@
     position: relative;
     padding: 0.45rem 0.8rem;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--bg);
 }
 
@@ -779,14 +779,14 @@
     display: flex;
     flex-direction: column;
     padding: 0.6rem 0.75rem;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--bg);
     text-decoration: none;
 }
 
 .conversas a:hover,
 .conversas a:focus-visible {
-    background: rgba(22, 163, 74, 0.08);
+    background: var(--primary-tint);
 }
 
 .conversaTitulo {
@@ -803,14 +803,14 @@
     display: block;
     padding: 0.55rem 0.85rem;
     border: 1px solid var(--primary);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     font-size: 0.9rem;
     text-decoration: none;
 }
 
 .sugestoes a:hover,
 .sugestoes a:focus-visible {
-    background: rgba(22, 163, 74, 0.08);
+    background: var(--primary-tint);
 }
 
 /* --- Telas menores --- */
@@ -915,7 +915,7 @@
     margin-top: 1.25rem;
     padding: 1rem;
     border: 1px dashed var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     opacity: 0.75;
 }
 

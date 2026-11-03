@@ -675,7 +675,7 @@ export default function ChatCultivAI() {
         <span className={styles.esqueletoBalao} style={{ width: 'min(30rem, 85%)', height: '5rem' }} />
       </div>
       <div className={`${styles.chatEntrada} ${styles.esqueleto}`} style={{ display: 'flex' }} aria-hidden="true">
-        <span className={styles.esqueletoLinha} style={{ flex: 1, height: 'var(--altura-campo)', borderRadius: '100px' }} />
+        <span className={styles.esqueletoLinha} style={{ flex: 1, height: 'var(--altura-campo)', borderRadius: 'var(--radius-pill)' }} />
       </div>
     </div>
   );
@@ -684,7 +684,7 @@ export default function ChatCultivAI() {
     <div className={styles.chat} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent' }}>
       {/* Topo em grade: título e ações numa linha; contador e cultivo na de baixo (no celular,
           ocupava um quarto da tela em quatro linhas) */}
-      <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+      <div className={styles.chatCabecalho} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
         <div className={styles.chatTituloBloco}>
           <h1 className={styles.chatTitulo} style={{ margin: 0, color: 'var(--primary-dark)', fontWeight: '700', letterSpacing: '-0.5px' }}>Assistente CultivAI</h1>
           <p className={styles.chatSubtitulo} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>Tire suas dúvidas ou peça um plano de plantio com base na sua terra.</p>
@@ -724,7 +724,7 @@ export default function ChatCultivAI() {
             onClick={() => novaConversa()}
             title="Começar uma conversa nova. Esta fica guardada."
             aria-label="Nova conversa"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'rgba(22,163,74,0.08)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary)', background: 'var(--primary-tint)', color: 'var(--primary-dark)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <MessageSquarePlus size={16} />
             <span className={styles.rotuloBotao}>Nova conversa</span>
@@ -735,8 +735,8 @@ export default function ChatCultivAI() {
             title="Apagar esta conversa"
             aria-expanded={confirmandoApagar}
             className={styles.soComputador}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = 'var(--erro)'; }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'var(--erro-fundo)'; e.currentTarget.style.color = 'var(--erro)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
             <Trash2 size={16} />
@@ -746,7 +746,7 @@ export default function ChatCultivAI() {
             onClick={() => window.print()}
             title="Imprimir ou salvar a conversa em PDF"
             className={styles.soComputador}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
           >
             <Printer size={16} />
             <span className={styles.rotuloBotao}>Imprimir</span>
@@ -772,7 +772,7 @@ export default function ChatCultivAI() {
             <button
               onClick={copyHistory}
               className={styles.soComputador}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: copied ? 'rgba(22,163,74,0.1)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.6rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: copied ? 'var(--primary-tint)' : 'var(--bg)', color: copied ? 'var(--primary)' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', fontWeight: '600' }}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}
               <span className={styles.rotuloBotao}>{copied ? 'Copiado!' : 'Copiar histórico (teste)'}</span>
@@ -821,15 +821,15 @@ export default function ChatCultivAI() {
       )}
 
       <p className={styles.somenteLeitor} role="status" aria-live="polite">{aguardando ? "O CultivAI está pensando na resposta." : anuncio}</p>
-      <div className={styles.chatMensagens} aria-busy={aguardando} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
+      <div className={styles.chatMensagens} aria-busy={aguardando} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
         {messages.map((msg) => (
           <div key={msg.id} className={styles.bolha} style={{ alignSelf: msg.sender === "user" ? 'flex-end' : 'flex-start', animation: 'fadeIn 0.3s ease', width: (msg.form || msg.submittedData) ? '100%' : 'auto' }}>
             <div className={styles.balao} style={{
               background: msg.sender === "user" ? 'var(--primary-dark)' : 'var(--bg)',
               color: msg.sender === "user" ? 'var(--white)' : 'var(--text-primary)',
-              boxShadow: msg.sender === "user" ? '0 4px 12px rgba(6,64,43,0.15)' : 'var(--shadow-sm)',
+              boxShadow: msg.sender === "user" ? 'var(--shadow-strong)' : 'var(--shadow-sm)',
               border: msg.sender === "user" ? 'none' : '1px solid var(--border)',
-              borderRadius: msg.sender === "user" ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+              borderRadius: msg.sender === "user" ? 'var(--radius-xl) var(--radius-xl) var(--radius-xs) var(--radius-xl)' : 'var(--radius-xl) var(--radius-xl) var(--radius-xl) var(--radius-xs)',
               lineHeight: '1.6',
               fontSize: '1rem',
               fontWeight: msg.sender === "user" ? '400' : '500'
@@ -1006,7 +1006,7 @@ export default function ChatCultivAI() {
           disabled={aguardando}
           aria-busy={aguardando}
           className={styles.botaoEnviar}
-          style={{ background: 'var(--primary)', color: 'white', borderRadius: '100px', border: 'none', cursor: aguardando ? 'wait' : 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: '0 4px 10px rgba(22,163,74,0.2)', opacity: aguardando ? 0.75 : 1 }}
+          style={{ background: 'var(--primary)', color: 'var(--white)', borderRadius: 'var(--radius-pill)', border: 'none', cursor: aguardando ? 'wait' : 'pointer', fontWeight: '600', fontSize: '1rem', transition: 'all 0.3s', boxShadow: 'var(--shadow-primary-sm)', opacity: aguardando ? 0.75 : 1 }}
           onMouseOver={(e) => { if (aguardando) return; e.target.style.transform = 'scale(1.02)'; e.target.style.background = 'var(--primary-dark)'; }}
           onMouseOut={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = 'var(--primary)'; }}
         >

@@ -33,7 +33,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
     // Render read-only summary if data was already submitted
     if (submittedData) {
         return (
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', marginTop: '0.5rem', width: '100%' }}>
+            <div style={{ background: 'var(--on-dark-subtle)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--on-dark-faint)', marginTop: '0.5rem', width: '100%' }}>
                 <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Fornecidos:</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     {Object.entries(submittedData).map(([key, value]) => (
@@ -50,7 +50,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
     if (!data || !data.campos_necessarios) return null;
 
     return (
-        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '0.5rem' }}>
+        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginTop: '0.5rem' }}>
             <p style={{ margin: '0 0 1rem 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                 {data.mensagem || "Precisamos de mais alguns detalhes para dar uma resposta melhor."}
             </p>
@@ -63,7 +63,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                                 required
                                 value={formData[campo.chave] || ''}
                                 onChange={(e) => handleChange(campo.chave, e.target.value)}
-                                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
+                                style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
                             >
                                 <option value="" disabled>Selecione uma opção</option>
                                 {campo.opcoes?.map((op, i) => (
@@ -77,7 +77,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                                 step={campo.tipo === 'number' ? 'any' : undefined}
                                 value={formData[campo.chave] || ''}
                                 onChange={(e) => handleChange(campo.chave, e.target.value)}
-                                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
+                                style={{ padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
                             />
                         )}
                     </div>
@@ -87,7 +87,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        style={{ flex: 1, padding: '0.8rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                        style={{ flex: 1, padding: '0.8rem', background: 'var(--primary)', color: 'var(--white)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 'bold' }}
                     >
                         {isSubmitting ? 'Salvando...' : 'Salvar Dados'}
                     </button>
@@ -96,7 +96,7 @@ export default function DynamicForm({ data, onSubmit, onSkip, submittedData, sal
                             type="button"
                             onClick={onSkip}
                             disabled={isSubmitting}
-                            style={{ flex: 1, padding: '0.8rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer' }}
+                            style={{ flex: 1, padding: '0.8rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                         >
                             Pular
                         </button>

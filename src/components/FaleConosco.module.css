@@ -3,14 +3,14 @@
     position: fixed;
     right: 16px;
     bottom: calc(16px + env(safe-area-inset-bottom));
-    z-index: 40;
+    z-index: var(--z-navegacao);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.7rem 1.1rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--primary-dark);
-    color: #fff;
+    color: var(--white);
     font-weight: 600;
     font-size: 0.9rem;
     text-decoration: none;
