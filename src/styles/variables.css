@@ -61,6 +61,21 @@
   --mapa-destaque: #A7DBB5;               /* estado com cultivo */
   --mapa-onda: rgba(6, 64, 43, 0.25);     /* onda em volta do ponto do cultivo */
 
+  /* --- Texto e espaço (em rem: crescem junto com a letra que a pessoa escolheu no aparelho) ---
+     Campos de formulário ficam em 1rem ou mais: abaixo disso o iPhone dá zoom ao tocar. */
+  --texto-xs: 0.75rem;
+  --texto-sm: 0.85rem;
+  --texto-md: 0.95rem;
+  --texto-base: 1rem;
+  --texto-lg: 1.1rem;
+  --texto-xl: 1.2rem;
+  --espaco-1: 0.25rem;
+  --espaco-2: 0.5rem;
+  --espaco-3: 0.75rem;
+  --espaco-4: 1rem;
+  --espaco-5: 1.5rem;
+  --espaco-6: 2rem;
+
   /* --- Raios --- */
   --radius-xs: 4px;
   --radius-sm: 8px;
