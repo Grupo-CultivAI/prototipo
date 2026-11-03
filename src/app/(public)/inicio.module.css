@@ -304,9 +304,11 @@
     font-size: 0.9rem;
 }
 
+/* Os links quebram linha com a letra aumentada (em 320px com 150%, "Entrar" saía da tela) */
 .rodape nav {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
 }
 
 .rodape a {

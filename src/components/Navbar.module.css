@@ -1,3 +1,85 @@
+/* Topo das páginas públicas. Com a letra do celular aumentada, o logo, "Entrar" e "Criar conta"
+   não cabiam numa linha e o botão saía da tela: agora o nome ao lado do logo some da vista
+   (continua como nome do link) e, se ainda faltar espaço, os botões descem para outra linha. */
+.topo {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-navegacao-celular);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espaco-2) var(--espaco-4);
+    min-height: 76px;
+    padding: var(--espaco-2) 5%;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-translucent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+    container-name: topo;
+    container-type: inline-size;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    background: var(--primary-dark);
+}
+
+.marcaTexto {
+    color: var(--primary-dark);
+    font-family: var(--font-title), sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.acoes {
+    display: flex;
+    align-items: center;
+    gap: var(--espaco-5);
+    margin-left: auto;
+}
+
+.entrar {
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.entrar:hover,
+.entrar:focus-visible {
+    color: var(--primary-dark);
+}
+
+@container topo (max-width: 22rem) {
+    .marcaTexto {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .acoes {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: var(--espaco-2) var(--espaco-4);
+    }
+}
+
 /* Links das seções da página inicial: só em telas largas; no celular ficam Entrar e Criar conta. */
 .secoes {
     display: none;

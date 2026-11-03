@@ -29,29 +29,14 @@ export default function Navbar() {
   }
 
   return (
-    <nav style={{
-      background: "var(--surface-translucent)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-      height: "76px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "0 5%",
-      borderBottom: "1px solid var(--border)",
-      color: "var(--text-primary)",
-      position: "sticky",
-      top: 0,
-      zIndex: 50,
-      boxShadow: "var(--shadow-sm)"
-    }}>
+    <nav className={styles.topo}>
 
-      {/* LOGO */}
-      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-        <div style={{ background: 'var(--primary-dark)', padding: '8px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Image src={folha} alt="Logo CultivAI" width={28} height={28} style={{ filter: 'brightness(0) invert(1)' }} />
-        </div>
-        <span style={{ fontSize: '1.4rem', fontWeight: '700', fontFamily: 'var(--font-title)', color: 'var(--primary-dark)' }}>CultivAI</span>
+      {/* LOGO: o nome some da vista quando falta espaço (ver .marcaTexto), mas segue como nome do link */}
+      <Link href="/" className={styles.marca}>
+        <span className={styles.logo}>
+          <Image src={folha} alt="" width={28} height={28} style={{ filter: 'brightness(0) invert(1)' }} />
+        </span>
+        <span className={styles.marcaTexto}>CultivAI</span>
       </Link>
 
       {naInicial && (
@@ -61,12 +46,8 @@ export default function Navbar() {
       )}
 
       {/* NAVIGATION / RIGHT UTILS */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <Link href="/login" style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontWeight: '500', transition: 'color 0.2s', fontSize: '1rem' }}
-          onMouseOver={(e) => e.target.style.color = 'var(--primary-dark)'}
-          onMouseOut={(e) => e.target.style.color = 'var(--text-secondary)'}>
-          Entrar
-        </Link>
+      <div className={styles.acoes}>
+        <Link href="/login" className={styles.entrar}>Entrar</Link>
         <Botao href="/cadastro" pilula>Criar conta</Botao>
       </div>
     </nav>
