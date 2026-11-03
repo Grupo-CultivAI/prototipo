@@ -10,6 +10,7 @@
     "verificar-base": "node tests/verificar-base.mjs",
     "cenarios-chat": "node tests/cenarios-chat.mjs",
     "checagens": "node tests/checagens.mjs",
+    "avaliar-respostas": "node tests/avaliar-respostas.mjs",
     "relatorio-chat": "node scripts/relatorio-chat.mjs",
     "importar-zarc": "node scripts/importar-zarc.mjs",
     "acessibilidade": "node tests/acessibilidade.mjs",

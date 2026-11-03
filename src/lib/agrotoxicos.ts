@@ -5,7 +5,11 @@
  * benlate", dois produtos proibidos no Brasil. Esta checagem não depende do modelo.
  */
 
-const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// A IA escreve com espaços e hífens Unicode: o espaço fino inseparável (U+202F) entre número e
+// palavra e o hífen inseparável (U+2011) em "aveia‑preta". Em 03/11/2026, metade das respostas
+// tinha um deles, e as expressões abaixo, escritas com espaço e hífen comuns, não as reconheciam.
+// Antes de conferir, todo espaço (menos a quebra de linha) vira espaço comum, e todo hífen, "-".
+const sem = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\S\n]/g, ' ').replace(/[\u2010-\u2015\u2212]/g, '-').toLowerCase();
 
 // Classes de produto e expressões de uso
 const CONTEXTO = /inseticid|fungicid|herbicid|nematicid|acaricid|formicid|agrotoxic|defensivo|tratamento de sementes?|trat\w* (as |das )?sementes|ingrediente ativo|\bi\.\s?a\.|calda/;

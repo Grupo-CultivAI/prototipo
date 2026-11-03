@@ -11,7 +11,11 @@
 // Inverno com geada (o mesmo grupo de src/lib/estacao.ts)
 const ESTADOS_DO_SUL = ['PR', 'SC', 'RS'];
 
-const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// A IA escreve com espaços e hífens Unicode: o espaço fino inseparável (U+202F) entre número e
+// palavra e o hífen inseparável (U+2011) em "aveia‑preta". Em 03/11/2026, metade das respostas
+// tinha um deles, e as expressões abaixo, escritas com espaço e hífen comuns, não as reconheciam.
+// Antes de conferir, todo espaço (menos a quebra de linha) vira espaço comum, e todo hífen, "-".
+const sem = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\S\n]/g, ' ').replace(/[\u2010-\u2015\u2212]/g, '-').toLowerCase();
 
 const DE_VERAO = /\b(milheto|crotalarias?|mucuna|feijao[- ]de[- ]porco|guandu|sorgo)\b/g;
 const NOME: Record<string, string> = { milheto: 'milheto', crotalaria: 'crotalária', mucuna: 'mucuna', 'feijao de porco': 'feijão-de-porco', guandu: 'guandu', sorgo: 'sorgo' };
