@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { z } from 'zod';
+import { z } from '@/lib/zod';
 import dbConnect from '@/lib/mongodb';
 import { getUserIdFromToken } from '@/lib/auth';
 import { cultivoDoUsuario } from '@/lib/cultivos';

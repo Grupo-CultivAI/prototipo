@@ -19,7 +19,8 @@ export default function CalendarioPlantio({ linhas }) {
             <div className={styles.calendarioLinha} aria-hidden="true">
                 <span />
                 <div className={styles.meses}>
-                    {MESES.map((m) => <span key={m}>{m}</span>)}
+                    {/* Inicial e nome: a coluna estreita mostra só a inicial (ver .mesInicial) */}
+                    {MESES.map((m) => <span key={m}><span className={styles.mesNome}>{m}</span><span className={styles.mesInicial}>{m[0].toUpperCase()}</span></span>)}
                 </div>
             </div>
             <ul className={styles.calendarioLista}>

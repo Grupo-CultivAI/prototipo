@@ -70,6 +70,7 @@
 .chatInfo {
     flex: 1 0 100%;
     order: 2;
+    min-width: 0;
 }
 
 .chatAcoes {
@@ -971,6 +972,8 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
+    min-width: 0;
+    max-width: 100%;
     margin-top: 0.5rem;
     color: var(--text-secondary);
     font-size: 0.85rem;
@@ -984,9 +987,15 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
+/* No máximo 16rem, mas encolhe para caber no topo (um select não encolhe abaixo da opção mais
+   longa sem min-width: 0): com a letra aumentada, passava da tela */
 .seletorCultivo select {
+    flex: 0 1 auto;
+    min-width: 0;
     max-width: 16rem;
     padding: 0.3rem 0.5rem;
     border: 1px solid var(--border);

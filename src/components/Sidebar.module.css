@@ -89,6 +89,8 @@
     .nav {
         flex-direction: row;
         gap: 0.25rem;
+        container-name: navegacao;
+        container-type: inline-size;
     }
 
     .link {
@@ -127,6 +129,25 @@
 
     .rotulo {
         display: none;
+    }
+}
+
+/* Celular pequeno com a letra do aparelho aumentada: os cinco rótulos não cabem ("Fale conosco"
+   saía da tela) e o menu fica só com os ícones, como no celular deitado. Os rótulos continuam
+   lá para o leitor de tela. Medido no próprio menu, em rem: acompanha o tamanho da letra. */
+@container navegacao (max-width: 16rem) {
+    .rotulo {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .link {
+        min-width: 0;
+        padding: 0.6rem 0.25rem;
     }
 }
 

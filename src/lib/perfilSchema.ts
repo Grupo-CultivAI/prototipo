@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/lib/zod';
 
 // Um esquema só para cada cultivo de Meus Cultivos: a tela valida com ele e as rotas
 // /api/cultivos também.

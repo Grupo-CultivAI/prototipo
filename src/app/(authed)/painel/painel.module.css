@@ -305,11 +305,14 @@
     box-shadow: var(--shadow-sm);
 }
 
+/* Título e link quebram linha: com a letra do celular aumentada, lado a lado eles alargavam o
+   cartão, e a coluna da grade crescia junto (a previsão também passava da tela) */
 .cartaoTopo {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.4rem 1rem;
     margin-bottom: 1rem;
 }
 
@@ -317,10 +320,13 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
     font-size: 1.1rem;
+    overflow-wrap: anywhere;
 }
 
 .cartaoTopo h2 svg {
+    flex-shrink: 0;
     color: var(--primary);
 }
 
@@ -458,6 +464,11 @@
     align-items: start;
 }
 
+.calendario {
+    container-name: calendario;
+    container-type: inline-size;
+}
+
 .meses {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -495,6 +506,22 @@
     display: grid;
     grid-template-columns: repeat(36, minmax(0, 1fr));
     gap: 2px;
+}
+
+.mesInicial {
+    display: none;
+}
+
+/* Coluna estreita (celular pequeno, letra aumentada): só a inicial do mês. Com o nome, os
+   doze se sobrepunham ("janfevmar..."). Medido no calendário, em rem: acompanha a letra. */
+@container calendario (max-width: 19rem) {
+    .mesNome {
+        display: none;
+    }
+
+    .mesInicial {
+        display: inline;
+    }
 }
 
 .celula {
@@ -784,10 +811,17 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    /* Uma coluna só, e não as 12 da grade ocupadas por inteiro: os 11 espaços entre elas
+       (1,25rem cada) passavam da largura da tela com a letra do celular aumentada */
+    .grade {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .grade > *,
     .grade > .cartaoMapa,
-    .grade > .cartaoCalendario {
-        grid-column: span 12;
+    .grade > .cartaoCalendario,
+    .grade > .cartaoLargo {
+        grid-column: auto;
     }
 }
 

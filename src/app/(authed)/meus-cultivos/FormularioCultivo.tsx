@@ -67,10 +67,10 @@ type Situacao = { texto: string; tipo: TipoSelo };
 
 // Formulário de um cultivo de Meus Cultivos: sem id, cadastra um novo (/meus-cultivos/novo);
 // com id, edita (/meus-cultivos/[id]).
-export default function FormularioCultivo({ id, copiarDe }: { id?: string; copiarDe?: string }) {
+export default function FormularioCultivo({ id, copiarDe, blocoInicial }: { id?: string; copiarDe?: string; blocoInicial?: string }) {
     const [nomeDaOrigem, setNomeDaOrigem] = useState('');
     const router = useRouter();
-    const [openSection, setOpenSection] = useState<string>('localizacao');
+    const [openSection, setOpenSection] = useState<string>(blocoInicial ?? 'localizacao');
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [messageErro, setMessageErro] = useState(false);
