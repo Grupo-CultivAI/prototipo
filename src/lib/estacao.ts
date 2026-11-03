@@ -27,6 +27,21 @@ function mesEmSaoPaulo(data: Date): number {
     return Number(mes) - 1;
 }
 
+// Regras do prompt que só valem em parte do país. Mandar só a do estado do produtor economiza
+// tokens (a Groq gratuita aguenta 8 mil por minuto por modelo) sem tirar nada que se aplique.
+const COM_GEADA = [...ESTADOS_DO_SUL, 'SP', 'RJ', 'ES', 'MG', 'MS'];
+const COM_INVERNO_SECO = ['MG', 'MS', 'GO', 'DF', 'MT', 'TO', 'MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'];
+const REGRA_DA_GEADA = '- No Sul e nas partes altas do Sudeste, o inverno tem geada: para o inverno, indique só plantas de inverno.';
+const REGRA_DO_INVERNO_SECO = '- Onde o inverno é seco (Cerrado, que cobre boa parte de MG, GO, MT, MS, TO e DF, e boa parte do Nordeste), sem irrigação quase nada cresce de maio a setembro: não indique plantio nesses meses, nem de plantas de inverno. Lá a cobertura (milheto, sorgo, braquiária, crotalária) é semeada no fim das chuvas, logo depois da colheita.';
+const REGRA_SEM_REGIAO = '- Sem a região no perfil, não indique plantas que só vão bem no frio (aveia, ervilhaca, nabo forrageiro, tremoço, azevém) como se servissem em todo lugar. Prefira as que servem na maior parte do país na época das chuvas, como crotalária, feijão-de-porco, guandu e milheto, e diga que a escolha depende da região.';
+
+/** As linhas de clima do prompt que valem para o estado (ou a de quem não informou a região). */
+export function regrasDoClima(estado?: string | null): string[] {
+    const uf = String(estado ?? '').trim().toUpperCase();
+    if (!uf) return [REGRA_SEM_REGIAO];
+    return [COM_GEADA.includes(uf) && REGRA_DA_GEADA, COM_INVERNO_SECO.includes(uf) && REGRA_DO_INVERNO_SECO].filter((r): r is string => Boolean(r));
+}
+
 /** Ex.: "primavera (novembro). Clima em PR: inverno frio, com geadas; verão quente e chuvoso (região Sul)." */
 export function estacaoERegiao(estado?: string | null, data = new Date()): string {
     const mes = mesEmSaoPaulo(data);

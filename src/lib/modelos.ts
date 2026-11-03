@@ -21,7 +21,11 @@ export type MensagemGroq = { role: 'system' | 'user' | 'assistant'; content: str
 // NVIDIA e descartados: nemotron-3-ultra-550b (bom, mas 6 de 15 respostas passaram de 20 s),
 // mistral-large-4 (lento e passa do teto de tokens), minimax-m3.1-flash (lento e 429), e
 // deepseek-v4.1-flash, gemma-4-31b, glm-5.3-flash e step-5 (não responderam em 45 s).
-const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b,nvidia:openai/gpt-oss-20b')
+// Em 03/11/2026 o gpt-oss-20b da NVIDIA parou de responder (nem a um "diga oi" em 60 s; cada
+// pergunta perdia 20 s nele e falhava), o gpt-oss-120b de lá foi descontinuado e quase todo o
+// catálogo dava 404 para esta conta. Entrou o nemotron-3.5-lightning, que respondeu em 3 a 5 s
+// com o raciocínio desligado (ver parametrosDoModelo).
+const MODELOS_IA = (process.env.MODELOS_IA || 'groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b,nvidia:nvidia/nemotron-3.5-lightning-30b-a3b')
     .split(',').map((s) => s.trim()).filter(Boolean);
 
 // Todos aceitam o formato de chat da OpenAI. Provedor sem chave é pulado.
@@ -40,7 +44,16 @@ const PRAZO_POR_MODELO_MS = 20_000;
 // limite por minuto da Groq. Cortada no teto, a resposta é descartada e o próximo modelo tenta.
 const TETO_DE_TOKENS_DA_RESPOSTA = 1000;
 
-export type Geracao = { texto: string; erro: string; modelo?: string; tokensEntrada?: number; tokensSaida?: number };
+// Os gpt-oss raciocinam antes de responder, e esse raciocínio conta no limite por minuto. O
+// nemotron-3.5-lightning, com o raciocínio ligado, gastou os 1.000 tokens só pensando e voltou
+// sem texto (03/11/2026).
+function parametrosDoModelo(model: string) {
+    if (model.startsWith('openai/gpt-oss')) return { reasoning_effort: 'low' };
+    if (model.startsWith('nvidia/nemotron')) return { chat_template_kwargs: { enable_thinking: false } };
+    return {};
+}
+
+export type Geracao ={ texto: string; erro: string; modelo?: string; tokensEntrada?: number; tokensSaida?: number };
 
 // tetoDeTokens: o padrão é o da resposta do chat; a extração do plano usa menos.
 export async function gerarResposta(messages: MensagemGroq[], { tetoDeTokens = TETO_DE_TOKENS_DA_RESPOSTA, temperatura = 0.3 } = {}): Promise<Geracao> {
@@ -64,8 +77,7 @@ export async function gerarResposta(messages: MensagemGroq[], { tetoDeTokens = T
                     messages,
                     temperature: temperatura,
                     max_completion_tokens: tetoDeTokens,
-                    // Os gpt-oss raciocinam antes de responder, e esse raciocínio conta no limite por minuto.
-                    ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+                    ...parametrosDoModelo(model),
                 }),
             });
         } catch (e) {
