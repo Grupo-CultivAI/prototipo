@@ -38,6 +38,8 @@ const AGRONOMIA = [
     ['As plantas de cobertura protegem o solo de maio a agosto.', 'rotação', 'MG', '', false],
     ['Deixe a palha no inverno e plante o milho em outubro.', 'rotação', 'GO', '', false],
     ['Não plante feijão de maio a agosto sem irrigação.', 'rotação', 'MG', '', false],
+    // 04/11/2026, Patos de Minas: "sem irrigação" não é ressalva
+    ['Sem irrigação, plante logo após o fim das chuvas de outono (final de maio).', 'o que posso plantar em junho e julho?', 'MG', '', true],
     ['Plante o feijão de inverno em maio, com irrigação.', 'rotação', 'MG', '', false],
     ['Colha o milho em junho e deixe a palha.', 'rotação', 'MT', '', false],
     ['Inverno (junho): aveia-preta para cobrir o solo.', 'rotação', 'GO', 'Pivô central', false],
@@ -58,6 +60,8 @@ const AGRONOMIA = [
     ['Não plante soja no inverno: há o vazio sanitário.', 'posso plantar soja?', 'MG', '', false],
     ['Depois da soja, no inverno, plante aveia-preta.', 'e depois da soja?', 'PR', '', false],
     ['Depois da colheita da soja no inverno, deixe a palha.', 'palha', 'MT', '', false],
+    // Roraima, ao norte da linha do equador: a soja vai em abril e maio (revisão agronômica, 04/11/2026)
+    ['Ano 4 – introduza soja (inverno).', 'rotação', 'RR', '', false],
     // Nomes, leguminosas e mandioca (02/11/2026, Seu Zé e Dona Cida)
     ['Feijão-de-porco (crotalária) – fixa nitrogênio.', 'mandioca', 'BA', '', true],
     ['Crotalária ou feijão-de-porco são boas opções.', 'adubo verde', 'BA', '', false],
@@ -83,6 +87,8 @@ for (const [frase, pergunta, estado, irrigacao, deveMarcar] of AGRONOMIA) {
     const marcou = Boolean(problemaAgronomico(frase, { pergunta, estado, irrigacao }));
     confere('erros agronômicos', `${deveMarcar ? 'marcar' : 'deixar passar'} (${estado}): ${frase.replace(/\n/g, ' / ')}`, marcou === deveMarcar);
 }
+const epocaDaAveia = problemaAgronomico('Semeie aveia-preta em outubro.', { pergunta: 'rotação', estado: 'SP' }) ?? '';
+confere('erros agronômicos', 'aveia fora de época: a correção diz "de fevereiro a junho"', epocaDaAveia.includes('de fevereiro a junho'), epocaDaAveia.slice(0, 200));
 const umaPlanta = problemaAgronomico('Milheto – cresce rápido.', { pergunta: 'o que planto no inverno', estado: 'PR' }) ?? '';
 confere('erros agronômicos', 'concordância com uma planta só ("Milheto é planta de verão")', umaPlanta.includes('Milheto é planta de verão'), umaPlanta.slice(0, 200));
 
@@ -146,7 +152,10 @@ for (const [data, uf, estacao, trecho] of ESTACOES) {
     const texto = estacaoERegiao(uf, new Date(data));
     confere('estação e região', `${uf ?? 'sem estado'} em ${data.slice(0, 10)}`, texto.startsWith(estacao) && texto.includes(trecho), texto);
 }
-const REGRAS = [['PR', 1, 'geada'], ['MG', 2, 'seco'], ['GO', 1, 'seco'], ['PA', 0, ''], ['', 1, 'Sem a região']];
+// Nordeste e MS: a época das chuvas muda dentro do estado, e no leste do Nordeste se planta no
+// inverno (ZARC de Cruz das Almas, BA). Eles não recebem a regra do inverno seco do Cerrado.
+const REGRAS = [['PR', 1, 'geada'], ['MG', 2, 'seco'], ['GO', 1, 'seco'], ['PA', 1, 'não faz frio'], ['', 1, 'Sem a região'],
+    ['BA', 2, 'ZARC do município'], ['PE', 2, 'Zona da Mata'], ['MS', 2, 'norte do estado é Cerrado'], ['RR', 2, 'Roraima'], ['SP', 1, 'geada']];
 for (const [uf, quantas, trecho] of REGRAS) {
     const regras = regrasDoClima(uf);
     confere('estação e região', `regras do clima para ${uf || 'sem estado'}`, regras.length === quantas && (!trecho || regras.some((r) => r.includes(trecho))), regras.join(' | '));
@@ -181,6 +190,9 @@ confere('prompt', 'as regras de sempre estão no prompt (agrotóxico, origem, li
 const comCondicao = montarPrompt({ ...BASE_DO_PROMPT, contexto: '[Viabilidade agroeconômica (condição do experimento: área irrigada por aspersão), p. 3 do PDF] A rotação aumentou a produção.' });
 confere('prompt', 'trecho com condição no rótulo: entra a regra de dizer a condição', comCondicao.includes('Ao usar um desses trechos, diga a condição na mesma frase') && !comCondicao.includes('Um trecho da Embrapa feito em outra situação'));
 confere('prompt', 'sem trecho com condição: fica a regra geral', semNada.includes('Um trecho da Embrapa feito em outra situação') && !semNada.includes('Ao usar um desses trechos'));
+confere('prompt', 'feijão-comum põe pouco nitrogênio, e o exemplo de leguminosa não é o feijão', semNada.includes('o feijão-comum (carioca, preto) põe pouco') && !semNada.includes('como o feijão)'));
+confere('prompt', 'lavoura perene: café em formação aceita feijão nas entrelinhas', montarPrompt({ ...BASE_DO_PROMPT, lavouraPerene: true }).includes('Na lavoura nova, em formação'));
+confere('prompt', 'regras de clima do estado vêm depois da linha da soja (Roraima é exceção a ela)', (() => { const p = montarPrompt({ ...BASE_DO_PROMPT, regrasDeClima: regrasDoClima('RR') }); return p.indexOf('Em Roraima') > p.indexOf('Não indique soja no inverno'); })());
 confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
 confere('prompt', 'lavoura perene: café e pomar sim, milho e feijão não', temLavouraPerene('Culturas: Café, Milho') && temLavouraPerene('pomar de laranja') && !temLavouraPerene('milho e feijão'));
 

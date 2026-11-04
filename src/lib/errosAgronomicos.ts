@@ -37,7 +37,9 @@ type Contexto = { pergunta: string; estado?: string | null; irrigacao?: string |
 function plantioNoInvernoSeco(resposta: string, { estado, irrigacao }: Contexto): string | null {
     if (!ESTADOS_DO_CERRADO.includes(String(estado ?? '').trim().toUpperCase())) return null;
     if (irrigacao && irrigacao !== 'Não irrigo') return null;
-    const ressalva = /irriga|\bmarco\b|\babril\b|fim das chuvas|nao (plant|seme)|evite/;
+    // "sem irrigação, plante ... (final de maio)" não é ressalva: em 04/11/2026 a IA mandou plantar
+    // milheto e sorgo em Patos de Minas assim, "logo após o fim das chuvas de outono (final de maio)".
+    const ressalva = /(?<!sem )\birriga|\bmarco\b|\babril\b|nao (plant|seme)|evite/;
     const blocos = sem(resposta).split(/\n\s*\n/);
     // Bloco = item da lista com as linhas de baixo (a época fica no título, a planta embaixo)
     const deInverno = blocos.some((bloco) => DE_INVERNO.test(bloco) && MESES_SECOS.test(bloco) && !ressalva.test(bloco));
@@ -64,7 +66,9 @@ function deVeraoNoInvernoDoSul(resposta: string, { pergunta, estado }: Contexto)
     return `A pergunta é sobre o inverno e a propriedade fica no Sul, onde o inverno tem geada. ${lista[0].toUpperCase()}${lista.slice(1)} ${verao} para o inverno. Para o inverno, indique plantas de inverno, como aveia-preta, nabo forrageiro, ervilhaca ou centeio. Se citar as de verão, diga que são para o verão.`;
 }
 
-function sojaNoInverno(resposta: string): string | null {
+function sojaNoInverno(resposta: string, { estado }: Contexto): string | null {
+    // Em Roraima, ao norte da linha do equador, a soja é semeada em abril e maio, no início das chuvas
+    if (String(estado ?? '').trim().toUpperCase() === 'RR') return null;
     const n = sem(resposta);
     const achou = [...n.matchAll(/\bsoja\s*(?:\(\s*|de\s+|no\s+|em\s+)inverno\b|\binverno\s*[:–—-]\s*soja\b/g)]
         // "depois da soja no inverno" fala da cultura anterior; "não plante soja no inverno", do vazio sanitário
@@ -104,8 +108,8 @@ function mandiocaSemeada(resposta: string): string | null {
 }
 
 // Planta de inverno semeada na primavera ou no verão. Em 03/11/2026 o plano do Rafael (ES) mandou
-// semear aveia, ervilhaca ou tremoço "em outubro-novembro"; em todo o país elas vão no outono
-// (de março a junho, conforme a região). Vale qualquer estado.
+// semear aveia, ervilhaca ou tremoço "em outubro-novembro"; em todo o país elas vão no fim do
+// verão ou no outono (de fevereiro a junho, conforme a região). Vale qualquer estado.
 const MESES_QUENTES = /\b(setembro|outubro|novembro|dezembro|janeiro)\b/;
 // Manejo da planta já crescida ("role a aveia em setembro") não é semeadura
 const MANEJO = /\b(colh\w*|ro[cç]\w*|cort\w*|dessec\w*|rol\w*|manej\w*|incorpor\w*)\b/;
@@ -133,7 +137,7 @@ function invernoNaPrimavera(resposta: string): string | null {
             return linhas.slice(Math.max(0, i - 2), i).some((l) => DE_INVERNO.test(l));
         }));
     });
-    return achou ? 'Aveia, ervilhaca, nabo forrageiro, tremoço, centeio e azevém são plantas de inverno: são semeadas no outono (de março a junho, conforme a região), não na primavera nem no verão. Corrija a época de semeadura.' : null;
+    return achou ? 'Aveia, ervilhaca, nabo forrageiro, tremoço, centeio e azevém são plantas de inverno: são semeadas de fevereiro a junho, conforme a região (no Cerrado, logo depois da colheita da soja), não na primavera nem no verão. Corrija a época de semeadura.' : null;
 }
 
 /** Instrução de revisão quando a resposta tem um erro agronômico conhecido, ou null. */
@@ -142,7 +146,7 @@ export function problemaAgronomico(resposta: string, contexto: Contexto): string
         deVeraoNoInvernoDoSul(resposta, contexto),
         plantioNoInvernoSeco(resposta, contexto),
         invernoNaPrimavera(resposta),
-        sojaNoInverno(resposta),
+        sojaNoInverno(resposta, contexto),
         nomesTrocados(resposta),
         leguminosaErrada(resposta),
         mandiocaSemeada(resposta),
