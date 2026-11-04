@@ -8,7 +8,8 @@ import { cultivoDaConversa, nomeDoCultivo } from '@/lib/cultivos';
 import { ordenarSafras, rotuloDaSafra } from '@/lib/perfil';
 import { getUserIdFromToken } from '@/lib/auth';
 import { gerarResposta, type MensagemGroq } from '@/lib/modelos';
-import { getForecastSummary, getWeatherSummary } from '@/lib/weather';
+import { getForecastDays, getWeatherSummary, previsaoEmTexto } from '@/lib/weather';
+import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
 import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
@@ -280,13 +281,19 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, previsao, epoca] = await Promise.all([
+        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, diasDePrevisao, epoca] = await Promise.all([
             buscarTrechos(busca, { pinecone: pineconeKey, host: pineconeHost }),
             getWeatherSummary(cidade, (propriedade as any)?.coordenadas),
-            PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastSummary(cidade, (propriedade as any)?.coordenadas) : null,
+            PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastDays(cidade, (propriedade as any)?.coordenadas) : null,
             epocaDePlantio(propriedade, userPrompt, busca === userPrompt ? '' : busca),
         ]);
+        const previsao = diasDePrevisao ? previsaoEmTexto(diasDePrevisao) : null;
         const zarc = epoca?.paraIA ?? null;
+        // Os da previsão só existem em perguntas sobre o trabalho no campo, como a própria previsão
+        const alertas = [
+            ...alertasDoTempo(diasDePrevisao, { pergunta: `${userPrompt} ${busca}`, irrigacao: (propriedade as any)?.irrigacao }),
+            ...alertasDoCultivo(propriedade as any),
+        ];
 
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
@@ -309,6 +316,7 @@ export async function POST(req: Request) {
             faltando: faltando.map((c) => ({ codigo: c, descricao: DADOS_PEDIVEIS[c].descricao })),
             temQuadroZarc,
             lavouraPerene: temLavouraPerene(`${userPrompt} ${busca} ${perfil ?? ''}`),
+            alertas,
         });
 
         const messages: MensagemGroq[] = [
@@ -402,7 +410,7 @@ export async function POST(req: Request) {
                 perguntaId,
                 busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING, ...(falhaDaBusca ? { falha: falhaDaBusca } : {}) },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
-                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined, alertas: alertas.length ? alertas : undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
                 ...(quadroZarc ? { epoca: quadroZarc } : {}),
             },
