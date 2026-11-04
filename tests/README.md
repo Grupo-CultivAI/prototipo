@@ -8,6 +8,7 @@ Confere se os PDFs da Embrapa foram indexados corretamente no Pinecone: para cad
 
 ```bash
 node tests/verificar-base.mjs      # ou: npm run verificar-base
+node tests/verificar-base.mjs --namespace outro   # confere uma base de teste nos mesmos casos
 ```
 
 Precisa de `PINECONE_API_KEY` e `PINECONE_INDEX_HOST` no `.env.local` (os embeddings vêm do Pinecone Inference).
@@ -53,6 +54,18 @@ Execução de **28/10/2026**, depois da troca do modelo de embedding (Gemini →
 | `trigo_desempenho_agronomico_rotacao_culturas.pdf` (tema) | 0,6596 | reprovou (2/3: 3º de `cereais_inverno_rotacao_culturas.pdf`, também sobre trigo) |
 
 Comparação feita no mesmo dia, com busca exata sobre os 835 trechos: `llama-text-embed-v2` acertou o 1º resultado em 10/10 e os 3 em 7/10; `multilingual-e5-large` (1.024 dimensões, exigiria outro índice) acertou 10/10 e 8/10, mas separa mal o que é do tema: "receita de bolo" pontuou 0,81 e perguntas do tema, de 0,84 a 0,89. Com o Llama, fora do tema fica abaixo de 0,31 e do tema acima de 0,37, o que permite um limiar confiável. Por isso a escolha foi o Llama.
+
+### Teste do corte por frase (03/11/2026)
+
+Os PDFs não têm parágrafos marcados (nenhuma linha em branco; cada quebra de linha é o fim de uma linha visual), por isso o teste foi o corte por frase: cada trecho termina no fim de uma frase, e a última frase se repete no começo do seguinte. Cada variante foi gravada num namespace de teste (`ingest-pdfs.mjs --namespace`), comparada com a base em uso e apagada depois.
+
+| Base | Trechos | Começam / terminam no meio de uma frase | Casos aprovados | Trechos do documento certo nos 3 primeiros |
+|---|---|---|---|---|
+| Em uso (corte por tamanho, 800) | 835 | 73% / 93% | 7/10 | 26/30 |
+| Por frase, até 800 caracteres | 977 | 2% / 5% | 8/10 | 28/30 |
+| Por frase, até 1.000 caracteres | 736 | — | 7/10 | 26/30 |
+
+Nas perguntas vagas dos produtores, porém, o corte por frase de até 800 baixou os scores: "meu feijao ta dando pouco o que eu faço" caiu de 0,370 para 0,334, abaixo do limiar, e ficaria sem nenhum trecho da Embrapa; "quando eu planto feijão aqui" caiu de 4 para 1 trecho acima do limiar. Com até 1.000 caracteres, essas perguntas recuperaram parte (0,352 e 2 trechos), mas a melhora nos casos específicos sumiu. As perguntas fora do tema ficaram abaixo de 0,30 nas três bases. **A base em uso foi mantida**: nenhuma variante foi melhor em tudo, e as perguntas vagas são as mais comuns no chat.
 
 ### Antes da troca (Gemini)
 

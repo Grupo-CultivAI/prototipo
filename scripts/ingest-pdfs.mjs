@@ -5,9 +5,24 @@ import dotenv from 'dotenv';
 import { NAMESPACE_DA_BASE, gerarEmbeddings } from '../src/lib/embeddings.mjs';
 dotenv.config({ path: '.env.local' });
 
-const FOLDER_PATH = process.argv[2] || './docs-embrapa';
-const STATE_FILE = '.ingest-state.json';
-const CHUNK_SIZE = 800;
+// Uso: node scripts/ingest-pdfs.mjs [pasta] [--namespace nome] [--corte frase] [--tamanho 800]
+// Sem opções, grava na base que o chat usa (NAMESPACE_DA_BASE), com o corte por tamanho.
+// --namespace grava em outro namespace do índice, para testar uma mudança sem tocar na base em
+// uso (cada namespace tem o próprio arquivo de progresso). --corte frase termina cada trecho no
+// fim de uma frase (ver chunkPorFrase).
+const args = process.argv.slice(2);
+const opcao = (nome) => { const i = args.indexOf(nome); return i >= 0 ? args[i + 1] : undefined; };
+const valoresDasOpcoes = new Set(['--namespace', '--corte', '--tamanho'].map(opcao).filter(Boolean));
+const FOLDER_PATH = args.find((a) => !a.startsWith('--') && !valoresDasOpcoes.has(a)) || './docs-embrapa';
+const NAMESPACE = opcao('--namespace') || NAMESPACE_DA_BASE;
+const CORTE = opcao('--corte') || 'caracteres';
+if (!['caracteres', 'frase'].includes(CORTE)) {
+    console.error(`❌ --corte "${CORTE}" não existe: use "caracteres" (padrão) ou "frase".`);
+    process.exit(1);
+}
+const STATE_FILE = NAMESPACE === NAMESPACE_DA_BASE ? '.ingest-state.json' : `.ingest-state-${NAMESPACE}.json`;
+// --tamanho muda o tamanho máximo do trecho, para testes em outro namespace
+const CHUNK_SIZE = Number(opcao('--tamanho')) || 800;
 const CHUNK_OVERLAP = 100;
 
 // Documentos cujo sentido depende de um cabeçalho que aparece uma única vez no
@@ -33,7 +48,8 @@ const host = process.env.PINECONE_INDEX_HOST?.replace(/^https?:\/\//, '');
 const pineconeApiKey = process.env.PINECONE_API_KEY;
 // O namespace acompanha o modelo de embedding (src/lib/embeddings.mjs). Os embeddings vêm do
 // Pinecone Inference, com a mesma chave do índice; até 28/10/2026 eram do Gemini.
-const namespace = NAMESPACE_DA_BASE;
+const namespace = NAMESPACE;
+console.log(`Namespace: ${namespace}${namespace === NAMESPACE_DA_BASE ? ' (a base que o chat usa)' : ' (teste; o chat não usa)'} | corte: ${CORTE}, até ${CHUNK_SIZE} caracteres | progresso em ${STATE_FILE}`);
 
 if (!host || !pineconeApiKey) {
     console.error('❌ Erro: PINECONE_INDEX_HOST e PINECONE_API_KEY são obrigatórios no .env.local');
@@ -80,6 +96,48 @@ function chunkText(text, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
         if (texto) chunks.push({ texto, inicio: start + (bruto.length - bruto.trimStart().length) });
         start += size - overlap;
     }
+    return chunks;
+}
+
+// Corte por frase (--corte frase): o trecho junta frases inteiras até ~size caracteres e repete a
+// última frase no começo do seguinte (a sobreposição). Os PDFs não têm parágrafos marcados (não
+// há linha em branco; cada quebra de linha é o fim de uma linha visual), por isso a unidade é a
+// frase. Uma "frase" sem ponto maior que o trecho (linhas de tabela) é cortada pelo tamanho.
+function chunkPorFrase(text, size = CHUNK_SIZE) {
+    // Fim de frase: . ! ou ? seguido de espaço ou quebra e de letra maiúscula, número ou aspas
+    const frases = [];
+    const FIM = /[.!?]["')\]]?(?=\s+["'(\[]?[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])/g;
+    let inicio = 0;
+    for (const m of text.matchAll(FIM)) {
+        frases.push({ inicio, fim: m.index + m[0].length });
+        inicio = m.index + m[0].length;
+    }
+    if (inicio < text.length) frases.push({ inicio, fim: text.length });
+    // Frase maior que o trecho vira pedaços do tamanho do trecho
+    const pedacos = frases.flatMap((f) => {
+        if (f.fim - f.inicio <= size) return [f];
+        const partes = [];
+        for (let i = f.inicio; i < f.fim; i += size) partes.push({ inicio: i, fim: Math.min(f.fim, i + size) });
+        return partes;
+    });
+    const chunks = [];
+    let atual = [];
+    const emitir = () => {
+        const ini = atual[0].inicio;
+        const bruto = text.slice(ini, atual.at(-1).fim);
+        const texto = bruto.trim();
+        if (texto) chunks.push({ texto, inicio: ini + (bruto.length - bruto.trimStart().length) });
+    };
+    for (const p of pedacos) {
+        if (atual.length && p.fim - atual[0].inicio > size) {
+            emitir();
+            // Sobreposição: a última frase, se não for grande demais
+            const ultima = atual.at(-1);
+            atual = ultima.fim - ultima.inicio <= CHUNK_OVERLAP * 3 ? [ultima] : [];
+        }
+        atual.push(p);
+    }
+    if (atual.length) emitir();
     return chunks;
 }
 
@@ -227,7 +285,7 @@ async function main() {
                 continue;
             }
 
-            const chunks = chunkText(fullText);
+            const chunks = CORTE === 'frase' ? chunkPorFrase(fullText) : chunkText(fullText);
             console.log(`   └ ${paginas.length} página(s), ${chunks.length} trecho(s). Gerando embeddings...`);
             if (PREFIXO_POR_ARQUIVO[fileName]) {
                 console.log('   └ prefixo de contexto aplicado a todos os trechos deste arquivo.');
