@@ -110,9 +110,7 @@ export function getForecastDays(cidade?: string | null, ponto?: Ponto) {
 }
 
 /** A previsão para a IA, uma linha por dia: "qua 28/10: 18 a 29°C, chuva 12 mm (chance 80%)". */
-export async function getForecastSummary(cidade?: string | null, ponto?: Ponto) {
-    const dias = await getForecastDays(cidade, ponto);
-    if (!dias) return null;
+export function previsaoEmTexto(dias: DiaDePrevisao[]) {
     return dias.map(({ hoje, semana, data, min, max, chuvaMm, chance }) => {
         const textoChuva = chuvaMm >= 1
             ? `chuva ${chuvaMm} mm (chance ${Math.round(chance * 100)}%)`

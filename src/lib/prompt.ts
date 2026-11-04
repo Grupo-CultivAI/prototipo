@@ -22,8 +22,11 @@
  *   a IA de verdade, entraram ainda: Norte e Nordeste sem plantas de inverno; no Cerrado, o que
  *   responder a "o que planto em junho"; e, no ZARC, mostrar a janela de 20% de outro tipo da
  *   mesma cultura quando a perguntada só tem 40% (feijão em Cruz das Almas).
+ * - 2026-11-04.3: seção ALERTAS DO CULTIVO (src/lib/alertas.ts), só quando algum alerta vale:
+ *   geada e chuva forte na previsão, chuva para semear ou irrigar, monocultura, leguminosa
+ *   depois de leguminosa e solo ácido.
  */
-export const VERSAO_DO_PROMPT = '2026-11-04.2';
+export const VERSAO_DO_PROMPT = '2026-11-04.3';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -46,6 +49,8 @@ export type DadosDoPrompt = {
     // O quadro do ZARC vai aparecer abaixo da resposta
     temQuadroZarc: boolean;
     lavouraPerene: boolean;
+    // Alertas calculados com a previsão e o perfil (src/lib/alertas.ts), já com o que dizer
+    alertas: string[];
 };
 
 export function montarPrompt(d: DadosDoPrompt): string {
@@ -76,6 +81,10 @@ DADOS QUE FALTAM
     const regraDaCondicao = d.contexto.includes('(condição do experimento:')
         ? `- Alguns trechos da Embrapa dizem no rótulo a condição do experimento, por exemplo "(condição do experimento: área irrigada por aspersão)" ou "(condição do experimento: Piauí)". Ao usar um desses trechos, diga a condição na mesma frase ("📘 Segundo a Embrapa, num experimento no Piauí, ..."), principalmente quando ela for diferente do perfil do produtor (irrigação, estado). Número, dose ou produtividade vem sempre com a condição. Dizer a condição não é motivo para deixar de usar um trecho útil.`
         : '- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").';
+    const secaoDeAlertas = d.alertas.length ? `
+
+ALERTAS DO CULTIVO (calculados pelo CultivAI com a previsão do tempo e o perfil)
+- Use todos os alertas que tiverem relação com a pergunta, e só esses: cada um em uma ou duas frases curtas, depois de "🌱 Prática agronômica geral:", com o dado que o motivou (data, temperatura, chuva, pH ou safras).${d.alertas.map((a) => `\n${a}`).join('')}` : '';
 
     return `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.
 
@@ -93,7 +102,7 @@ COMO RESPONDER
 - No Centro-Sul, soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).${regrasDeClima}
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Soja, feijão-caupi e as de cobertura põem bastante; o feijão-comum (carioca, preto) põe pouco e ainda precisa de adubo com nitrogênio. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
 - Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}
-${regraDaCondicao}
+${regraDaCondicao}${secaoDeAlertas}
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" (sempre com essas palavras) antes do que vier dos trechos da Embrapa abaixo.
