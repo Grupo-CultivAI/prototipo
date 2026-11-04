@@ -17,7 +17,11 @@ const CONTEXTO = /inseticid|fungicid|herbicid|nematicid|acaricid|formicid|agroto
 // Princípios ativos e marcas que aparecem nos documentos da base ou são comuns no campo
 const PRODUTOS = /carbofuran|furadan|benlate|benomil|standak|fipronil|vitavax|thiram|tiram\b|carboxina|imidacloprid|tiametoxam|cruiser|glifosat|roundup|2,4-d|paraquat|atrazin|metomil|endossulfan|endosulfan|abamectin|clorpirif|mancozeb|tebuconazol|azoxistrobin|carbendazim|metamidofos|aldicarb|temik|parationa|monocrotofos|forato|lindano|acefato|lambda.?cialotrin|deltametrin|cipermetrin|diflubenzuron|clorotalonil|propiconazol|epoxiconazol|trifloxistrobin|piraclostrobin/;
 
-// Proibidos no Brasil: mesmo sem dose, não podem aparecer como recomendação
+// Proibidos no Brasil ou fora do mercado: mesmo sem dose, não podem aparecer como recomendação.
+// Revisados em 04/11/2026: o forato está na lista de proibidos da Anvisa (RDC 12/2015); do
+// benomil (Benlate) não achamos proibição expressa, mas o fabricante o retirou do mercado em 2001
+// e o carbendazim, em que ele se transforma, foi proibido pela Anvisa em 2022. Ele fica na lista:
+// o prompt já proíbe citar qualquer produto. Ao mexer aqui, confira no Agrofit (MAPA).
 export const PROIBIDOS = /carbofuran|furadan|benlate|benomil|endossulfan|endosulfan|metamidofos|aldicarb|temik|parationa|monocrotofos|forato|lindano|paraquat|carbendazim/;
 
 // Dose: número + unidade, seguida de área, peso de semente ou ingrediente ativo
