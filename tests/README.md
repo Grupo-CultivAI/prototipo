@@ -36,6 +36,20 @@ As perguntas foram escritas a partir de um trecho real de cada documento. Pergun
 
 ## Resultados registrados
 
+Execução de **03/11/2026**, depois da entrada de 6 documentos enviados pelo Rogério (agricultura familiar no Meio-Norte e no Nordeste Paraense: consórcio de mandioca com feijão-caupi, Sistema Bragantino, arroz consorciado com forrageiras). A base passou de 35 para **41 PDFs e 1.199 trechos**. Dos 8 arquivos recebidos, 2 ficaram de fora: `mandioca_rotacao_consorcio_meionorte_embrapa_2008.pdf` era idêntico, byte a byte, a `mandioca_consorcio_meionorte_embrapa_2008.pdf`, e todo o texto de `mandioca_caupi_sistema_bragantino_pa_embrapa_2005.pdf` (40 páginas) está dentro de `mandioca_caupi_rotacao_amazonia_embrapa_2005.pdf` (70 páginas, o livro inteiro). Os arquivos com extensão dupla (`.pdf.pdf`) entraram com `.pdf`.
+
+**15 casos: 12 aprovados, 3 reprovados.** Os 10 casos anteriores tiveram exatamente os mesmos scores e resultados de antes da entrada (os documentos novos não atrapalharam). Os 5 casos novos, um por documento novo, passaram; dois aceitam documentos irmãos da Embrapa Meio-Norte, que tratam do mesmo sistema de produção.
+
+| Documento novo | Melhor score | Resultado |
+|---|---|---|
+| `arroz_consorcio_forrageiras_cnpaf_2013.pdf` | 0,6342 | passou (3/3) |
+| `mandioca_caupi_rotacao_amazonia_embrapa_2005.pdf` | 0,6536 | passou (3/3) |
+| `mandioca_consorcio_nordeste_embrapa_2003.pdf` | 0,5914 | passou (3/3) |
+| `mandioca_feijao_consorcio_medio_parnaiba_embrapa_2004.pdf` | 0,5739 | passou (3/3) |
+| `consorcio_adubacao_verde_meionorte_embrapa_2008.pdf` | 0,4722 | passou (3/3) |
+
+Nas perguntas dos produtores, a busca passou a trazer documentos de agricultura familiar sem irrigação: "oque planta dps da mandioca pra terra nao fica fraca" subiu de 0,357 para 0,406, e "meu feijao ta dando pouco o que eu faço" passou a ter, em 1º lugar, o consórcio de mandioca e feijão-caupi no Piauí, em vez do estudo de área irrigada.
+
 Execução de **28/10/2026**, depois da troca do modelo de embedding (Gemini → `llama-text-embed-v2`, namespace `embrapa-llama`), sobre os mesmos 35 PDFs e 835 trechos.
 
 **10 casos: 7 aprovados, 3 reprovados.** Nos 10, o 1º resultado vem do documento esperado. As 3 reprovações são do 2º ou 3º resultado vindo de um documento vizinho, de assunto parecido:
