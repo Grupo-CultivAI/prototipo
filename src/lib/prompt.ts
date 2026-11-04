@@ -11,8 +11,11 @@
  * - (sem versão): respostas gravadas antes de 03/11/2026.
  * - 2026-11-03: linguagem simples, época, região e nomes das plantas (PR #59) e regras que só
  *   entram quando valem para a pergunta (PR #60).
+ * - 2026-11-04: quando um trecho traz a condição do experimento no rótulo (área irrigada,
+ *   Piauí, Cerrado...), a IA diz a condição na mesma frase ao usá-lo. Uma primeira redação, que
+ *   permitia "deixar o trecho de lado", fez a IA descartar trechos úteis e foi trocada.
  */
-export const VERSAO_DO_PROMPT = '2026-11-03';
+export const VERSAO_DO_PROMPT = '2026-11-04';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -59,6 +62,12 @@ DADOS QUE FALTAM
     const regrasDeClima = d.regrasDeClima.map((r) => `\n${r}`).join('');
     const regraDePerene = d.lavouraPerene ? `
 - Nas entrelinhas do café e de outras lavouras perenes, prefira plantas de cobertura baixas, controladas com roçada: culturas altas, como o milho, fazem sombra e disputam água e adubo com a lavoura.` : '';
+    // Trechos com "(condição do experimento: ...)" no rótulo (src/lib/documentos.ts): em 03/11/2026,
+    // com só a regra geral, o estudo de área irrigada vinha para quem não irriga e 1 de 25 respostas
+    // citava a irrigação. A regra nova diz o que fazer com o rótulo; sem rótulo, fica a geral.
+    const regraDaCondicao = d.contexto.includes('(condição do experimento:')
+        ? `- Alguns trechos da Embrapa dizem no rótulo a condição do experimento, por exemplo "(condição do experimento: área irrigada por aspersão)" ou "(condição do experimento: Piauí)". Ao usar um desses trechos, diga a condição na mesma frase ("📘 Segundo a Embrapa, num experimento no Piauí, ..."), principalmente quando ela for diferente do perfil do produtor (irrigação, estado). Número, dose ou produtividade vem sempre com a condição. Dizer a condição não é motivo para deixar de usar um trecho útil.`
+        : '- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").';
 
     return `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.
 
@@ -76,7 +85,7 @@ COMO RESPONDER
 - Soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
 - Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}
-- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").
+${regraDaCondicao}
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" (sempre com essas palavras) antes do que vier dos trechos da Embrapa abaixo.

@@ -43,6 +43,24 @@ function legibilidade(texto) {
 
 const CIDA = { nome: 'Roça de casa', estado: 'MG', cidade: 'Patos de Minas', codigoMunicipio: '3148004', tamanho: '3', tipoSolo: 'nao_sei', culturasHistorico: ['Milho', 'Feijão'], proximaCultura: 'Feijão', objetivos: ['Aumentar produtividade'] };
 const PLANTA_DE_INVERNO = /aveia|nabo|ervilhaca|centeio|tremo[cç]o|azev[eé]m/i;
+
+// Documentos com a condição do experimento no catálogo (área irrigada, Cerrado, região...).
+// Quando a resposta cita a Embrapa e a busca trouxe um deles, a condição deveria aparecer no
+// texto (regra do prompt de 2026-11-04). Observação, e não falha: se o produtor está na mesma
+// condição, não citá-la está certo.
+const CATALOGO = JSON.parse(fs.readFileSync(new URL('../src/lib/documentos.json', import.meta.url), 'utf8'));
+const semAcento = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const GENERICAS = new Set(['regiao', 'area', 'sistema', 'producao', 'agricultura', 'reforma']);
+// Raízes de 5 letras das palavras da condição: "irrigada por aspersão" casa com "irrigação"
+const raizesDaCondicao = (condicao) => semAcento(condicao).match(/[a-z]{5,}/g).filter((p) => !GENERICAS.has(p)).map((p) => p.slice(0, 5));
+function condicoesSemCitar(texto, fontes) {
+    if (!texto.includes('📘')) return [];
+    const normal = semAcento(texto);
+    return (fontes || [])
+        .map((f) => CATALOGO[f.fonte ?? f]?.condicao)
+        .filter(Boolean)
+        .filter((condicao) => !raizesDaCondicao(condicao).some((raiz) => normal.includes(raiz)));
+}
 // [descrição, teste, obrigatória]
 const CASOS = [
     { id: 'cida-analise', persona: 'Dona Cida (MG, Cerrado, sem irrigação)', perfil: CIDA,
@@ -110,6 +128,7 @@ try {
             ['legibilidade fácil (50 ou mais)', leg.ifl >= 50, false],
             ...(c.informal ? [['pergunta informal: até 200 palavras', leg.palavras <= 200, false]] : []),
             ['sem aviso de "não pôde ser conferido"', !texto.includes('⚠️ Parte desta resposta'), false],
+            ...condicoesSemCitar(texto, d.fontes).map((condicao) => [`usou um estudo em "${condicao}" sem dizer a condição`, false, false]),
         ];
         resultados.push({
             caso: c.id, persona: c.persona, pergunta: c.pergunta, status: r.status, segundos: Math.round((Date.now() - t0) / 1000),
