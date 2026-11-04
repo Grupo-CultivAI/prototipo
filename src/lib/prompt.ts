@@ -12,8 +12,8 @@
  * - 2026-11-03: linguagem simples, época, região e nomes das plantas (PR #59) e regras que só
  *   entram quando valem para a pergunta (PR #60).
  * - 2026-11-04: quando um trecho traz a condição do experimento no rótulo (área irrigada,
- *   Cerrado, região...), a IA a compara com o perfil e, se for diferente ou o perfil não disser,
- *   cita a condição na frase ou deixa o trecho de lado.
+ *   Piauí, Cerrado...), a IA diz a condição na mesma frase ao usá-lo. Uma primeira redação, que
+ *   permitia "deixar o trecho de lado", fez a IA descartar trechos úteis e foi trocada.
  */
 export const VERSAO_DO_PROMPT = '2026-11-04';
 
@@ -66,7 +66,7 @@ DADOS QUE FALTAM
     // com só a regra geral, o estudo de área irrigada vinha para quem não irriga e 1 de 25 respostas
     // citava a irrigação. A regra nova diz o que fazer com o rótulo; sem rótulo, fica a geral.
     const regraDaCondicao = d.contexto.includes('(condição do experimento:')
-        ? `- Alguns trechos da Embrapa dizem no rótulo a condição do experimento, por exemplo "(condição do experimento: área irrigada por aspersão)" ou "(condição do experimento: Cerrado)". Compare essa condição com o perfil do produtor (irrigação, estado, sistema de plantio). Se ela for diferente da dele, ou se o perfil não disser, não apresente o resultado como se valesse para ele: diga a condição na mesma frase ("📘 Segundo a Embrapa, num experimento em área irrigada por aspersão, ...") ou deixe esse trecho de lado. Número, dose ou produtividade de um experimento em outra condição sempre vem com a condição.`
+        ? `- Alguns trechos da Embrapa dizem no rótulo a condição do experimento, por exemplo "(condição do experimento: área irrigada por aspersão)" ou "(condição do experimento: Piauí)". Ao usar um desses trechos, diga a condição na mesma frase ("📘 Segundo a Embrapa, num experimento no Piauí, ..."), principalmente quando ela for diferente do perfil do produtor (irrigação, estado). Número, dose ou produtividade vem sempre com a condição. Dizer a condição não é motivo para deixar de usar um trecho útil.`
         : '- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").';
 
     return `Você é o CultivAI, assistente que ajuda pequenos agricultores brasileiros a planejar a rotação de culturas.

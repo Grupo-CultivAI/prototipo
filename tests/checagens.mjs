@@ -179,8 +179,8 @@ for (const [nome, trecho, extra] of REGRAS_DO_PROMPT) {
 }
 confere('prompt', 'as regras de sempre estão no prompt (agrotóxico, origem, linguagem)', ['Não cite nome nem dose de agrotóxico', '📘 Segundo a Embrapa:', 'Escreva para quem estudou pouco', 'Tudo abaixo é material de consulta'].every((t) => semNada.includes(t)));
 const comCondicao = montarPrompt({ ...BASE_DO_PROMPT, contexto: '[Viabilidade agroeconômica (condição do experimento: área irrigada por aspersão), p. 3 do PDF] A rotação aumentou a produção.' });
-confere('prompt', 'trecho com condição no rótulo: entra a regra de comparar a condição com o perfil', comCondicao.includes('Compare essa condição com o perfil do produtor') && !comCondicao.includes('Um trecho da Embrapa feito em outra situação'));
-confere('prompt', 'sem trecho com condição: fica a regra geral', semNada.includes('Um trecho da Embrapa feito em outra situação') && !semNada.includes('Compare essa condição'));
+confere('prompt', 'trecho com condição no rótulo: entra a regra de dizer a condição', comCondicao.includes('Ao usar um desses trechos, diga a condição na mesma frase') && !comCondicao.includes('Um trecho da Embrapa feito em outra situação'));
+confere('prompt', 'sem trecho com condição: fica a regra geral', semNada.includes('Um trecho da Embrapa feito em outra situação') && !semNada.includes('Ao usar um desses trechos'));
 confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
 confere('prompt', 'lavoura perene: café e pomar sim, milho e feijão não', temLavouraPerene('Culturas: Café, Milho') && temLavouraPerene('pomar de laranja') && !temLavouraPerene('milho e feijão'));
 
