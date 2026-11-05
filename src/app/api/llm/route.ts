@@ -12,7 +12,7 @@ import { getChuvaRecente, getForecastDays, getWeatherSummary, previsaoEmTexto } 
 import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
 import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { centroDoMunicipio, localDoMunicipio } from '@/lib/mesorregiao';
-import { culturasDoMunicipio } from '@/lib/producaoMunicipal';
+import { ALERTA_DOS_VALORES, culturasDoMunicipio } from '@/lib/producaoMunicipal';
 import { FONTE_DA_SAFRA, anoRuimNoEstado, safraDoEstado } from '@/lib/safraEstadual';
 import { FONTE_DO_PROGRESSO, progressoNoEstado } from '@/lib/progressoSafra';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
@@ -118,7 +118,10 @@ function pontoDoCultivo(p: any, codigoMunicipio: string | null) {
     return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : centroDoMunicipio(codigoMunicipio);
 }
 
-function resumoDoPerfil(p: any, codigoMunicipio: string | null): string | null {
+// Valor por hectare e preço das culturas do município (IBGE) só em perguntas sobre vender ou o que plantar
+const PERGUNTA_DE_VENDA = /vend|mercado|pre[cç]o|\bvalor|lucr|\brenda\b|dinheiro|compensa|vale a pena|o que (eu )?(plant|cultiv|semei)|rota[cç]/i;
+
+function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = false): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
     const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
@@ -133,7 +136,7 @@ function resumoDoPerfil(p: any, codigoMunicipio: string | null): string | null {
     ].filter(Boolean).join(', ');
     if (solo) linhas.push(`Solo: ${solo}`);
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
-    const doMunicipio = culturasDoMunicipio(codigoMunicipio);
+    const doMunicipio = culturasDoMunicipio(codigoMunicipio, { comValores });
     if (doMunicipio) linhas.push(doMunicipio);
     const safras = ordenarSafras(p.safras).map((s: any) => `${rotuloDaSafra(s)}: ${String(s.cultura).toLowerCase()}`);
     if (safras.length) linhas.push(`Safras registradas (da mais antiga à mais recente): ${safras.join('; ')}`);
@@ -324,9 +327,11 @@ export async function POST(req: Request) {
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade, codigoMunicipio) ?? (cultivosSemEscolha.length > 1
+        const perfil = resumoDoPerfil(propriedade, codigoMunicipio, PERGUNTA_DE_VENDA.test(`${userPrompt} ${busca}`)) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
             : null);
+        // Com os valores do município no perfil, o alerta de como citá-los (ano, fonte, sem custos)
+        if (perfil?.includes('valor da produção por hectare')) alertas.push(ALERTA_DOS_VALORES);
         // O quadro do ZARC abaixo da resposta (quadroZarc) e a regra do aplicativo no prompt
         const temQuadroZarc = Boolean(epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt));
         // As culturas da pergunta e do perfil (o nome que o produtor escreveu só serve para escolher
