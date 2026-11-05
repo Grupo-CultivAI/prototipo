@@ -223,6 +223,9 @@ confere('produção municipal', 'código desconhecido: nada', culturasDoMunicipi
 const valoresEmCruz = culturasDoMunicipio('2909802', { comValores: true }) ?? '';
 confere('produção municipal', 'com valores: feijão em reais a saca de 60 quilos, mandioca a tonelada, título sem descontar custos', /feijão \([\d.]+ ha; R\$ [\d.]+ por hectare; R\$ [\d.]+ a saca de 60 quilos\)/.test(valoresEmCruz) && /mandioca \([\d.]+ ha; R\$ [\d.]+ por hectare; R\$ [\d.]+ a tonelada\)/.test(valoresEmCruz) && valoresEmCruz.includes('sem descontar custos'), valoresEmCruz);
 confere('produção municipal', 'sem pedir valores, a linha não tem reais', !plantadasEmCruz.includes('R$'));
+// Próxima safra: sem as perenes (05/11/2026, a IA indicava o limão mesmo com a regra do prompt)
+const anuaisEmCruz = culturasDoMunicipio('2909802', { comValores: true, semPerenes: true }) ?? '';
+confere('produção municipal', 'próxima safra: sem limão e laranja (perenes), com mandioca e feijão', !/limão|laranja|perene \(/.test(anuaisEmCruz.replace('só as anuais', '')) && anuaisEmCruz.includes('mandioca (') && anuaisEmCruz.includes('feijão (') && anuaisEmCruz.includes('só as anuais'), anuaisEmCruz);
 
 // --- Safra do ano no estado (src/lib/safraEstadual.ts, IBGE, levantamento mensal) ---
 // Os números mudam a cada levantamento: os testes conferem o formato, não os valores

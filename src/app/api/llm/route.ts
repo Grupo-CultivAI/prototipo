@@ -120,8 +120,12 @@ function pontoDoCultivo(p: any, codigoMunicipio: string | null) {
 
 // Valor por hectare e preço das culturas do município (IBGE) só em perguntas sobre vender ou o que plantar
 const PERGUNTA_DE_VENDA = /vend|mercado|pre[cç]o|\bvalor|lucr|\brenda\b|dinheiro|compensa|vale a pena|o que (eu )?(plant|cultiv|semei)|rota[cç]/i;
+// Próxima safra ou rotação, sem falar de lavoura perene: as perenes (pomar, café) saem da linha do
+// município, porque a IA as indicava mesmo com a regra do prompt
+const PLANEJAMENTO_ANUAL = /pr[oó]xim[ao]s? safra|safrinha|(esta|essa) safra|rota[cç]/i;
+const FALA_DE_PERENE = /perene|pomar|frut|caf[eé]|laranj|lim[aã]o|banana|cacau|\buva|manga|coco|maracuj|seringueira/i;
 
-function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = false): string | null {
+function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = false, semPerenes = false): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
     const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
@@ -136,7 +140,7 @@ function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = fal
     ].filter(Boolean).join(', ');
     if (solo) linhas.push(`Solo: ${solo}`);
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
-    const doMunicipio = culturasDoMunicipio(codigoMunicipio, { comValores });
+    const doMunicipio = culturasDoMunicipio(codigoMunicipio, { comValores, semPerenes });
     if (doMunicipio) linhas.push(doMunicipio);
     const safras = ordenarSafras(p.safras).map((s: any) => `${rotuloDaSafra(s)}: ${String(s.cultura).toLowerCase()}`);
     if (safras.length) linhas.push(`Safras registradas (da mais antiga à mais recente): ${safras.join('; ')}`);
@@ -327,7 +331,9 @@ export async function POST(req: Request) {
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade, codigoMunicipio, PERGUNTA_DE_VENDA.test(`${userPrompt} ${busca}`)) ?? (cultivosSemEscolha.length > 1
+        const textoDaPergunta = `${userPrompt} ${busca}`;
+        const semPerenes = PLANEJAMENTO_ANUAL.test(textoDaPergunta) && !FALA_DE_PERENE.test(textoDaPergunta);
+        const perfil = resumoDoPerfil(propriedade, codigoMunicipio, PERGUNTA_DE_VENDA.test(textoDaPergunta), semPerenes) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
             : null);
         // Com os valores do município no perfil, o alerta de como citá-los (ano, fonte, sem custos)

@@ -34,20 +34,24 @@ export const ALERTA_DOS_VALORES = `- Valores de venda: ao citar valor por hectar
  * Com valores: "... mandioca (839 ha; R$ 4.144 por hectare; R$ 798 a tonelada), feijão (175 ha; R$ 1.800 por
  * hectare; R$ 182 a saca de 60 quilos)".
  */
-export function culturasDoMunicipio(codigo?: string | null, { comValores = false } = {}): string | null {
+export function culturasDoMunicipio(codigo?: string | null, { comValores = false, semPerenes = false } = {}): string | null {
     const dados = municipios[String(codigo ?? '').trim()];
     if (!dados?.length) return null;
     const culturas: string[] = [];
     for (let i = 0; i < dados.length; i += CAMPOS) {
         const [produto, hectares, porHectare, porTonelada] = dados.slice(i, i + CAMPOS);
+        // Em "o que planto na próxima safra", a IA indicava o limão marcado como perene mesmo com a
+        // regra do prompt (05/11/2026): sem ele na linha, não há como indicar
+        if (semPerenes && perenes.includes(produto)) continue;
         const nome = produtos[produto];
         // Perene: pomar, café, cacau... não é cultura para "a próxima safra"
         const perene = perenes.includes(produto) ? ', perene' : '';
         const valores = comValores && porHectare ? `; ${reais(porHectare)} por hectare${preco(nome, porTonelada)}` : '';
         culturas.push(`${nome.toLowerCase()} (${hectares.toLocaleString('pt-BR')} ha${perene}${valores})`);
     }
+    if (!culturas.length) return null;
     const titulo = comValores
         ? `Mais plantadas no município (IBGE, ${ano}: área colhida; valor da produção por hectare, sem descontar custos; preço médio recebido pelo produtor)`
         : `Mais plantadas no município (IBGE, área colhida em ${ano})`;
-    return `${titulo}: ${culturas.join(', ')}`;
+    return `${titulo}${semPerenes ? ', só as anuais' : ''}: ${culturas.join(', ')}`;
 }
