@@ -36,8 +36,11 @@
  *   produção: a média do estado como referência e o aviso quando o ano foi ruim no estado todo.
  * - 2026-11-05.3: seção ANDAMENTO DO PLANTIO E DA COLHEITA (Conab, semanal) em perguntas sobre
  *   a hora de plantar ou colher, sem tirar do ZARC o papel de dizer a época da propriedade.
+ * - 2026-11-05.4: em perguntas sobre vender ou o que plantar, a linha das culturas do município
+ *   traz o valor da produção por hectare e o preço médio recebido em 2025 (IBGE), com a regra de
+ *   apresentá-los como referência do ano passado, sem descontar custos.
  */
-export const VERSAO_DO_PROMPT = '2026-11-05.3';
+export const VERSAO_DO_PROMPT = '2026-11-05.4';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -93,6 +96,9 @@ DADOS QUE FALTAM
     // Culturas mais plantadas no município (src/lib/producaoMunicipal.ts), na linha do perfil
     const regraDoMunicipio = d.perfil?.includes('Mais plantadas no município') ? `
 - O perfil traz as culturas mais plantadas no município (IBGE): elas têm comprador e gente que sabe cultivar. Quando o produtor perguntar o que plantar para vender ou pedir uma rotação, inclua entre as culturas de venda pelo menos uma dessas que sirva para a área, a época e a irrigação dele, dizendo que é das mais plantadas no município (algumas são irrigadas ou de lavoura grande). Para a próxima safra ou a rotação, indique as anuais; as marcadas como perenes (pomar, café) só se o produtor quiser plantar uma lavoura perene. Se indicar uma cultura de venda fora da lista, diga para conferir antes onde vender. Plantas de cobertura (crotalária, mucuna, milheto de cobertura) não são cultura de venda.` : '';
+    // Valor por hectare e preço (IBGE): só na linha do perfil das perguntas sobre vender
+    const regraDosValores = d.perfil?.includes('valor da produção por hectare') ? `
+- Em perguntas sobre vender ou o que plantar, use o valor por hectare e o preço da linha "Mais plantadas no município" para comparar as culturas de venda, sempre dizendo que são médias do município em 2025 segundo o IBGE: uma referência, não o preço de hoje, que muda de um ano para outro. Diga que o valor por hectare é o que se vendeu, sem descontar os custos: a cultura que vale mais por hectare em geral custa mais para plantar (adubo, mão de obra, irrigação). Não prometa ganho.` : '';
     // Trechos com "(condição do experimento: ...)" no rótulo (src/lib/documentos.ts): em 03/11/2026,
     // com só a regra geral, o estudo de área irrigada vinha para quem não irriga e 1 de 25 respostas
     // citava a irrigação. A regra nova diz o que fazer com o rótulo; sem rótulo, fica a geral.
@@ -127,7 +133,7 @@ COMO RESPONDER
 - Plantas de cobertura de inverno (aguentam frio e geada): aveia-preta, nabo forrageiro, ervilhaca, tremoço, centeio, azevém. De verão (precisam de calor e morrem com a geada): milheto, crotalária, mucuna, feijão-de-porco, guandu, sorgo.
 - No Centro-Sul, soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).${regrasDeClima}
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Soja, feijão-caupi e as de cobertura põem bastante; o feijão-comum (carioca, preto) põe pouco e ainda precisa de adubo com nitrogênio. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
-- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}${regraDoMunicipio}
+- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}${regraDoMunicipio}${regraDosValores}
 ${regraDaCondicao}${regraDaSafra}${regraDoAndamento}${secaoDeAlertas}
 
 ORIGEM DA INFORMAÇÃO

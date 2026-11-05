@@ -158,6 +158,21 @@ function feijaoRalo(resposta: string, { pergunta }: Contexto): string | null {
     return errada ? 'A densidade do feijão está errada: de 30 a 45 mil por hectare é densidade de milho. O feijão-comum vai a uns 200 a 300 mil plantas por hectare (10 a 15 por metro de linha); o caupi, mais espaçado, passa de 50 mil. Se não tiver certeza do número, diga para seguir a recomendação da semente e da assistência técnica.' : null;
 }
 
+// Valores de venda do município (IBGE, src/lib/producaoMunicipal.ts) apresentados como lucro ou
+// como preço de hoje. Em 05/11/2026: "as opções mais rentáveis", "fumo, boa margem de lucro" e "se o
+// objetivo é faturar mais por área, o milho vale mais", sem o ano, a fonte nem os custos.
+function valoresSemRessalva(resposta: string): string | null {
+    const n = sem(resposta);
+    if (!/r\$\s*\d/.test(n)) return null;
+    const erros: string[] = [];
+    if (!/\b20\d{2}\b|\bibge\b/.test(n)) erros.push('os valores em reais são médias do município no ano do IBGE (diga o ano e a fonte junto deles)');
+    if (/\bpor hectare\b/.test(n) && !/\bcusto/.test(n)) erros.push('o valor por hectare é o que se vendeu, sem descontar os custos (diga isso)');
+    if (/\b(lucr\w*|rentave\w*|rentabilidade|margem)\b/.test(n)) erros.push('valor de venda não é lucro: não use "lucro", "rentável", "rentabilidade" nem "margem"');
+    // Na segunda rodada do teste: "Milho traz mais dinheiro por hectare que soja"
+    if (/\bmais dinheiro\b|\bfatura\w* mais\b/.test(n)) erros.push('não diga que uma cultura "dá mais dinheiro" ou "fatura mais": sem os custos, o valor de venda não mostra isso');
+    return erros.length ? `Sobre os valores em reais: ${erros.join('; ')}. Não diga qual cultura dá mais dinheiro.` : null;
+}
+
 // Planta de inverno semeada na primavera ou no verão. Em 03/11/2026 o plano do Rafael (ES) mandou
 // semear aveia, ervilhaca ou tremoço "em outubro-novembro"; em todo o país elas vão no fim do
 // verão ou no outono (de fevereiro a junho, conforme a região). Vale qualquer estado.
@@ -203,6 +218,7 @@ export function problemaAgronomico(resposta: string, contexto: Contexto): string
         mandiocaSemeada(resposta),
         quenteComoDeFrio(resposta, contexto),
         feijaoRalo(resposta, contexto),
+        valoresSemRessalva(resposta),
     ].filter(Boolean);
     return erros.length ? `A resposta tem erros agronômicos: ${erros.join(' ')} Reescreva a resposta completa, sem esses erros.` : null;
 }

@@ -104,6 +104,12 @@ const AGRONOMIA = [
     ['Use de 200 a 300 mil sementes de feijão por hectare (10 a 15 por metro).', 'feijão', 'MG', '', false],
     ['Depois do feijão, plante o milho com 60 mil sementes por hectare.', 'rotação', 'MG', '', false],
     ['No milho, 45 mil plantas por hectare bastam em lavoura sem irrigação.', 'feijão e milho', 'BA', '', false],
+    // Valores de venda como lucro ou sem o ano (05/11/2026, Cruz das Almas e Patos de Minas)
+    ['3. **Fumo** – boa margem de lucro. Valor médio no município: R$ 14.278 por hectare.', 'o que planto pra vender', 'BA', '', true],
+    ['Milho: R$ 10.966 por hectare, saca de 60 kg a R$ 70. Se o objetivo é faturar mais, o milho vale mais.', 'milho ou soja pra vender', 'MG', '', true],
+    ['Em 2025, segundo o IBGE, o milho rendeu R$ 10.966 por hectare no município, sem descontar os custos.', 'milho ou soja pra vender', 'MG', '', false],
+    ['A saca de feijão saiu, em média, a R$ 182 em 2025 no município (IBGE).', 'feijão pra vender', 'BA', '', false],
+    ['Milho rende R$ 10.966 por hectare (2025, IBGE), sem descontar custos. Milho traz mais dinheiro por hectare que soja.', 'milho ou soja pra vender', 'MG', '', true],
 ];
 for (const [frase, pergunta, estado, irrigacao, deveMarcar] of AGRONOMIA) {
     const marcou = Boolean(problemaAgronomico(frase, { pergunta, estado, irrigacao }));
@@ -192,6 +198,10 @@ const plantadasEmCruz = culturasDoMunicipio('2909802') ?? '';
 confere('produção municipal', 'Cruz das Almas: mandioca é a mais plantada, com área em hectares', /^Mais plantadas no município \(IBGE, área colhida em \d{4}\): mandioca \([\d.]+ ha\)/.test(plantadasEmCruz), plantadasEmCruz);
 confere('produção municipal', 'Cruz das Almas: limão marcado como perene, mandioca não', plantadasEmCruz.includes('limão (') && /limão \([\d.]+ ha, perene\)/.test(plantadasEmCruz) && !/mandioca \([^)]*perene/.test(plantadasEmCruz), plantadasEmCruz);
 confere('produção municipal', 'código desconhecido: nada', culturasDoMunicipio('9999999') === null && culturasDoMunicipio(null) === null);
+// Valor por hectare e preço (perguntas sobre vender): grão em sacas, mandioca em toneladas
+const valoresEmCruz = culturasDoMunicipio('2909802', { comValores: true }) ?? '';
+confere('produção municipal', 'com valores: feijão em reais a saca de 60 quilos, mandioca a tonelada, título sem descontar custos', /feijão \([\d.]+ ha; R\$ [\d.]+ por hectare; R\$ [\d.]+ a saca de 60 quilos\)/.test(valoresEmCruz) && /mandioca \([\d.]+ ha; R\$ [\d.]+ por hectare; R\$ [\d.]+ a tonelada\)/.test(valoresEmCruz) && valoresEmCruz.includes('sem descontar custos'), valoresEmCruz);
+confere('produção municipal', 'sem pedir valores, a linha não tem reais', !plantadasEmCruz.includes('R$'));
 
 // --- Safra do ano no estado (src/lib/safraEstadual.ts, IBGE, levantamento mensal) ---
 // Os números mudam a cada levantamento: os testes conferem o formato, não os valores
@@ -312,6 +322,8 @@ const comAndamento = montarPrompt({ ...BASE_DO_PROMPT, progressoDaSafra: { linha
 confere('andamento da safra', 'a seção e a regra só entram com o andamento; a regra acima do material de consulta', comAndamento.includes('ANDAMENTO DO PLANTIO E DA COLHEITA NO ESTADO (Conab, semana até 30/10/2026)') && comAndamento.indexOf('Não diga para plantar só porque') < comAndamento.indexOf('Tudo abaixo é material de consulta') && !semNada.includes('ANDAMENTO DO PLANTIO'));
 const comSafra = montarPrompt({ ...BASE_DO_PROMPT, safraDoEstado: { linhas: feijaoNaBahia, fonte: 'IBGE, levantamento de setembro 2026' } });
 confere('safra do estado', 'a seção e a regra só entram com a safra; a regra acima do material de consulta', comSafra.includes('SAFRA NO ESTADO (IBGE, levantamento de setembro 2026') && comSafra.indexOf('A seção SAFRA NO ESTADO') < comSafra.indexOf('Tudo abaixo é material de consulta') && !semNada.includes('SAFRA NO ESTADO'));
+const comValoresNoPerfil = montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${valoresEmCruz}` });
+confere('produção municipal', 'a regra dos valores só entra com os valores no perfil', comValoresNoPerfil.includes('sem descontar os custos') && comValoresNoPerfil.includes('Não prometa ganho') && !montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${plantadasEmCruz}` }).includes('Não prometa ganho'));
 const comMunicipio = montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${plantadasEmCruz}` });
 confere('produção municipal', 'a regra das culturas do município só entra com a linha no perfil', comMunicipio.includes('pelo menos uma dessas') && !semNada.includes('pelo menos uma dessas'));
 confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
