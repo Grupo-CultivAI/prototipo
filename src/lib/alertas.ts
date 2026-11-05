@@ -42,6 +42,9 @@ const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[
 const quando = (d: DiaDaPrevisao) => (d.hoje ? `hoje (${d.semana} ${d.data})` : `na ${d.semana} ${d.data}`);
 const irriga = (irrigacao?: string | null) => Boolean(irrigacao) && irrigacao !== 'Não irrigo';
 const PERGUNTA_DE_SEMEAR = /plant|seme|semeio/i;
+// "Posso plantar soja em maio?" é sobre outro mês: a previsão dos próximos dias não vale para ela.
+// No teste de 04/11/2026, com essa pergunta, a IA mandou esperar a terra molhar para semear.
+const CITA_UM_MES = /janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro/i;
 
 /** Alertas da previsão dos próximos dias: geada, chuva forte e chuva para semear ou irrigar. */
 export function alertasDoTempo(dias: DiaDaPrevisao[] | null | undefined, { pergunta, irrigacao }: { pergunta: string; irrigacao?: string | null }): string[] {
@@ -66,7 +69,7 @@ export function alertasDoTempo(dias: DiaDaPrevisao[] | null | undefined, { pergu
         if (chuva >= CHUVA_PARA_ADIAR_IRRIGACAO_MM) {
             alertas.push(`- Irrigação: a previsão indica cerca de ${chuva} mm de chuva até ${proximos.at(-1)!.semana} ${proximos.at(-1)!.data}. Se a pergunta for sobre irrigar, sugira esperar a chuva e conferir a umidade da terra antes de ligar a irrigação.`);
         }
-    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !dias.some((d) => d.chuvaMm >= CHUVA_PARA_SEMEAR_MM)) {
+    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !CITA_UM_MES.test(pergunta) && !dias.some((d) => d.chuvaMm >= CHUVA_PARA_SEMEAR_MM)) {
         alertas.push(`- Semeadura: a previsão não indica chuva de ${CHUVA_PARA_SEMEAR_MM} mm ou mais nos próximos ${dias.length} dias. Se a pergunta for sobre semear agora, diga para semear só com a terra úmida, depois de uma boa chuva: em terra seca, a semente pode não nascer.`);
     }
     return alertas;

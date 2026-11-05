@@ -67,7 +67,7 @@ function deVeraoNoInvernoDoSul(resposta: string, { pergunta, estado }: Contexto)
 }
 
 function sojaNoInverno(resposta: string, { estado }: Contexto): string | null {
-    // Em Roraima, ao norte da linha do equador, a soja é semeada em abril e maio, no início das chuvas
+    // Em Roraima, ao norte da linha do equador, a soja é semeada de abril a junho, com as chuvas
     if (String(estado ?? '').trim().toUpperCase() === 'RR') return null;
     const n = sem(resposta);
     const achou = [...n.matchAll(/\bsoja\s*(?:\(\s*|de\s+|no\s+|em\s+)inverno\b|\binverno\s*[:–—-]\s*soja\b/g)]
@@ -105,6 +105,33 @@ function mandiocaSemeada(resposta: string): string | null {
     return /\bmandioca\b[^.,;\n]{0,40}\b(pode ser|e|deve ser|sao|sera) semead|\bsementes? de mandioca\b|\bsem(eie|ear) (a )?mandioca\b/.test(n)
         ? 'Mandioca não é semeada: é plantada com pedaços do caule (manivas).'
         : null;
+}
+
+// Planta de clima quente apresentada como planta de frio. Em 04/11/2026, para Cruz das Almas (BA):
+// "Feijão caupi – planta de inverno, tolera clima mais frio". No Nordeste, "inverno" também é o nome
+// da época das chuvas ("o caupi é cultura de inverno" está certo lá): só "tolera frio" conta.
+const NORDESTE = ['MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'];
+const DE_CLIMA_QUENTE = /\b(feijao[- ]caupi|caupi|milheto|crotalarias?|mucuna|feijao[- ]de[- ]porco|guandu|sorgo)\b/g;
+const NOME_QUENTE: Record<string, string> = { ...NOME, 'feijao caupi': 'feijão-caupi', caupi: 'feijão-caupi' };
+const TOLERA_FRIO = /\b(toler|aguent|resist|suport)\w*\s+(bem\s+)?(ao?\s+)?(clima\s+)?(mais\s+)?(frio|geada)\b/;
+const DE_INVERNO_NA_FRASE = /\b(planta|cultura|cobertura|leguminosa|opcao) de inverno\b/;
+// Entre a planta e a afirmação: negação, ou outra planta de quem a frase passa a falar
+const OUTRO_ASSUNTO = new RegExp(`\\b(nao|nem|mas|porem)\\b|${DE_INVERNO.source}|${DE_CLIMA_QUENTE.source}`);
+
+function quenteComoDeFrio(resposta: string, { estado }: Contexto): string | null {
+    const n = sem(resposta);
+    const doNordeste = NORDESTE.includes(String(estado ?? '').trim().toUpperCase());
+    const plantas = new Set<string>();
+    for (const m of n.matchAll(DE_CLIMA_QUENTE)) {
+        const frase = n.slice(m.index + m[0].length).split(/[.;!?\n]/)[0].slice(0, 80);
+        const frio = [TOLERA_FRIO, ...(doNordeste ? [] : [DE_INVERNO_NA_FRASE])].map((r) => frase.match(r)).find(Boolean);
+        if (!frio || OUTRO_ASSUNTO.test(frase.slice(0, frio.index))) continue;
+        plantas.add(NOME_QUENTE[m[1].replace(/s$/, '').replace(/-/g, ' ')]);
+    }
+    if (!plantas.size) return null;
+    const nomes = [...plantas];
+    const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}` : nomes[0];
+    return `${lista[0].toUpperCase()}${lista.slice(1)} ${nomes.length > 1 ? 'são plantas' : 'é planta'} de clima quente: não aguenta${nomes.length > 1 ? 'm' : ''} frio nem geada. Não diga que tolera${nomes.length > 1 ? 'm' : ''} frio${doNordeste ? '' : ' nem chame de planta de inverno'}.`;
 }
 
 // Planta de inverno semeada na primavera ou no verão. Em 03/11/2026 o plano do Rafael (ES) mandou
@@ -150,6 +177,7 @@ export function problemaAgronomico(resposta: string, contexto: Contexto): string
         nomesTrocados(resposta),
         leguminosaErrada(resposta),
         mandiocaSemeada(resposta),
+        quenteComoDeFrio(resposta, contexto),
     ].filter(Boolean);
     return erros.length ? `A resposta tem erros agronômicos: ${erros.join(' ')} Reescreva a resposta completa, sem esses erros.` : null;
 }
