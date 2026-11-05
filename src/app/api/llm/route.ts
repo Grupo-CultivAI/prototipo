@@ -13,6 +13,7 @@ import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
 import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { centroDoMunicipio, localDoMunicipio } from '@/lib/mesorregiao';
 import { culturasDoMunicipio } from '@/lib/producaoMunicipal';
+import { FONTE_DA_SAFRA, anoRuimNoEstado, safraDoEstado } from '@/lib/safraEstadual';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
@@ -34,6 +35,8 @@ const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 // A previsão só entra no prompt em perguntas sobre o trabalho no campo. Em 27/10/2026, com
 // ela sempre presente, a IA comentou a chuva numa pergunta sobre nematoides.
 const PERGUNTA_DE_CAMPO = /plant|semea|semeio|adub|aplic|pulveriz|colh|chuv|chov|irrig|previs|geada|semana|amanh/i;
+// A safra do estado (IBGE) só entra em perguntas sobre quanto se colhe ou sobre colheita fraca
+const PERGUNTA_DE_PRODUCAO = /colh|produ[cç][aã]o|produtividade|\brend|\bsacas?\b|dando pouco|deu pouco|\bfraca|quebr|\bperdi|quanto (d[aá]|se colhe|rende)|\bm[eé]dia\b/i;
 
 // Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
 // do cultivo (Meus Cultivos), para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
@@ -323,6 +326,14 @@ export async function POST(req: Request) {
             : null);
         // O quadro do ZARC abaixo da resposta (quadroZarc) e a regra do aplicativo no prompt
         const temQuadroZarc = Boolean(epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt));
+        // As culturas da pergunta e do perfil (o nome que o produtor escreveu só serve para escolher
+        // as linhas: o texto que vai ao prompt é todo do IBGE)
+        const p = propriedade as any;
+        const culturasDoProdutor = [p?.proximaCultura, ...(p?.culturasHistorico ?? []), ...(p?.safras ?? []).map((s: any) => s?.cultura)].filter(Boolean).join(', ');
+        const deProducao = PERGUNTA_DE_PRODUCAO.test(`${userPrompt} ${busca}`);
+        const linhasDaSafra = deProducao ? safraDoEstado(p?.estado, `${userPrompt} ${busca} ${culturasDoProdutor}`) : null;
+        // Só as culturas da pergunta: "meu feijão tá dando pouco" não é sobre o milho do perfil
+        if (deProducao) alertas.push(...anoRuimNoEstado(p?.estado, `${userPrompt} ${busca}`));
         const systemPrompt = montarPrompt({
             hoje: hoje(),
             // A altitude ajuda a IA com a geada "nas partes altas"
@@ -338,6 +349,7 @@ export async function POST(req: Request) {
             temQuadroZarc,
             lavouraPerene: temLavouraPerene(`${userPrompt} ${busca} ${perfil ?? ''}`),
             alertas,
+            safraDoEstado: linhasDaSafra ? { linhas: linhasDaSafra, fonte: FONTE_DA_SAFRA } : null,
         });
 
         const messages: MensagemGroq[] = [
@@ -431,7 +443,7 @@ export async function POST(req: Request) {
                 perguntaId,
                 busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING, ...(falhaDaBusca ? { falha: falhaDaBusca } : {}) },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
-                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined, alertas: alertas.length ? alertas : undefined },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined, alertas: alertas.length ? alertas : undefined, safra: linhasDaSafra || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
                 ...(quadroZarc ? { epoca: quadroZarc } : {}),
             },

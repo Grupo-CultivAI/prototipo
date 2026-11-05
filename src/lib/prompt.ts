@@ -32,8 +32,10 @@
  * - 2026-11-05: a chuva que já caiu, a evapotranspiração e a altitude (Open-Meteo) entram na
  *   previsão e nos alertas (semeadura pela chuva recente, veranico, quanto irrigar). O perfil
  *   ganha as culturas mais plantadas no município (IBGE), com a regra de preferi-las na rotação.
+ * - 2026-11-05.2: seção SAFRA NO ESTADO (IBGE, levantamento mensal) em perguntas sobre colheita e
+ *   produção: a média do estado como referência e o aviso quando o ano foi ruim no estado todo.
  */
-export const VERSAO_DO_PROMPT = '2026-11-05';
+export const VERSAO_DO_PROMPT = '2026-11-05.2';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -58,6 +60,8 @@ export type DadosDoPrompt = {
     lavouraPerene: boolean;
     // Alertas calculados com a previsão e o perfil (src/lib/alertas.ts), já com o que dizer
     alertas: string[];
+    // Estimativa da safra do ano no estado, para as culturas do produtor (src/lib/safraEstadual.ts)
+    safraDoEstado?: { linhas: string; fonte: string } | null;
 };
 
 export function montarPrompt(d: DadosDoPrompt): string {
@@ -91,6 +95,10 @@ DADOS QUE FALTAM
     const regraDaCondicao = d.contexto.includes('(condição do experimento:')
         ? `- Alguns trechos da Embrapa dizem no rótulo a condição do experimento, por exemplo "(condição do experimento: área irrigada por aspersão)" ou "(condição do experimento: Piauí)". Ao usar um desses trechos, diga a condição na mesma frase ("📘 Segundo a Embrapa, num experimento no Piauí, ..."), principalmente quando ela for diferente do perfil do produtor (irrigação, estado). Número, dose ou produtividade vem sempre com a condição. Dizer a condição não é motivo para deixar de usar um trecho útil.`
         : '- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").';
+    // Média do estado: em "meu feijão tá dando pouco", a IA não tinha número de referência, nem
+    // sabia quando o ano tinha sido ruim no estado todo
+    const regraDaSafra = d.safraDoEstado ? `
+- A seção SAFRA NO ESTADO traz a estimativa do IBGE para as culturas do produtor no estado dele. Use-a quando ele falar de colheita baixa ou alta, ou perguntar quanto se colhe: depois de "🌱 Prática agronômica geral:", diga o número com a fonte, o ano e o estado ("segundo a estimativa do IBGE, a média do feijão de 2ª safra na Bahia em 2026 é de cerca de 7 sacas por hectare"). Explique que é a média do estado, de lavouras grandes e pequenas, uma referência e não uma meta. Quando a linha da cultura disser "Queda forte", diga ao produtor que o ano foi ruim para essa cultura no estado todo, provavelmente pelo clima, para ele não achar que o problema é só dele. Em outras perguntas, não fale dessa seção.` : '';
     const secaoDeAlertas = d.alertas.length ? `
 
 ALERTAS DO CULTIVO (calculados pelo CultivAI com a previsão do tempo e o perfil)
@@ -112,7 +120,7 @@ COMO RESPONDER
 - No Centro-Sul, soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).${regrasDeClima}
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Soja, feijão-caupi e as de cobertura põem bastante; o feijão-comum (carioca, preto) põe pouco e ainda precisa de adubo com nitrogênio. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
 - Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}${regraDoMunicipio}
-${regraDaCondicao}${secaoDeAlertas}
+${regraDaCondicao}${regraDaSafra}${secaoDeAlertas}
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" (sempre com essas palavras) antes do que vier dos trechos da Embrapa abaixo.
@@ -144,7 +152,10 @@ ${d.previsao || '(não se aplica a esta pergunta ou indisponível)'}
 
 ÉPOCA DE PLANTIO OFICIAL (ZARC, Ministério da Agricultura; fora das datas, o plantio não é indicado):
 ${d.zarc || '(sem dados do ZARC para esta pergunta: não dê datas oficiais)'}
-
+${d.safraDoEstado ? `
+SAFRA NO ESTADO (${d.safraDoEstado.fonte}; estimativas, revistas todo mês):
+${d.safraDoEstado.linhas}
+` : ''}
 TRECHOS DA EMBRAPA:
 ${d.contexto || '(nenhum trecho relevante encontrado)'}`;
 }

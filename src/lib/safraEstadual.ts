@@ -40,6 +40,8 @@ const PALAVRAS: [RegExp, RegExp][] = [
 const SACA: [RegExp, number][] = [[/^(feijao|milho|soja|trigo|sorgo|cafe|aveia)/, 60], [/^arroz/, 50]];
 // Para não encher o prompt: no máximo estas linhas
 const MAXIMO_DE_LINHAS = 4;
+// Queda do rendimento médio, em relação ao ano anterior, que indica um ano ruim no estado
+export const QUEDA_FORTE = 15;
 
 const numero = (n: number) => n.toLocaleString('pt-BR');
 const toneladas = (kg: number) => (kg / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -62,7 +64,10 @@ function linha(uf: string, nome: string, [rendimento, rendimentoAntes, producao,
         ? `; em ${anoAnterior}, ${emToneladas ? toneladas(rendimentoAntes) : numero(rendimentoAntes)} (${variacao(rendimento, rendimentoAntes, ['a mais agora', 'a menos agora'])})`
         : '';
     const producaoDoEstado = producao && producaoAntes ? `; produção do estado: ${variacao(producao, producaoAntes, ['maior', 'menor'])} que em ${anoAnterior}` : '';
-    return `- ${nome.replace('Safra', 'safra')} em ${uf}: rendimento médio estimado em ${ano} de ${valor}${sacas}${comparacao}${producaoDoEstado}.`;
+    // Escrito na linha: no teste de 05/11/2026, com só a porcentagem, a IA não disse ao produtor da
+    // Bahia que o feijão de 2ª safra tinha caído 29% no estado todo
+    const anoRuim = rendimentoAntes && pct(rendimento, rendimentoAntes) <= -QUEDA_FORTE ? ' Queda forte: ano ruim para essa cultura no estado.' : '';
+    return `- ${nome.replace('Safra', 'safra')} em ${uf}: rendimento médio estimado em ${ano} de ${valor}${sacas}${comparacao}${producaoDoEstado}.${anoRuim}`;
 }
 
 /** As linhas da safra do estado para as culturas citadas no texto (perfil e pergunta), ou null. */
@@ -78,6 +83,23 @@ export function safraDoEstado(estado: string | null | undefined, texto: string):
         .filter((l): l is string => Boolean(l))
         .slice(0, MAXIMO_DE_LINHAS);
     return linhas.length ? linhas.join('\n') : null;
+}
+
+/**
+ * Alertas de ano ruim no estado, para a seção de alertas do prompt: no teste de 05/11/2026, com a
+ * marca só na linha da safra, a IA não disse ao produtor da Bahia que o feijão de 2ª safra tinha
+ * caído 29% no estado todo; os alertas ela segue.
+ */
+export function anoRuimNoEstado(estado: string | null | undefined, texto: string): string[] {
+    const uf = String(estado ?? '').trim().toUpperCase();
+    const doEstado = ufs[uf];
+    if (!doEstado) return [];
+    const t = sem(texto);
+    return produtos
+        .map((nome, i) => [nome, doEstado[i]] as const)
+        .filter(([nome, d]) => d?.[0] && d[1] && pct(d[0], d[1]) <= -QUEDA_FORTE
+            && PALAVRAS.some(([noTexto, naTabela]) => noTexto.test(t) && naTabela.test(sem(nome))))
+        .map(([nome, d]) => `- Ano ruim no estado: pela estimativa do IBGE, o rendimento médio de ${nome.replace('Safra', 'safra').toLowerCase()} em ${uf} em ${ano} está ${-pct(d![0]!, d![1]!)}% abaixo do de ${anoAnterior}. Em perguntas sobre colheita fraca dessa cultura, diga isso ao produtor (o problema não é só dele, provavelmente foi o clima) antes das outras causas.`);
 }
 
 /** Ex.: "IBGE, levantamento de setembro 2026" */

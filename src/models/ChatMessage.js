@@ -61,7 +61,8 @@ const ChatMessageSchema = new mongoose.Schema({
             clima: String,
             previsao: String, // próximos dias, uma linha por dia
             zarc: String, // janelas de plantio oficiais enviadas à IA
-            alertas: { type: [String], default: undefined } // alertas do cultivo enviados à IA (src/lib/alertas.ts)
+            alertas: { type: [String], default: undefined }, // alertas do cultivo enviados à IA (src/lib/alertas.ts)
+            safra: String // safra do ano no estado (IBGE) enviada à IA (src/lib/safraEstadual.ts)
         },
         // Quadro do ZARC mostrado abaixo da resposta (src/lib/zarc.ts)
         epoca: {
