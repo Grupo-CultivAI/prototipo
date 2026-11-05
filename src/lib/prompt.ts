@@ -39,8 +39,10 @@
  * - 2026-11-05.4: em perguntas sobre vender ou o que plantar, a linha das culturas do município
  *   traz o valor da produção por hectare e o preço médio recebido em 2025 (IBGE), com a regra de
  *   apresentá-los como referência do ano passado, sem descontar custos.
+ * - 2026-11-05.5: os dados que faltam aparecem como "marca [PEDIR: solo]", não mais "código solo"
+ *   (a IA perguntava "o código do solo"); números em algarismos conferidos por checagem.
  */
-export const VERSAO_DO_PROMPT = '2026-11-05.4';
+export const VERSAO_DO_PROMPT = '2026-11-05.5';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -76,8 +78,8 @@ export function montarPrompt(d: DadosDoPrompt): string {
     const instrucaoDePedido = d.faltando.length ? `
 
 DADOS QUE FALTAM
-- O perfil não informa: ${d.faltando.map((c) => `${c.descricao} (código ${c.codigo})`).join('; ')}.
-- Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda primeiro com o que for possível (nunca só com a pergunta), termine com uma pergunta curta sobre esse dado (por exemplo, "Qual é o tipo de solo da sua propriedade?"), sem outras perguntas, e, na última linha, sozinha, escreva [PEDIR: código]. Exemplo: [PEDIR: ${d.faltando[0].codigo}]. Peça no máximo dois.
+- O perfil não informa: ${d.faltando.map((c) => `${c.descricao} (marca [PEDIR: ${c.codigo}])`).join('; ')}.
+- Quando o produtor pedir uma recomendação para a propriedade dele (o que plantar, quando, que sequência usar) e um desses dados mudaria a resposta: responda primeiro com o que for possível (nunca só com a pergunta), termine com uma pergunta curta sobre esse dado, com as palavras do produtor (por exemplo, "Qual é o tipo de solo da sua propriedade?"), sem outras perguntas, e, na última linha, sozinha, escreva a marca do dado, por exemplo [PEDIR: ${d.faltando[0].codigo}]. A marca é só para o sistema: nunca fale dela nem de "código" com o produtor. Peça no máximo dois.
 - Não peça nada em cumprimentos, agradecimentos, perguntas que não dependem desses dados ou quando o produtor já disse o dado na conversa (nesse caso, use o que ele disse).` : '';
 
     // Só as regras que valem para esta pergunta: em 03/11/2026, as que não valiam somavam

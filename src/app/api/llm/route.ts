@@ -18,7 +18,7 @@ import { FONTE_DO_PROGRESSO, progressoNoEstado } from '@/lib/progressoSafra';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
-import { FIM_DA_REVISAO, INICIO_DA_REVISAO, semDesculpaNoInicio } from '@/lib/revisao';
+import { FIM_DA_REVISAO, INICIO_DA_REVISAO, problemaDeEscrita, semCodigoDoSolo, semDesculpaNoInicio } from '@/lib/revisao';
 import { estacaoERegiao, regrasDoClima } from '@/lib/estacao';
 import { VERSAO_DO_PROMPT, montarPrompt, temLavouraPerene } from '@/lib/prompt';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
@@ -83,7 +83,7 @@ const MARCA_DE_PEDIDO = /\[PEDIR:\s*([^\]]*)\]/gi;
 function separarPedido(resposta: string, faltando: string[]) {
     const pedidos = [...resposta.matchAll(MARCA_DE_PEDIDO)]
         .flatMap((m) => m[1].split(',').map((c) => c.trim().toLowerCase()));
-    const texto = resposta.replace(MARCA_DE_PEDIDO, '').trimEnd();
+    const texto = semCodigoDoSolo(resposta.replace(MARCA_DE_PEDIDO, '')).trimEnd();
     const codigos = [...new Set(pedidos)].filter((c) => faltando.includes(c)).slice(0, 2);
     if (!codigos.length) return { texto, codigos, form: null };
     return {
@@ -120,8 +120,12 @@ function pontoDoCultivo(p: any, codigoMunicipio: string | null) {
 
 // Valor por hectare e preço das culturas do município (IBGE) só em perguntas sobre vender ou o que plantar
 const PERGUNTA_DE_VENDA = /vend|mercado|pre[cç]o|\bvalor|lucr|\brenda\b|dinheiro|compensa|vale a pena|o que (eu )?(plant|cultiv|semei)|rota[cç]/i;
+// Próxima safra ou rotação, sem falar de lavoura perene: as perenes (pomar, café) saem da linha do
+// município, porque a IA as indicava mesmo com a regra do prompt
+const PLANEJAMENTO_ANUAL = /pr[oó]xim[ao]s? safra|safrinha|(esta|essa) safra|rota[cç]/i;
+const FALA_DE_PERENE = /perene|pomar|frut|caf[eé]|laranj|lim[aã]o|banana|cacau|\buva|manga|coco|maracuj|seringueira/i;
 
-function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = false): string | null {
+function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = false, semPerenes = false): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
     const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
@@ -136,7 +140,7 @@ function resumoDoPerfil(p: any, codigoMunicipio: string | null, comValores = fal
     ].filter(Boolean).join(', ');
     if (solo) linhas.push(`Solo: ${solo}`);
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
-    const doMunicipio = culturasDoMunicipio(codigoMunicipio, { comValores });
+    const doMunicipio = culturasDoMunicipio(codigoMunicipio, { comValores, semPerenes });
     if (doMunicipio) linhas.push(doMunicipio);
     const safras = ordenarSafras(p.safras).map((s: any) => `${rotuloDaSafra(s)}: ${String(s.cultura).toLowerCase()}`);
     if (safras.length) linhas.push(`Safras registradas (da mais antiga à mais recente): ${safras.join('; ')}`);
@@ -327,7 +331,9 @@ export async function POST(req: Request) {
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade, codigoMunicipio, PERGUNTA_DE_VENDA.test(`${userPrompt} ${busca}`)) ?? (cultivosSemEscolha.length > 1
+        const textoDaPergunta = `${userPrompt} ${busca}`;
+        const semPerenes = PLANEJAMENTO_ANUAL.test(textoDaPergunta) && !FALA_DE_PERENE.test(textoDaPergunta);
+        const perfil = resumoDoPerfil(propriedade, codigoMunicipio, PERGUNTA_DE_VENDA.test(textoDaPergunta), semPerenes) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
             : null);
         // Com os valores do município no perfil, o alerta de como citá-los (ano, fonte, sem custos)
@@ -395,7 +401,7 @@ export async function POST(req: Request) {
         };
 
         const dadosDaPergunta = { pergunta: `${userPrompt} ${busca}`, estado: (propriedade as any)?.estado, irrigacao: (propriedade as any)?.irrigacao, mesorregiao: local?.mesorregiao };
-        const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta)].filter(Boolean).join(' ');
+        const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta), problemaDeEscrita(answer)].filter(Boolean).join(' ');
         if (problema) {
             console.warn('⚠️ Atribuição sem respaldo, agrotóxico com dose ou erro agronômico; pedindo revisão.', problema);
             const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: `${INICIO_DA_REVISAO}${problema}${FIM_DA_REVISAO}` }]);
