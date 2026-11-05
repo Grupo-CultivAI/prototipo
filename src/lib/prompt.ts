@@ -25,8 +25,10 @@
  * - 2026-11-04.3: seção ALERTAS DO CULTIVO (src/lib/alertas.ts), só quando algum alerta vale:
  *   geada e chuva forte na previsão, chuva para semear ou irrigar, monocultura, leguminosa
  *   depois de leguminosa e solo ácido.
+ * - 2026-11-04.4: em Roraima, a época da soja e do milho vai de abril a junho, como no ZARC de
+ *   Boa Vista (era "abril e maio").
  */
-export const VERSAO_DO_PROMPT = '2026-11-04.3';
+export const VERSAO_DO_PROMPT = '2026-11-04.4';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;

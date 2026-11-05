@@ -43,7 +43,8 @@ const REGRA_DO_NORDESTE = '- No Nordeste, a época das chuvas muda de uma parte 
 const REGRA_DO_MS = '- Em MS, o norte do estado é Cerrado, com inverno seco: lá, sem irrigação, quase nada se planta de maio a setembro. No sul, há plantio no outono (milho safrinha, aveia, trigo). Para dizer quando plantar, siga as janelas do ZARC do município; sem elas, diga que a época depende da parte do estado.';
 // Ao norte da linha do equador, as chuvas vêm no meio do ano. No teste de 04/11/2026, com a
 // primeira redação, a IA disse que plantar soja em maio em Boa Vista "costuma ser arriscado".
-const REGRA_DE_RORAIMA = '- Em Roraima, ao norte da linha do equador, chove de abril a setembro, e é nessa época que se planta sem irrigação: abril e maio são a época certa da soja e do milho. Lá, a regra de não indicar soja no inverno não vale.';
+// No ZARC de Boa Vista, o risco 20% da soja vai de 11/04 a 30/06, e o do milho, de 21/04 a 30/06.
+const REGRA_DE_RORAIMA = '- Em Roraima, ao norte da linha do equador, chove de abril a setembro, e é nessa época que se planta sem irrigação: de abril a junho é a época da soja e do milho. Lá, a regra de não indicar soja no inverno não vale.';
 // No mesmo teste, a IA indicou aveia-preta e ervilhaca para junho em Cruz das Almas (BA)
 const SEM_FRIO = [...NORDESTE, 'AC', 'AM', 'AP', 'PA', 'RO', 'RR'];
 const REGRA_SEM_FRIO = '- No Norte e no Nordeste não faz frio que baste para as plantas de cobertura de inverno: não indique aveia, ervilhaca, nabo forrageiro, tremoço, centeio nem azevém. Indique as de clima quente, como crotalária, feijão-de-porco, guandu, mucuna e milheto, na época das chuvas.';

@@ -83,6 +83,17 @@ const AGRONOMIA = [
     ['Rotacione o feijão com culturas que não sejam leguminosas (milho, soja).', 'feijão', 'MG', '', true],
     ['Semeie aveia‑preta em outubro.', 'rotação', 'SP', '', true],
     ['Semeie aveia‑preta em abril.', 'rotação', 'SP', '', false],
+    // Planta de clima quente como planta de frio (04/11/2026, Cruz das Almas, BA)
+    ['1. **Feijão caupi** – planta de inverno, tolera clima mais frio e pode ser semeado de 1 maio a 20 julho.', 'o que planto em junho', 'BA', '', true],
+    ['Feijão‑caupi – tolera frio.', 'o que planto', 'BA', '', true],
+    ['Crotalária: cobertura de inverno que aguenta a geada.', 'rotação', 'SP', '', true],
+    ['O feijão-caupi é cultura de inverno.', 'rotação', 'SP', '', true],
+    // No Nordeste, "inverno" é também a época das chuvas
+    ['No inverno, que aqui é a época das chuvas, plante o feijão-caupi, cultura de inverno da região.', 'o que planto', 'BA', '', false],
+    ['O feijão-caupi é planta de clima quente e não tolera frio.', 'rotação', 'MG', '', false],
+    ['Milheto e aveia: a aveia é planta de inverno.', 'rotação', 'PR', '', false],
+    ['Sorgo resiste bem à seca.', 'rotação', 'GO', '', false],
+    ['Crotalária – não; para o frio, use aveia-preta, que aguenta a geada.', 'inverno', 'SC', '', false],
 ];
 for (const [frase, pergunta, estado, irrigacao, deveMarcar] of AGRONOMIA) {
     const marcou = Boolean(problemaAgronomico(frase, { pergunta, estado, irrigacao }));
@@ -212,6 +223,7 @@ const TEMPO = [
     ['semeadura sem chuva de 10 mm', [dia('05/11', 18, 3, 0.6), dia('06/11', 18)], 'posso semear o feijão agora?', 'Não irrigo', 'não indica chuva de 10 mm'],
     ['semeadura com chuva de 12 mm', [dia('05/11', 18, 12, 0.8)], 'posso semear o feijão agora?', 'Não irrigo', ''],
     ['semeadura: só em pergunta de plantio', [dia('05/11', 18)], 'como controlo o nematoide?', 'Não irrigo', ''],
+    ['semeadura: pergunta sobre outro mês não recebe', [dia('05/11', 18)], 'posso plantar soja em maio?', 'Não irrigo', ''],
     ['semeadura: quem irriga não recebe', [dia('05/11', 18)], 'posso semear o feijão agora?', 'Gotejamento', ''],
 ];
 for (const [nome, dias, pergunta, irrigacao, trecho] of TEMPO) {
