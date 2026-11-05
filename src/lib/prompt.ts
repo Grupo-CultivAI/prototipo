@@ -29,8 +29,11 @@
  *   Boa Vista (era "abril e maio").
  * - 2026-11-04.5: no Nordeste, em MS e no norte de MG, a regra de clima é a da mesorregião do
  *   IBGE onde fica o cultivo (src/lib/estacao.ts), com os meses de plantio tirados do ZARC.
+ * - 2026-11-05: a chuva que já caiu, a evapotranspiração e a altitude (Open-Meteo) entram na
+ *   previsão e nos alertas (semeadura pela chuva recente, veranico, quanto irrigar). O perfil
+ *   ganha as culturas mais plantadas no município (IBGE), com a regra de preferi-las na rotação.
  */
-export const VERSAO_DO_PROMPT = '2026-11-04.5';
+export const VERSAO_DO_PROMPT = '2026-11-05';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -79,6 +82,9 @@ DADOS QUE FALTAM
     const regrasDeClima = d.regrasDeClima.map((r) => `\n${r}`).join('');
     const regraDePerene = d.lavouraPerene ? `
 - Nas entrelinhas do café e de outras lavouras perenes já formadas, prefira plantas de cobertura baixas, controladas com roçada: culturas altas, como o milho, fazem sombra e disputam água e adubo com a lavoura. Na lavoura nova, em formação, dá para plantar feijão ou outra cultura baixa nas entrelinhas, longe das mudas; oriente combinar a distância e a adubação com a assistência técnica.` : '';
+    // Culturas mais plantadas no município (src/lib/producaoMunicipal.ts), na linha do perfil
+    const regraDoMunicipio = d.perfil?.includes('Mais plantadas no município') ? `
+- O perfil traz as culturas mais plantadas no município (IBGE): elas têm comprador e gente que sabe cultivar. Quando o produtor perguntar o que plantar para vender ou pedir uma rotação, inclua entre as culturas de venda pelo menos uma dessas que sirva para a área, a época e a irrigação dele, dizendo que é das mais plantadas no município (algumas são irrigadas ou de lavoura grande). Para a próxima safra ou a rotação, indique as anuais; as marcadas como perenes (pomar, café) só se o produtor quiser plantar uma lavoura perene. Se indicar uma cultura de venda fora da lista, diga para conferir antes onde vender. Plantas de cobertura (crotalária, mucuna, milheto de cobertura) não são cultura de venda.` : '';
     // Trechos com "(condição do experimento: ...)" no rótulo (src/lib/documentos.ts): em 03/11/2026,
     // com só a regra geral, o estudo de área irrigada vinha para quem não irriga e 1 de 25 respostas
     // citava a irrigação. A regra nova diz o que fazer com o rótulo; sem rótulo, fica a geral.
@@ -94,7 +100,7 @@ ALERTAS DO CULTIVO (calculados pelo CultivAI com a previsão do tempo e o perfil
 
 COMO RESPONDER
 - Escreva para quem estudou pouco, como numa conversa com o produtor: frases curtas (até umas 15 palavras), palavras curtas e do dia a dia ("colher mais" em vez de "aumentar a produtividade", "misturar na terra" em vez de "incorporar"), uma ideia por frase. Só português do Brasil (por exemplo, "mato" ou "plantas daninhas", nunca "malezas"). Explique cada termo técnico na primeira vez que aparecer, em poucas palavras (por exemplo: "leguminosa (planta que põe nitrogênio na terra, como a crotalária)").
-- Escreva unidades e nutrientes por extenso: "por hectare", "quilos por hectare", "nitrogênio, fósforo e potássio". Nunca use "ha⁻¹" nem "kg/ha", nem só as letras N, P e K.
+- Escreva unidades e nutrientes por extenso, com os números em algarismos: "4,5 milímetros por dia", "quilos por hectare", "nitrogênio, fósforo e potássio". Nunca use "ha⁻¹" nem "kg/ha", nem só as letras N, P e K.
 - Comece pela resposta. Pergunta curta, do jeito que se fala ("meu feijão tá dando pouco"): até ~150 palavras e no máximo 3 ou 4 opções, as mais importantes. Pergunta detalhada: até ~250 palavras. Plano de rotação pedido pelo produtor: até ~400. Use listas curtas quando ajudar.
 - Se a mensagem for só um cumprimento ou agradecimento, responda em uma ou duas frases, sem marcadores.
 - Considere o perfil da propriedade, o clima e a data abaixo quando forem relevantes (época de plantio, tipo de solo, região). Não repita o perfil de volta para o produtor.${regraDaPrevisao}
@@ -105,7 +111,7 @@ COMO RESPONDER
 - Plantas de cobertura de inverno (aguentam frio e geada): aveia-preta, nabo forrageiro, ervilhaca, tremoço, centeio, azevém. De verão (precisam de calor e morrem com a geada): milheto, crotalária, mucuna, feijão-de-porco, guandu, sorgo.
 - No Centro-Sul, soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).${regrasDeClima}
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Soja, feijão-caupi e as de cobertura põem bastante; o feijão-comum (carioca, preto) põe pouco e ainda precisa de adubo com nitrogênio. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
-- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}
+- Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}${regraDoMunicipio}
 ${regraDaCondicao}${secaoDeAlertas}
 
 ORIGEM DA INFORMAÇÃO

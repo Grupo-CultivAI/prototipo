@@ -5,7 +5,7 @@ export const metadata = { title: "Aviso de privacidade | CultivAI" }
 
 // Linguagem simples, para o produtor rural. Ao mudar o que o app coleta ou com quem
 // compartilha, atualize este texto e a data abaixo.
-const ATUALIZADO_EM = "26 de outubro de 2026"
+const ATUALIZADO_EM = "5 de novembro de 2026"
 // Mesma conta que envia os emails de recuperação de senha (SMTP_USER na Vercel).
 const CONTATO = "pex.ifsp@gmail.com"
 
@@ -38,6 +38,7 @@ const secoes = [
       "Groq e NVIDIA (inteligência artificial que escreve as respostas; a NVIDIA só quando a Groq está sem cota): recebem a sua pergunta, as mensagens anteriores da conversa e um resumo do cultivo da conversa e, quando você salva um plano de rotação, o texto da resposta. Não recebem seu nome nem seu email.",
       "Pinecone: recebe o texto da pergunta, para encontrar os trechos da Embrapa relacionados.",
       "OpenWeather: recebe só o nome da cidade do cultivo, ou o ponto marcado no mapa, se houver, para informar o clima e a previsão.",
+      "Open-Meteo: recebe só o ponto marcado no mapa ou, sem ele, o centro do município, para informar a chuva dos últimos dias, a água que a lavoura perde por dia e a altitude. Dados do tempo de Open-Meteo.com (licença CC BY 4.0).",
       "ViaCEP: recebe o CEP que você digitar no cultivo, para preencher o estado e a cidade.",
       "OpenStreetMap: ao abrir o mapa do cultivo, seu navegador baixa dele as imagens da região mostrada. O ponto que você marca não é enviado a ele.",
       "MongoDB Atlas (banco de dados, em servidores em São Paulo) e Vercel (hospedagem do site): guardam e entregam os dados do aplicativo.",

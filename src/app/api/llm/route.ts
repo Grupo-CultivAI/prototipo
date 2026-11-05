@@ -8,10 +8,11 @@ import { cultivoDaConversa, nomeDoCultivo } from '@/lib/cultivos';
 import { ordenarSafras, rotuloDaSafra } from '@/lib/perfil';
 import { getUserIdFromToken } from '@/lib/auth';
 import { gerarResposta, type MensagemGroq } from '@/lib/modelos';
-import { getForecastDays, getWeatherSummary, previsaoEmTexto } from '@/lib/weather';
+import { getChuvaRecente, getForecastDays, getWeatherSummary, previsaoEmTexto } from '@/lib/weather';
 import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
 import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
-import { localDoMunicipio } from '@/lib/mesorregiao';
+import { centroDoMunicipio, localDoMunicipio } from '@/lib/mesorregiao';
+import { culturasDoMunicipio } from '@/lib/producaoMunicipal';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
@@ -105,7 +106,13 @@ type Trecho = { texto: string; fonte: string; pagina?: number };
 // Junta palavras hifenizadas na quebra de linha e normaliza espaços
 const limparTrecho = (t: string) => t.replace(/-\n/g, '').replace(/\s+/g, ' ').trim();
 
-function resumoDoPerfil(p: any): string | null {
+// O ponto marcado no mapa (Meus Cultivos) ou, sem ele, o centro do município (IBGE)
+function pontoDoCultivo(p: any, codigoMunicipio: string | null) {
+    const { lat, lng } = p?.coordenadas ?? {};
+    return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : centroDoMunicipio(codigoMunicipio);
+}
+
+function resumoDoPerfil(p: any, codigoMunicipio: string | null): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
     const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
@@ -120,6 +127,8 @@ function resumoDoPerfil(p: any): string | null {
     ].filter(Boolean).join(', ');
     if (solo) linhas.push(`Solo: ${solo}`);
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
+    const doMunicipio = culturasDoMunicipio(codigoMunicipio);
+    if (doMunicipio) linhas.push(doMunicipio);
     const safras = ordenarSafras(p.safras).map((s: any) => `${rotuloDaSafra(s)}: ${String(s.cultura).toLowerCase()}`);
     if (safras.length) linhas.push(`Safras registradas (da mais antiga à mais recente): ${safras.join('; ')}`);
     if (p.tempoCulturaAtual != null) linhas.push(`Tempo com as culturas atuais: ${p.tempoCulturaAtual} anos`);
@@ -282,35 +291,42 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, diasDePrevisao, epoca, codigoMunicipio] = await Promise.all([
+        const deCampo = PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`);
+        // O gravado no perfil, ou, nos perfis antigos, o achado pelo nome da cidade
+        const promessaDoCodigo = propriedade ? codigoDoMunicipio(propriedade) : Promise.resolve(null);
+        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, diasDePrevisao, epoca, codigoMunicipio, chuvaRecente] = await Promise.all([
             buscarTrechos(busca, { pinecone: pineconeKey, host: pineconeHost }),
             getWeatherSummary(cidade, (propriedade as any)?.coordenadas),
-            PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastDays(cidade, (propriedade as any)?.coordenadas) : null,
+            deCampo ? getForecastDays(cidade, (propriedade as any)?.coordenadas) : null,
             epocaDePlantio(propriedade, userPrompt, busca === userPrompt ? '' : busca),
-            // O gravado no perfil, ou, nos perfis antigos, o achado pelo nome da cidade
-            propriedade ? codigoDoMunicipio(propriedade) : null,
+            promessaDoCodigo,
+            // A chuva que já caiu, como a previsão, só em perguntas sobre o trabalho no campo
+            deCampo ? promessaDoCodigo.then((codigo) => getChuvaRecente(pontoDoCultivo(propriedade, codigo))) : null,
         ]);
-        const previsao = diasDePrevisao ? previsaoEmTexto(diasDePrevisao) : null;
+        const previsao = diasDePrevisao
+            ? [previsaoEmTexto(diasDePrevisao), chuvaRecente && `- chuva que já caiu (estimativa): cerca de ${chuvaRecente.chuva7} mm nos últimos 7 dias e ${chuvaRecente.chuva30} mm nos últimos 30`].filter(Boolean).join('\n')
+            : null;
         // Em que parte do estado fica o cultivo: no Nordeste, a época das chuvas muda de uma para outra
         const local = localDoMunicipio(codigoMunicipio);
         const zarc = epoca?.paraIA ?? null;
-        // Os da previsão só existem em perguntas sobre o trabalho no campo, como a própria previsão
+        // Os do tempo só existem em perguntas sobre o trabalho no campo, como a própria previsão
         const alertas = [
-            ...alertasDoTempo(diasDePrevisao, { pergunta: `${userPrompt} ${busca}`, irrigacao: (propriedade as any)?.irrigacao }),
+            ...alertasDoTempo(diasDePrevisao, { pergunta: `${userPrompt} ${busca}`, irrigacao: (propriedade as any)?.irrigacao, chuva: chuvaRecente }),
             ...alertasDoCultivo(propriedade as any),
         ];
 
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade) ?? (cultivosSemEscolha.length > 1
+        const perfil = resumoDoPerfil(propriedade, codigoMunicipio) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
             : null);
         // O quadro do ZARC abaixo da resposta (quadroZarc) e a regra do aplicativo no prompt
         const temQuadroZarc = Boolean(epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt));
         const systemPrompt = montarPrompt({
             hoje: hoje(),
-            estacaoERegiao: estacaoERegiao((propriedade as any)?.estado, undefined, local),
+            // A altitude ajuda a IA com a geada "nas partes altas"
+            estacaoERegiao: `${estacaoERegiao((propriedade as any)?.estado, undefined, local)}${chuvaRecente?.altitude != null ? ` Altitude do cultivo: cerca de ${chuvaRecente.altitude} m.` : ''}`,
             regrasDeClima: regrasDoClima((propriedade as any)?.estado, local),
             perfil,
             cidade,

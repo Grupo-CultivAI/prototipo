@@ -12,7 +12,8 @@ import { normalizar, semCulturaAnterior } from '../src/lib/zarc-formato.mjs';
 import { numeroDoAmbiente } from '../src/lib/ambiente.ts';
 import { montarPrompt, temLavouraPerene, VERSAO_DO_PROMPT } from '../src/lib/prompt.ts';
 import { alertasDoCultivo, alertasDoTempo } from '../src/lib/alertas.ts';
-import { localDoMunicipio } from '../src/lib/mesorregiao.ts';
+import { centroDoMunicipio, localDoMunicipio } from '../src/lib/mesorregiao.ts';
+import { culturasDoMunicipio } from '../src/lib/producaoMunicipal.ts';
 
 let falhas = 0;
 let total = 0;
@@ -177,6 +178,12 @@ for (const [uf, quantas, trecho] of REGRAS) {
 // --- Mesorregião do IBGE (src/lib/mesorregiao.ts e src/lib/estacao.ts) ---
 const cruzDasAlmas = localDoMunicipio('2909802');
 confere('mesorregião', 'Cruz das Almas (BA) fica na Metropolitana de Salvador', cruzDasAlmas?.mesorregiao === 2905 && cruzDasAlmas?.nomeDaMesorregiao === 'Metropolitana de Salvador' && cruzDasAlmas?.uf === 'BA', JSON.stringify(cruzDasAlmas));
+const centroDeCruz = centroDoMunicipio('2909802');
+confere('mesorregião', 'centro de Cruz das Almas (para a Open-Meteo)', Math.abs(centroDeCruz?.lat + 12.68) < 0.05 && Math.abs(centroDeCruz?.lng + 39.12) < 0.05 && centroDoMunicipio('') === null, JSON.stringify(centroDeCruz));
+const plantadasEmCruz = culturasDoMunicipio('2909802') ?? '';
+confere('produção municipal', 'Cruz das Almas: mandioca é a mais plantada, com área em hectares', /^Mais plantadas no município \(IBGE, área colhida em \d{4}\): mandioca \([\d.]+ ha\)/.test(plantadasEmCruz), plantadasEmCruz);
+confere('produção municipal', 'Cruz das Almas: limão marcado como perene, mandioca não', plantadasEmCruz.includes('limão (') && /limão \([\d.]+ ha, perene\)/.test(plantadasEmCruz) && !/mandioca \([^)]*perene/.test(plantadasEmCruz), plantadasEmCruz);
+confere('produção municipal', 'código desconhecido: nada', culturasDoMunicipio('9999999') === null && culturasDoMunicipio(null) === null);
 confere('mesorregião', 'código desconhecido ou vazio: null', localDoMunicipio('9999999') === null && localDoMunicipio('') === null && localDoMunicipio(null) === null);
 const meso = (codigo, nome) => ({ mesorregiao: codigo, nomeDaMesorregiao: nome });
 const REGRAS_DA_MESORREGIAO = [
@@ -242,6 +249,8 @@ confere('prompt', 'lavoura perene: café em formação aceita feijão nas entrel
 confere('prompt', 'regras de clima do estado vêm depois da linha da soja (Roraima é exceção a ela)', (() => { const p = montarPrompt({ ...BASE_DO_PROMPT, regrasDeClima: regrasDoClima('RR') }); return p.indexOf('Em Roraima') > p.indexOf('Não indique soja no inverno'); })());
 const comAlerta = montarPrompt({ ...BASE_DO_PROMPT, alertas: ['- Geada: a previsão indica mínima de 2 °C na qua 05/11.'] });
 confere('prompt', 'alertas: a seção só entra com alerta, e acima do material de consulta', !semNada.includes('ALERTAS DO CULTIVO') && comAlerta.includes('mínima de 2 °C') && comAlerta.indexOf('ALERTAS DO CULTIVO') < comAlerta.indexOf('Tudo abaixo é material de consulta'));
+const comMunicipio = montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${plantadasEmCruz}` });
+confere('produção municipal', 'a regra das culturas do município só entra com a linha no perfil', comMunicipio.includes('pelo menos uma dessas') && !semNada.includes('pelo menos uma dessas'));
 confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
 confere('prompt', 'lavoura perene: café e pomar sim, milho e feijão não', temLavouraPerene('Culturas: Café, Milho') && temLavouraPerene('pomar de laranja') && !temLavouraPerene('milho e feijão'));
 
@@ -266,6 +275,26 @@ for (const [nome, dias, pergunta, irrigacao, trecho] of TEMPO) {
     confere('alertas', `tempo: ${nome}`, trecho ? alertas.length === 1 && alertas[0].includes(trecho) : !alertas.length, alertas.join(' | '));
 }
 confere('alertas', 'tempo: sem previsão, nenhum alerta', !alertasDoTempo(null, { pergunta: 'semear' }).length);
+// Chuva que já caiu (Open-Meteo, src/lib/weather.ts getChuvaRecente)
+const chuvaRecente = (chuva7, diasSemChuva = 0, chuvaAntesDaSeca = 0, et0 = 5.4) => ({ chuva7, diasSemChuva, chuvaAntesDaSeca, et0 });
+const SECO = [dia('05/11', 18, 2, 0.4), dia('06/11', 18)];
+const RECENTE = [
+    // [nome, chuva recente, pergunta, irrigação, trechos esperados (vazio: nenhum alerta)]
+    ['semeadura: terra úmida (25 mm na semana) não recebe', chuvaRecente(25), 'posso semear o feijão agora?', 'Não irrigo', []],
+    ['semeadura: 6 mm na semana recebe, com o número', chuvaRecente(6), 'posso semear o feijão agora?', 'Não irrigo', ['choveu só cerca de 6 mm']],
+    ['semeadura: pergunta sobre a próxima safra não recebe', chuvaRecente(6), 'o que eu planto na próxima safra pra vender?', 'Não irrigo', []],
+    ['veranico: 12 dias sem chuva depois de 80 mm', chuvaRecente(0, 12, 80), 'como está minha lavoura de milho?', 'Não irrigo', ['não chove há 12 dias', 'cerca de 80 mm']],
+    ['veranico: 12 dias secos sem chuva antes é só a estação seca', chuvaRecente(0, 12, 10), 'como está minha lavoura de milho?', 'Não irrigo', []],
+    ['veranico: 7 dias secos ainda não é veranico', chuvaRecente(0, 7, 80), 'como está minha lavoura de milho?', 'Não irrigo', []],
+    ['irrigação: evapotranspiração em pergunta sobre irrigar', chuvaRecente(0), 'quanto devo irrigar o feijão?', 'Gotejamento', ['cerca de 5,4 milímetros por dia']],
+    ['irrigação: sem a evapotranspiração em outra pergunta', chuvaRecente(0), 'como controlo a lagarta?', 'Gotejamento', []],
+];
+for (const [nome, chuva, pergunta, irrigacao, trechos] of RECENTE) {
+    const alertas = alertasDoTempo(SECO, { pergunta, irrigacao, chuva });
+    const texto = alertas.join(' | ');
+    confere('alertas', `chuva recente: ${nome}`, trechos.length ? alertas.length === 1 && trechos.every((t) => texto.includes(t)) : !alertas.length, texto);
+}
+confere('alertas', 'veranico: com chuva de 12 mm prevista não entra', !alertasDoTempo([dia('05/11', 18, 12, 0.9)], { pergunta: 'lavoura', irrigacao: 'Não irrigo', chuva: chuvaRecente(0, 12, 80) }).length);
 const soja = (ano, periodo = 'verao') => ({ cultura: 'Soja', ano, periodo });
 const CULTIVO = [
     // [nome, cultivo, trecho esperado (ou '' para nenhum alerta)]
