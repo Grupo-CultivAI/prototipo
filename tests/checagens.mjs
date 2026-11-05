@@ -12,6 +12,7 @@ import { normalizar, semCulturaAnterior } from '../src/lib/zarc-formato.mjs';
 import { numeroDoAmbiente } from '../src/lib/ambiente.ts';
 import { montarPrompt, temLavouraPerene, VERSAO_DO_PROMPT } from '../src/lib/prompt.ts';
 import { alertasDoCultivo, alertasDoTempo } from '../src/lib/alertas.ts';
+import { localDoMunicipio } from '../src/lib/mesorregiao.ts';
 
 let falhas = 0;
 let total = 0;
@@ -172,6 +173,40 @@ for (const [uf, quantas, trecho] of REGRAS) {
     const regras = regrasDoClima(uf);
     confere('estação e região', `regras do clima para ${uf || 'sem estado'}`, regras.length === quantas && (!trecho || regras.some((r) => r.includes(trecho))), regras.join(' | '));
 }
+
+// --- Mesorregião do IBGE (src/lib/mesorregiao.ts e src/lib/estacao.ts) ---
+const cruzDasAlmas = localDoMunicipio('2909802');
+confere('mesorregião', 'Cruz das Almas (BA) fica na Metropolitana de Salvador', cruzDasAlmas?.mesorregiao === 2905 && cruzDasAlmas?.nomeDaMesorregiao === 'Metropolitana de Salvador' && cruzDasAlmas?.uf === 'BA', JSON.stringify(cruzDasAlmas));
+confere('mesorregião', 'código desconhecido ou vazio: null', localDoMunicipio('9999999') === null && localDoMunicipio('') === null && localDoMunicipio(null) === null);
+const meso = (codigo, nome) => ({ mesorregiao: codigo, nomeDaMesorregiao: nome });
+const REGRAS_DA_MESORREGIAO = [
+    // [estado, mesorregião, quantas regras, trechos que devem estar, trechos que não podem estar]
+    ['BA', meso(2905, 'Metropolitana de Salvador'), 2, ['Metropolitana de Salvador', 'outono e no inverno'], ['quase nada cresce de maio a setembro', 'muda de uma parte do estado']],
+    ['BA', meso(2901, 'Extremo Oeste Baiano'), 3, ['é Cerrado', 'quase nada cresce de maio a setembro'], ['muda de uma parte do estado']],
+    ['CE', meso(2304, 'Sertões Cearenses'), 2, ['é Semiárido', 'fevereiro e março'], ['quase nada cresce']],
+    ['SE', meso(2801, 'Sertão Sergipano'), 2, ['de abril a julho'], ['quase nada cresce']],
+    ['MG', meso(3102, 'Norte de Minas'), 2, ['curtas e irregulares', 'quase nada cresce'], ['geada']],
+    ['MG', meso(3110, 'Sul/Sudoeste de Minas'), 2, ['geada', 'quase nada cresce'], ['mesorregião']],
+    ['MS', meso(5004, 'Sudoeste de Mato Grosso do Sul'), 2, ['geada', 'milho safrinha'], ['quase nada cresce', 'o norte do estado']],
+    ['MS', meso(5002, 'Centro Norte de Mato Grosso do Sul'), 3, ['Cerrado e Pantanal', 'quase nada cresce'], ['o norte do estado']],
+    // Mesorregião de outro estado (perfil com cidade trocada): fica a regra do estado
+    ['SP', meso(2905, 'Metropolitana de Salvador'), 1, ['geada'], ['Metropolitana de Salvador']],
+    // Sem a mesorregião, a regra geral do Nordeste
+    ['BA', null, 2, ['muda de uma parte do estado'], ['mesorregião']],
+];
+for (const [uf, local, quantas, tem, naoTem] of REGRAS_DA_MESORREGIAO) {
+    const regras = regrasDoClima(uf, local);
+    const texto = regras.join(' | ');
+    confere('mesorregião', `regras de ${uf}${local ? ` (${local.nomeDaMesorregiao})` : ' sem mesorregião'}`, regras.length === quantas && tem.every((x) => texto.includes(x)) && !naoTem.some((x) => texto.includes(x)), texto);
+}
+const climaDeCruz = estacaoERegiao('BA', new Date('2026-06-15T12:00:00Z'), cruzDasAlmas);
+confere('mesorregião', 'estação e região: Cruz das Almas sem a descrição geral do Nordeste', climaDeCruz.includes('na mesorregião Metropolitana de Salvador: chove mais no outono e no inverno') && !climaDeCruz.includes('Semiárido'), climaDeCruz);
+const climaDeSP = estacaoERegiao('SP', new Date('2026-06-15T12:00:00Z'), meso(3511, 'Itapetininga'));
+confere('mesorregião', 'estação e região: fora das mesorregiões com regime, a descrição do estado com o nome', climaDeSP.includes('Clima em SP, na mesorregião Itapetininga: inverno seco'), climaDeSP);
+const PLANTIO_EM_MAIO = 'Plante o feijão-caupi em maio.';
+confere('mesorregião', 'inverno seco: plantio em maio marcado no Extremo Oeste Baiano', Boolean(problemaAgronomico(PLANTIO_EM_MAIO, { pergunta: 'rotação', estado: 'BA', irrigacao: '', mesorregiao: 2901 })));
+confere('mesorregião', 'inverno seco: "não é indicado plantar em maio" é ressalva (Juazeiro, BA)', !problemaAgronomico('Não é indicado plantar feijão em maio.', { pergunta: 'posso plantar feijão em maio?', estado: 'BA', irrigacao: 'Não irrigo', mesorregiao: 2902 }));
+confere('mesorregião', 'inverno seco: plantio em maio aceito na Metropolitana de Salvador', !problemaAgronomico(PLANTIO_EM_MAIO, { pergunta: 'rotação', estado: 'BA', irrigacao: '', mesorregiao: 2905 }));
 
 // --- ZARC: a cultura de antes não entra na busca das janelas (src/lib/zarc-formato.mjs) ---
 const ANTERIOR = [

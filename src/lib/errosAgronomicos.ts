@@ -32,14 +32,21 @@ const MESES_SECOS = /\binverno\b|\b(maio|junho|julho|agosto)\b/;
 const PLANTAR = /\b(plante|plantar|plantio|semeie|semear|semeadura|semeado|semeada)\b/;
 const PLANTAR_NO_INVERNO = /\b(plante|plantar|plantio|semeie|semear|semeadura|semeado|semeada)\b[^.]{0,40}\b(no|de) inverno\b/;
 
-type Contexto = { pergunta: string; estado?: string | null; irrigacao?: string | null };
+// Mesorregiões de inverno seco fora desses estados (as com invernoSeco em src/lib/estacao.ts):
+// Sul Maranhense, Sudoeste Piauiense, Extremo Oeste Baiano, Vale São-Franciscano da Bahia,
+// Centro Sul Baiano e o norte de MS (Pantanais, Centro Norte e Leste)
+const MESORREGIOES_DE_INVERNO_SECO = [2105, 2203, 2901, 2902, 2906, 5001, 5002, 5003];
 
-function plantioNoInvernoSeco(resposta: string, { estado, irrigacao }: Contexto): string | null {
-    if (!ESTADOS_DO_CERRADO.includes(String(estado ?? '').trim().toUpperCase())) return null;
+type Contexto = { pergunta: string; estado?: string | null; irrigacao?: string | null; mesorregiao?: number | null };
+
+function plantioNoInvernoSeco(resposta: string, { estado, irrigacao, mesorregiao }: Contexto): string | null {
+    const invernoSeco = ESTADOS_DO_CERRADO.includes(String(estado ?? '').trim().toUpperCase()) || MESORREGIOES_DE_INVERNO_SECO.includes(Number(mesorregiao));
+    if (!invernoSeco) return null;
     if (irrigacao && irrigacao !== 'Não irrigo') return null;
     // "sem irrigação, plante ... (final de maio)" não é ressalva: em 04/11/2026 a IA mandou plantar
     // milheto e sorgo em Patos de Minas assim, "logo após o fim das chuvas de outono (final de maio)".
-    const ressalva = /(?<!sem )\birriga|\bmarco\b|\babril\b|nao (plant|seme)|evite/;
+    // "Não é indicado plantar feijão em maio" (Juazeiro, BA, 04/11/2026) também é ressalva
+    const ressalva = /(?<!sem )\birriga|\bmarco\b|\babril\b|nao (plant|seme)|nao (e|esta) (a )?(indicad|recomendad|aconselhav|epoca|hora|bom)|evite/;
     const blocos = sem(resposta).split(/\n\s*\n/);
     // Bloco = item da lista com as linhas de baixo (a época fica no título, a planta embaixo)
     const deInverno = blocos.some((bloco) => DE_INVERNO.test(bloco) && MESES_SECOS.test(bloco) && !ressalva.test(bloco));

@@ -50,25 +50,129 @@ const SEM_FRIO = [...NORDESTE, 'AC', 'AM', 'AP', 'PA', 'RO', 'RR'];
 const REGRA_SEM_FRIO = '- No Norte e no Nordeste não faz frio que baste para as plantas de cobertura de inverno: não indique aveia, ervilhaca, nabo forrageiro, tremoço, centeio nem azevém. Indique as de clima quente, como crotalária, feijão-de-porco, guandu, mucuna e milheto, na época das chuvas.';
 const REGRA_SEM_REGIAO = '- Sem a região no perfil, não indique plantas que só vão bem no frio (aveia, ervilhaca, nabo forrageiro, tremoço, azevém) como se servissem em todo lugar. Prefira as que servem na maior parte do país na época das chuvas, como crotalária, feijão-de-porco, guandu e milheto, e diga que a escolha depende da região.';
 
-/** As linhas de clima do prompt que valem para o estado (ou a de quem não informou a região). */
-export function regrasDoClima(estado?: string | null): string[] {
+// Época das chuvas por mesorregião do IBGE (a do cultivo vem de src/lib/mesorregiao.ts). Com a
+// regra do estado, a IA não sabia em que parte do Nordeste ficava Cruz das Almas (BA) e chamava
+// junho e julho de "estação seca". Os meses saíram do ZARC de 04/11/2026: em quais meses a maioria
+// dos municípios de cada mesorregião tem janela de risco 20% para o milho de 1ª safra e o
+// feijão-caupi de sequeiro (no Semiárido, onde quase não há janela de 20%, as de até 40%).
+// Um agrônomo deve validar os agrupamentos.
+type Regime = { resumo: string; regra: string; invernoSeco?: boolean };
+const REGIMES: Record<string, Regime> = {
+    norteDoNordeste: {
+        resumo: 'chove de dezembro a maio, mais ou menos, e o segundo semestre é seco',
+        regra: 'chove de dezembro a maio, mais ou menos, e o segundo semestre é seco. Sem irrigação, planta-se de dezembro a abril, conforme o lugar (o milho mais cedo; o feijão-caupi até abril ou maio)',
+    },
+    cerrado: {
+        resumo: 'Cerrado: chove de novembro a março ou abril, e o inverno é seco',
+        regra: 'é Cerrado: chove de novembro a março ou abril, e o inverno é seco. Sem irrigação, a soja e o milho vão de novembro a janeiro',
+        invernoSeco: true,
+    },
+    semiaridoDoNorte: {
+        resumo: 'Semiárido: chuvas curtas e irregulares, mais ou menos de janeiro a abril',
+        regra: 'é Semiárido: as chuvas são curtas e irregulares, mais ou menos de janeiro a abril. Sem irrigação, poucas lavouras têm época segura (o milho quase nunca; o feijão-caupi, em fevereiro e março): prefira as que aguentam seca, como feijão-caupi, sorgo e milheto',
+    },
+    leste: {
+        resumo: 'chove mais no outono e no inverno; a primavera e o verão são mais secos',
+        regra: 'chove mais no outono e no inverno, que são a época de plantar sem irrigação (o milho de março a junho; o feijão-caupi de abril a julho). A primavera e o verão são mais secos. Não chame o outono e o inverno de época seca',
+    },
+    agresteESertaoDoLeste: {
+        resumo: 'chove menos que no litoral e de forma irregular, também no outono e no inverno',
+        regra: 'chove menos que no litoral e de forma irregular, também no outono e no inverno. Sem irrigação, o plantio vai de abril a julho: o feijão-caupi é o mais seguro, e o milho tem época segura em menos lugares. Não chame o outono e o inverno de época seca',
+    },
+    sulBaiano: {
+        resumo: 'chove em boa parte do ano, mais de fevereiro a julho',
+        regra: 'chove em boa parte do ano, mais de fevereiro a julho. Sem irrigação, o milho vai de fevereiro a junho, e o feijão-caupi, em maio e junho',
+    },
+    veraoIrregular: {
+        resumo: 'chuvas curtas e irregulares no verão, de novembro a fevereiro, mais ou menos, e inverno seco',
+        regra: 'as chuvas são curtas e irregulares, no verão (de novembro a fevereiro, mais ou menos), e o inverno é seco. Sem irrigação, poucas lavouras têm época segura: prefira as que aguentam seca, como feijão-caupi, sorgo e milheto',
+        invernoSeco: true,
+    },
+    semiaridoMisto: {
+        resumo: 'Semiárido: chuvas curtas e irregulares, que vêm no verão numa parte da região e no outono em outra',
+        regra: 'é Semiárido: as chuvas são curtas e irregulares, e a época muda de um município para outro, do verão ao outono (de dezembro a maio). Sem irrigação, poucas lavouras têm época segura: prefira as que aguentam seca, como feijão-caupi, sorgo e milheto',
+    },
+    sulDeMS: {
+        resumo: 'a soja e o milho de verão vão de setembro a dezembro; no outono há milho safrinha, aveia e trigo; o inverno tem geada',
+        regra: 'a soja e o milho de verão vão de setembro a dezembro, e no outono se planta milho safrinha, aveia e trigo. O inverno tem geada',
+    },
+    norteDeMS: {
+        resumo: 'Cerrado e Pantanal: chove de outubro a março, e o inverno é seco',
+        regra: 'é Cerrado e Pantanal: chove de outubro a março, e o inverno é seco. Sem irrigação, a soja e o milho de verão vão de outubro a dezembro',
+        invernoSeco: true,
+    },
+};
+// Geocódigo da mesorregião (IBGE) → regime. Os nomes estão em src/lib/dados/mesorregioes.json.
+const REGIME_DA_MESORREGIAO: Record<number, string> = {
+    // MA: Norte, Oeste, Centro e Leste Maranhense; PI: Norte e Centro-Norte Piauiense;
+    // CE: Noroeste, Norte, Metropolitana de Fortaleza e Sul Cearense
+    2101: 'norteDoNordeste', 2102: 'norteDoNordeste', 2103: 'norteDoNordeste', 2104: 'norteDoNordeste',
+    2201: 'norteDoNordeste', 2202: 'norteDoNordeste', 2301: 'norteDoNordeste', 2302: 'norteDoNordeste',
+    2303: 'norteDoNordeste', 2307: 'norteDoNordeste',
+    // Sul Maranhense, Sudoeste Piauiense, Extremo Oeste Baiano
+    2105: 'cerrado', 2203: 'cerrado', 2901: 'cerrado',
+    // Sudeste Piauiense; Sertões Cearenses, Jaguaribe, Centro-Sul Cearense; Oeste e Central
+    // Potiguar; Sertão Paraibano, Borborema; Sertão e São Francisco Pernambucano
+    2204: 'semiaridoDoNorte', 2304: 'semiaridoDoNorte', 2305: 'semiaridoDoNorte', 2306: 'semiaridoDoNorte',
+    2401: 'semiaridoDoNorte', 2402: 'semiaridoDoNorte', 2501: 'semiaridoDoNorte', 2502: 'semiaridoDoNorte',
+    2601: 'semiaridoDoNorte', 2602: 'semiaridoDoNorte',
+    // Leste Potiguar, Mata Paraibana, Mata Pernambucana, Metropolitana de Recife, Leste Alagoano,
+    // Leste Sergipano, Metropolitana de Salvador
+    2404: 'leste', 2504: 'leste', 2604: 'leste', 2605: 'leste', 2703: 'leste', 2803: 'leste', 2905: 'leste',
+    // Agreste Potiguar, Paraibano, Pernambucano, Alagoano e Sergipano; Sertão Alagoano e
+    // Sergipano (no ZARC, seguem o leste: feijão-caupi de abril a julho); Nordeste Baiano
+    2403: 'agresteESertaoDoLeste', 2503: 'agresteESertaoDoLeste', 2603: 'agresteESertaoDoLeste',
+    2702: 'agresteESertaoDoLeste', 2802: 'agresteESertaoDoLeste', 2701: 'agresteESertaoDoLeste',
+    2801: 'agresteESertaoDoLeste', 2904: 'agresteESertaoDoLeste',
+    2907: 'sulBaiano',
+    // Vale São-Franciscano da Bahia, Centro Sul Baiano; em MG, Norte de Minas, Jequitinhonha,
+    // Vale do Mucuri e Vale do Rio Doce (no ZARC, quase sem janela de 20% para o milho)
+    2902: 'veraoIrregular', 2906: 'veraoIrregular', 3102: 'veraoIrregular', 3103: 'veraoIrregular',
+    3104: 'veraoIrregular', 3108: 'veraoIrregular',
+    2903: 'semiaridoMisto', // Centro Norte Baiano
+    // MS: Sudoeste; Pantanais, Centro Norte e Leste
+    5004: 'sulDeMS', 5001: 'norteDeMS', 5002: 'norteDeMS', 5003: 'norteDeMS',
+};
+// Em MG, o norte e o nordeste do estado são quentes: a regra da geada não vale lá
+const SEM_GEADA_NA_MESORREGIAO = [3102, 3103, 3104, 3108];
+
+/** Onde fica o cultivo: a mesorregião do IBGE (src/lib/mesorregiao.ts). */
+export type Mesorregiao = { mesorregiao: number; nomeDaMesorregiao: string } | null | undefined;
+
+const regimeDe = (uf: string, local: Mesorregiao) => {
+    const chave = local ? REGIME_DA_MESORREGIAO[local.mesorregiao] : undefined;
+    // A tabela só tem mesorregiões do Nordeste, de MG e de MS; confere o estado por segurança
+    return chave && ([...NORDESTE, 'MG', 'MS'].includes(uf)) ? REGIMES[chave] : null;
+};
+
+/** As linhas de clima do prompt que valem para o estado e a mesorregião (ou a de quem não informou a região). */
+export function regrasDoClima(estado?: string | null, local?: Mesorregiao): string[] {
     const uf = String(estado ?? '').trim().toUpperCase();
     if (!uf) return [REGRA_SEM_REGIAO];
+    const regime = regimeDe(uf, local);
+    const semGeada = local && SEM_GEADA_NA_MESORREGIAO.includes(local.mesorregiao);
     return [
-        COM_GEADA.includes(uf) && REGRA_DA_GEADA,
-        COM_INVERNO_SECO.includes(uf) && REGRA_DO_INVERNO_SECO,
-        NORDESTE.includes(uf) && REGRA_DO_NORDESTE,
-        uf === 'MS' && REGRA_DO_MS,
+        COM_GEADA.includes(uf) && !semGeada && REGRA_DA_GEADA,
+        (COM_INVERNO_SECO.includes(uf) || regime?.invernoSeco) && REGRA_DO_INVERNO_SECO,
+        // Sem a mesorregião (perfil sem município reconhecido), fica a regra geral do estado
+        NORDESTE.includes(uf) && !regime && REGRA_DO_NORDESTE,
+        uf === 'MS' && !regime && REGRA_DO_MS,
+        regime && local && `- Na mesorregião ${local.nomeDaMesorregiao} (${uf}), onde fica o cultivo, ${regime.regra}. Para dizer quando plantar, siga as janelas do ZARC do município quando houver: um mês dentro da janela de risco 20% tem chuva para plantar.`,
         uf === 'RR' && REGRA_DE_RORAIMA,
         SEM_FRIO.includes(uf) && REGRA_SEM_FRIO,
     ].filter((r): r is string => Boolean(r));
 }
 
 /** Ex.: "primavera (novembro). Clima em PR: inverno frio, com geadas; verão quente e chuvoso (região Sul)." */
-export function estacaoERegiao(estado?: string | null, data = new Date()): string {
+export function estacaoERegiao(estado?: string | null, data = new Date(), local?: Mesorregiao): string {
     const mes = mesEmSaoPaulo(data);
     const estacao = `${ESTACAO_DO_MES[mes]} (${MESES[mes]})`;
     const uf = String(estado ?? '').trim().toUpperCase();
+    const regime = regimeDe(uf, local);
+    // Com o regime da mesorregião, a descrição geral do estado sai: no Nordeste, "no litoral,
+    // mais no outono e no inverno; no Semiárido..." deixava a IA escolher a parte errada.
+    if (regime && local) return `${estacao}. Clima em ${uf}, na mesorregião ${local.nomeDaMesorregiao}: ${regime.resumo}.`;
     const clima = CLIMA_DA_REGIAO.find(([ufs]) => ufs.includes(uf))?.[1];
-    return clima ? `${estacao}. Clima em ${uf}: ${clima}.` : `${estacao}. Região não informada: a época certa de cada planta muda de uma região para outra.`;
+    if (!clima) return `${estacao}. Região não informada: a época certa de cada planta muda de uma região para outra.`;
+    return `${estacao}. Clima em ${uf}${local ? `, na mesorregião ${local.nomeDaMesorregiao}` : ''}: ${clima}.`;
 }
