@@ -27,8 +27,10 @@
  *   depois de leguminosa e solo ácido.
  * - 2026-11-04.4: em Roraima, a época da soja e do milho vai de abril a junho, como no ZARC de
  *   Boa Vista (era "abril e maio").
+ * - 2026-11-04.5: no Nordeste, em MS e no norte de MG, a regra de clima é a da mesorregião do
+ *   IBGE onde fica o cultivo (src/lib/estacao.ts), com os meses de plantio tirados do ZARC.
  */
-export const VERSAO_DO_PROMPT = '2026-11-04.4';
+export const VERSAO_DO_PROMPT = '2026-11-04.5';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;

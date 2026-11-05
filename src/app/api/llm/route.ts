@@ -10,7 +10,8 @@ import { getUserIdFromToken } from '@/lib/auth';
 import { gerarResposta, type MensagemGroq } from '@/lib/modelos';
 import { getForecastDays, getWeatherSummary, previsaoEmTexto } from '@/lib/weather';
 import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
-import { epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
+import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
+import { localDoMunicipio } from '@/lib/mesorregiao';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
@@ -281,13 +282,17 @@ export async function POST(req: Request) {
         // que motivou o pedido representa melhor o assunto.
         const busca = body.respostaAoPedido === true && perguntaAnterior ? perguntaAnterior : textoParaBusca(userPrompt, perguntaAnterior);
 
-        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, diasDePrevisao, epoca] = await Promise.all([
+        const [{ trechos, maiorScore, falha: falhaDaBusca }, clima, diasDePrevisao, epoca, codigoMunicipio] = await Promise.all([
             buscarTrechos(busca, { pinecone: pineconeKey, host: pineconeHost }),
             getWeatherSummary(cidade, (propriedade as any)?.coordenadas),
             PERGUNTA_DE_CAMPO.test(`${userPrompt} ${busca}`) ? getForecastDays(cidade, (propriedade as any)?.coordenadas) : null,
             epocaDePlantio(propriedade, userPrompt, busca === userPrompt ? '' : busca),
+            // O gravado no perfil, ou, nos perfis antigos, o achado pelo nome da cidade
+            propriedade ? codigoDoMunicipio(propriedade) : null,
         ]);
         const previsao = diasDePrevisao ? previsaoEmTexto(diasDePrevisao) : null;
+        // Em que parte do estado fica o cultivo: no Nordeste, a época das chuvas muda de uma para outra
+        const local = localDoMunicipio(codigoMunicipio);
         const zarc = epoca?.paraIA ?? null;
         // Os da previsão só existem em perguntas sobre o trabalho no campo, como a própria previsão
         const alertas = [
@@ -305,8 +310,8 @@ export async function POST(req: Request) {
         const temQuadroZarc = Boolean(epoca?.linhas.length || epoca?.aviso || perguntaDeQuandoPlantar(userPrompt));
         const systemPrompt = montarPrompt({
             hoje: hoje(),
-            estacaoERegiao: estacaoERegiao((propriedade as any)?.estado),
-            regrasDeClima: regrasDoClima((propriedade as any)?.estado),
+            estacaoERegiao: estacaoERegiao((propriedade as any)?.estado, undefined, local),
+            regrasDeClima: regrasDoClima((propriedade as any)?.estado, local),
             perfil,
             cidade,
             clima,
@@ -351,7 +356,7 @@ export async function POST(req: Request) {
             agronomiaComAviso: false,
         };
 
-        const dadosDaPergunta = { pergunta: `${userPrompt} ${busca}`, estado: (propriedade as any)?.estado, irrigacao: (propriedade as any)?.irrigacao };
+        const dadosDaPergunta = { pergunta: `${userPrompt} ${busca}`, estado: (propriedade as any)?.estado, irrigacao: (propriedade as any)?.irrigacao, mesorregiao: local?.mesorregiao };
         const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta)].filter(Boolean).join(' ');
         if (problema) {
             console.warn('⚠️ Atribuição sem respaldo, agrotóxico com dose ou erro agronômico; pedindo revisão.', problema);
