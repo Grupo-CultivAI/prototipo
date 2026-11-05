@@ -57,6 +57,9 @@ const PERGUNTA_DE_SEMEAR = /plant|seme|semeio/i;
 // "Posso plantar soja em maio?" é sobre outro mês: a previsão dos próximos dias não vale para ela.
 // No teste de 04/11/2026, com essa pergunta, a IA mandou esperar a terra molhar para semear.
 const CITA_UM_MES = /janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro/i;
+// O mesmo para o planejamento: em 05/11/2026, com "o que eu planto na próxima safra pra vender?",
+// a IA mandou esperar uma chuva de 2 mm para preparar a terra.
+const PLANEJAMENTO = /pr[oó]xim[ao]s? (safra|ano|plantio|esta[cç][aã]o)|ano que vem|rota[cç][aã]o|\bplano\b/i;
 
 /** Alertas da previsão e da chuva recente: geada, chuva forte, veranico e chuva para semear ou irrigar. */
 export function alertasDoTempo(
@@ -93,9 +96,9 @@ export function alertasDoTempo(
         // A lavoura gasta essa quantidade vezes o coeficiente da cultura, menor no começo e perto de
         // 1 ou mais na florada.
         if (chuva?.et0 && PERGUNTA_DE_IRRIGAR.test(pergunta)) {
-            alertas.push(`- Quanto irrigar: a evapotranspiração de referência prevista é de cerca de ${String(chuva.et0).replace('.', ',')} mm por dia (a água que um gramado bem regado perde). Se perguntarem quanto irrigar, use esse número como ponto de partida: a lavoura gasta menos no começo e mais na florada, e a chuva que cair é descontada. Oriente acertar a quantidade com a assistência técnica.`);
+            alertas.push(`- Quanto irrigar: a evapotranspiração de referência prevista é de cerca de ${String(chuva.et0).replace('.', ',')} milímetros por dia (a água que um gramado bem regado perde). Se perguntarem quanto irrigar, use esse número como ponto de partida: a lavoura gasta menos no começo e mais na florada, e a chuva que cair é descontada. Oriente acertar a quantidade com a assistência técnica.`);
         }
-    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !CITA_UM_MES.test(pergunta) && semChuvaPrevista
+    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !CITA_UM_MES.test(pergunta) && !PLANEJAMENTO.test(pergunta) && semChuvaPrevista
         && !(chuva && chuva.chuva7 >= CHUVA_RECENTE_PARA_SEMEAR_MM)) {
         // Com a chuva recente, só avisa quando a terra deve estar seca
         const recente = chuva ? `nos últimos 7 dias choveu só cerca de ${chuva.chuva7} mm, e ` : '';

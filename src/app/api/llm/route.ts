@@ -12,6 +12,7 @@ import { getChuvaRecente, getForecastDays, getWeatherSummary, previsaoEmTexto } 
 import { alertasDoCultivo, alertasDoTempo } from '@/lib/alertas';
 import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/lib/zarc';
 import { centroDoMunicipio, localDoMunicipio } from '@/lib/mesorregiao';
+import { culturasDoMunicipio } from '@/lib/producaoMunicipal';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
@@ -111,7 +112,7 @@ function pontoDoCultivo(p: any, codigoMunicipio: string | null) {
     return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : centroDoMunicipio(codigoMunicipio);
 }
 
-function resumoDoPerfil(p: any): string | null {
+function resumoDoPerfil(p: any, codigoMunicipio: string | null): string | null {
     if (!p) return null;
     const lista = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && x !== 'Nenhum').join(', ') : '');
     const linhas: string[] = [`Cultivo: ${nomeDoCultivo(p)}`];
@@ -126,6 +127,8 @@ function resumoDoPerfil(p: any): string | null {
     ].filter(Boolean).join(', ');
     if (solo) linhas.push(`Solo: ${solo}`);
     if (lista(p.culturasHistorico)) linhas.push(`Culturas dos últimos anos: ${lista(p.culturasHistorico)}`);
+    const doMunicipio = culturasDoMunicipio(codigoMunicipio);
+    if (doMunicipio) linhas.push(doMunicipio);
     const safras = ordenarSafras(p.safras).map((s: any) => `${rotuloDaSafra(s)}: ${String(s.cultura).toLowerCase()}`);
     if (safras.length) linhas.push(`Safras registradas (da mais antiga à mais recente): ${safras.join('; ')}`);
     if (p.tempoCulturaAtual != null) linhas.push(`Tempo com as culturas atuais: ${p.tempoCulturaAtual} anos`);
@@ -315,7 +318,7 @@ export async function POST(req: Request) {
         const contexto = trechos
             .map((t) => `[${tituloDoDocumento(t.fonte)}${t.pagina ? `, p. ${t.pagina} do PDF` : ''}] ${t.texto}`)
             .join('\n\n');
-        const perfil = resumoDoPerfil(propriedade) ?? (cultivosSemEscolha.length > 1
+        const perfil = resumoDoPerfil(propriedade, codigoMunicipio) ?? (cultivosSemEscolha.length > 1
             ? `O produtor tem ${cultivosSemEscolha.length} cultivos cadastrados (${cultivosSemEscolha.map((c) => `${nomeDoCultivo(c)}${c.cidade ? `, em ${c.cidade}` : ''}`).join('; ')}), mas esta conversa não está ligada a nenhum. Se a resposta depender da área, pergunte de qual cultivo ele fala e diga que ele pode escolher o cultivo no topo do chat.`
             : null);
         // O quadro do ZARC abaixo da resposta (quadroZarc) e a regra do aplicativo no prompt
