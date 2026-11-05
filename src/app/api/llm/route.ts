@@ -18,7 +18,7 @@ import { FONTE_DO_PROGRESSO, progressoNoEstado } from '@/lib/progressoSafra';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
-import { FIM_DA_REVISAO, INICIO_DA_REVISAO, semDesculpaNoInicio } from '@/lib/revisao';
+import { FIM_DA_REVISAO, INICIO_DA_REVISAO, problemaDeEscrita, semCodigoDoSolo, semDesculpaNoInicio } from '@/lib/revisao';
 import { estacaoERegiao, regrasDoClima } from '@/lib/estacao';
 import { VERSAO_DO_PROMPT, montarPrompt, temLavouraPerene } from '@/lib/prompt';
 import { comTitulos, tituloDoDocumento } from '@/lib/documentos';
@@ -83,7 +83,7 @@ const MARCA_DE_PEDIDO = /\[PEDIR:\s*([^\]]*)\]/gi;
 function separarPedido(resposta: string, faltando: string[]) {
     const pedidos = [...resposta.matchAll(MARCA_DE_PEDIDO)]
         .flatMap((m) => m[1].split(',').map((c) => c.trim().toLowerCase()));
-    const texto = resposta.replace(MARCA_DE_PEDIDO, '').trimEnd();
+    const texto = semCodigoDoSolo(resposta.replace(MARCA_DE_PEDIDO, '')).trimEnd();
     const codigos = [...new Set(pedidos)].filter((c) => faltando.includes(c)).slice(0, 2);
     if (!codigos.length) return { texto, codigos, form: null };
     return {
@@ -395,7 +395,7 @@ export async function POST(req: Request) {
         };
 
         const dadosDaPergunta = { pergunta: `${userPrompt} ${busca}`, estado: (propriedade as any)?.estado, irrigacao: (propriedade as any)?.irrigacao, mesorregiao: local?.mesorregiao };
-        const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta)].filter(Boolean).join(' ');
+        const problema = [problemaDeAtribuicao(answer, contexto, zarc, previsao), problemaDeAgrotoxico(answer), problemaAgronomico(answer, dadosDaPergunta), problemaDeEscrita(answer)].filter(Boolean).join(' ');
         if (problema) {
             console.warn('⚠️ Atribuição sem respaldo, agrotóxico com dose ou erro agronômico; pedindo revisão.', problema);
             const revisada = await gerarResposta([...messages, { role: 'assistant', content: answer }, { role: 'user', content: `${INICIO_DA_REVISAO}${problema}${FIM_DA_REVISAO}` }]);

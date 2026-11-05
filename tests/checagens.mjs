@@ -6,7 +6,7 @@
 import { problemaAgronomico } from '../src/lib/errosAgronomicos.ts';
 import { frasesComAgrotoxico, semAgrotoxico, AVISO_RECEITUARIO } from '../src/lib/agrotoxicos.ts';
 import { problemaDeAtribuicao, datasDe } from '../src/lib/atribuicao.ts';
-import { semDesculpaNoInicio, INICIO_DA_REVISAO } from '../src/lib/revisao.ts';
+import { semDesculpaNoInicio, INICIO_DA_REVISAO, problemaDeEscrita, semCodigoDoSolo } from '../src/lib/revisao.ts';
 import { estacaoERegiao, regrasDoClima } from '../src/lib/estacao.ts';
 import { normalizar, semCulturaAnterior } from '../src/lib/zarc-formato.mjs';
 import { numeroDoAmbiente } from '../src/lib/ambiente.ts';
@@ -119,6 +119,27 @@ const epocaDaAveia = problemaAgronomico('Semeie aveia-preta em outubro.', { perg
 confere('erros agronômicos', 'aveia fora de época: a correção diz "de fevereiro a junho"', epocaDaAveia.includes('de fevereiro a junho'), epocaDaAveia.slice(0, 200));
 const umaPlanta = problemaAgronomico('Milheto – cresce rápido.', { pergunta: 'o que planto no inverno', estado: 'PR' }) ?? '';
 confere('erros agronômicos', 'concordância com uma planta só ("Milheto é planta de verão")', umaPlanta.includes('Milheto é planta de verão'), umaPlanta.slice(0, 200));
+
+// --- Números por extenso (src/lib/revisao.ts) ---
+// 05/11/2026: "quatro vírgula cinco milímetros", "mais de quarenta milímetros", "sacas de sessenta quilos"
+const ESCRITA = [
+    ['a evapotranspiração está em torno de quatro vírgula cinco milímetros por dia.', true],
+    ['a chuva dos últimos dias já somou mais de quarenta milímetros.', true],
+    ['cerca de 30 sacas de sessenta quilos por hectare.', true],
+    ['use sessenta e cinco quilos de semente.', true],
+    ['cerca de 4,5 milímetros por dia.', false],
+    ['espere dois dias e plante uma saca por vez.', false],
+    ['use de 200 a 300 mil sementes por hectare.', false],
+    ['a média dos últimos cinco anos é 34%.', false],
+    ['quarenta dias depois da semeadura, faça a capina.', false],
+];
+for (const [frase, deveMarcar] of ESCRITA) {
+    confere('escrita', `${deveMarcar ? 'marcar' : 'deixar passar'}: ${frase}`, Boolean(problemaDeEscrita(frase)) === deveMarcar);
+}
+// "Qual é o código do solo da sua fazenda?" (05/11/2026)
+confere('escrita', '"código do solo" vira "tipo de solo"', semCodigoDoSolo('Qual é o código do solo da sua fazenda?') === 'Qual é o tipo de solo da sua fazenda?' && semCodigoDoSolo('Qual é o Código de solo?') === 'Qual é o tipo de solo?');
+const comPedido = montarPrompt({ hoje: '5 de novembro de 2026', estacaoERegiao: 'primavera (novembro).', regrasDeClima: [], perfil: null, clima: null, previsao: null, zarc: null, contexto: '', faltando: [{ codigo: 'solo', descricao: 'o tipo de solo' }], temQuadroZarc: false, lavouraPerene: false, alertas: [] });
+confere('escrita', 'o prompt não chama a marca de "código"', comPedido.includes('[PEDIR: solo]') && !/\(c[oó]digo /.test(comPedido) && !comPedido.includes('[PEDIR: código]'));
 
 // --- Agrotóxicos (src/lib/agrotoxicos.ts) ---
 const AGROTOXICO = [
