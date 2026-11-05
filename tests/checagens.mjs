@@ -15,6 +15,7 @@ import { alertasDoCultivo, alertasDoTempo } from '../src/lib/alertas.ts';
 import { centroDoMunicipio, localDoMunicipio } from '../src/lib/mesorregiao.ts';
 import { culturasDoMunicipio } from '../src/lib/producaoMunicipal.ts';
 import { anoRuimNoEstado, safraDoEstado } from '../src/lib/safraEstadual.ts';
+import { progressoNoEstado, SEMANA_DO_PROGRESSO, VALIDADE_EM_DIAS } from '../src/lib/progressoSafra.ts';
 
 let falhas = 0;
 let total = 0;
@@ -225,6 +226,23 @@ const alertasDeQueda = ufDaQueda ? anoRuimNoEstado(ufDaQueda, 'feijão milho soj
 confere('safra do estado', 'alerta de ano ruim para cada linha com "Queda forte" do estado', !ufDaQueda || (alertasDeQueda.length === comQueda.filter((l) => l.includes(` em ${ufDaQueda}:`)).length && alertasDeQueda.every((a) => a.startsWith('- Ano ruim no estado:'))), alertasDeQueda.join(' | '));
 confere('safra do estado', 'sem a cultura na pergunta, nenhum alerta de ano ruim', !anoRuimNoEstado('BA', 'como controlo o nematoide?').length);
 confere('safra do estado', 'no máximo 4 linhas', (safraDoEstado('MG', 'feijão, milho, soja, café, mandioca') ?? '').split('\n').length <= 4);
+
+// --- Andamento do plantio e da colheita no estado (src/lib/progressoSafra.ts, Conab, semanal) ---
+// "Hoje" fixo na semana dos dados: os números mudam toda semana e vencem depois de 3 semanas
+const naSemana = new Date(`${SEMANA_DO_PROGRESSO}T12:00:00Z`);
+const depoisDaValidade = new Date(naSemana.getTime() + (VALIDADE_EM_DIAS + 2) * 86_400_000);
+const todosOsAndamentos = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO']
+    .flatMap((uf) => (progressoNoEstado(uf, 'feijão milho safrinha soja arroz trigo algodão', naSemana) ?? '').split('\n').filter(Boolean));
+confere('andamento da safra', 'linhas no formato "X% da área semeada/colhida até dd/mm", com a média de 5 anos', todosOsAndamentos.length > 5 && todosOsAndamentos.every((l) => /^- .+ em [A-Z]{2}: \d+% da área (semeada|colhida \(do que foi semeado\)) até \d{2}\/\d{2}/.test(l)), todosOsAndamentos.slice(0, 3).join(' | '));
+confere('andamento da safra', 'adiantada ou atrasada só com 5 pontos de diferença da média', todosOsAndamentos.every((l) => {
+    const [atual, media] = [Number(l.match(/: (\d+)% da área/)?.[1]), Number(l.match(/média de 5 anos, (\d+)%/)?.[1])];
+    if (Number.isNaN(media)) return true;
+    // Arredondamento: na fronteira dos 5 pontos, o texto pode ir para os dois lados
+    if (Math.abs(atual - media) === 5) return true;
+    return l.includes(atual - media > 5 ? 'adiantada' : media - atual > 5 ? 'atrasada' : 'perto da média');
+}));
+confere('andamento da safra', 'dados vencidos (mais de 3 semanas) não entram', progressoNoEstado('MG', 'feijão milho soja', depoisDaValidade) === null);
+confere('andamento da safra', 'sem cultura da planilha no texto, nada', progressoNoEstado('MG', 'como controlo o nematoide da mandioca?', naSemana) === null);
 confere('mesorregião', 'código desconhecido ou vazio: null', localDoMunicipio('9999999') === null && localDoMunicipio('') === null && localDoMunicipio(null) === null);
 const meso = (codigo, nome) => ({ mesorregiao: codigo, nomeDaMesorregiao: nome });
 const REGRAS_DA_MESORREGIAO = [
@@ -290,6 +308,8 @@ confere('prompt', 'lavoura perene: café em formação aceita feijão nas entrel
 confere('prompt', 'regras de clima do estado vêm depois da linha da soja (Roraima é exceção a ela)', (() => { const p = montarPrompt({ ...BASE_DO_PROMPT, regrasDeClima: regrasDoClima('RR') }); return p.indexOf('Em Roraima') > p.indexOf('Não indique soja no inverno'); })());
 const comAlerta = montarPrompt({ ...BASE_DO_PROMPT, alertas: ['- Geada: a previsão indica mínima de 2 °C na qua 05/11.'] });
 confere('prompt', 'alertas: a seção só entra com alerta, e acima do material de consulta', !semNada.includes('ALERTAS DO CULTIVO') && comAlerta.includes('mínima de 2 °C') && comAlerta.indexOf('ALERTAS DO CULTIVO') < comAlerta.indexOf('Tudo abaixo é material de consulta'));
+const comAndamento = montarPrompt({ ...BASE_DO_PROMPT, progressoDaSafra: { linhas: '- Feijão 1ª safra 2026/27 em MG: 26% da área semeada até 30/10.', fonte: 'Conab, semana até 30/10/2026' } });
+confere('andamento da safra', 'a seção e a regra só entram com o andamento; a regra acima do material de consulta', comAndamento.includes('ANDAMENTO DO PLANTIO E DA COLHEITA NO ESTADO (Conab, semana até 30/10/2026)') && comAndamento.indexOf('Não diga para plantar só porque') < comAndamento.indexOf('Tudo abaixo é material de consulta') && !semNada.includes('ANDAMENTO DO PLANTIO'));
 const comSafra = montarPrompt({ ...BASE_DO_PROMPT, safraDoEstado: { linhas: feijaoNaBahia, fonte: 'IBGE, levantamento de setembro 2026' } });
 confere('safra do estado', 'a seção e a regra só entram com a safra; a regra acima do material de consulta', comSafra.includes('SAFRA NO ESTADO (IBGE, levantamento de setembro 2026') && comSafra.indexOf('A seção SAFRA NO ESTADO') < comSafra.indexOf('Tudo abaixo é material de consulta') && !semNada.includes('SAFRA NO ESTADO'));
 const comMunicipio = montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${plantadasEmCruz}` });

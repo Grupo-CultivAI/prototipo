@@ -34,8 +34,10 @@
  *   ganha as culturas mais plantadas no município (IBGE), com a regra de preferi-las na rotação.
  * - 2026-11-05.2: seção SAFRA NO ESTADO (IBGE, levantamento mensal) em perguntas sobre colheita e
  *   produção: a média do estado como referência e o aviso quando o ano foi ruim no estado todo.
+ * - 2026-11-05.3: seção ANDAMENTO DO PLANTIO E DA COLHEITA (Conab, semanal) em perguntas sobre
+ *   a hora de plantar ou colher, sem tirar do ZARC o papel de dizer a época da propriedade.
  */
-export const VERSAO_DO_PROMPT = '2026-11-05.2';
+export const VERSAO_DO_PROMPT = '2026-11-05.3';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;
@@ -62,6 +64,8 @@ export type DadosDoPrompt = {
     alertas: string[];
     // Estimativa da safra do ano no estado, para as culturas do produtor (src/lib/safraEstadual.ts)
     safraDoEstado?: { linhas: string; fonte: string } | null;
+    // Quanto da área do estado já foi semeada ou colhida (Conab, semanal; src/lib/progressoSafra.ts)
+    progressoDaSafra?: { linhas: string; fonte: string } | null;
 };
 
 export function montarPrompt(d: DadosDoPrompt): string {
@@ -97,6 +101,10 @@ DADOS QUE FALTAM
         : '- Um trecho da Embrapa feito em outra situação (por exemplo, em área irrigada, quando o produtor não irriga) só serve se o resultado valer também para ele; nesse caso, diga a condição ("em área irrigada, ...").';
     // Média do estado: em "meu feijão tá dando pouco", a IA não tinha número de referência, nem
     // sabia quando o ano tinha sido ruim no estado todo
+    // O que os produtores do estado estão fazendo nesta semana. A época da propriedade continua
+    // sendo a do ZARC do município e a da chuva: o andamento do estado não é ordem para plantar.
+    const regraDoAndamento = d.progressoDaSafra ? `
+- A seção ANDAMENTO DO PLANTIO E DA COLHEITA mostra quanto da área do estado já foi semeada ou colhida (Conab). Use-a quando o produtor perguntar se já é hora de plantar ou colher, ou se está atrasado: depois de "🌱 Prática agronômica geral:", diga a porcentagem com a data e a fonte ("segundo a Conab, até 30/10 cerca de 26% do feijão de 1ª safra de Minas Gerais já tinha sido semeado; na média de 5 anos, 34%"). É a média do estado: a época certa da propriedade é a do ZARC do município e a da chuva. Não diga para plantar só porque os outros já plantaram.` : '';
     const regraDaSafra = d.safraDoEstado ? `
 - A seção SAFRA NO ESTADO traz a estimativa do IBGE para as culturas do produtor no estado dele. Use-a quando ele falar de colheita baixa ou alta, ou perguntar quanto se colhe: depois de "🌱 Prática agronômica geral:", diga o número com a fonte, o ano e o estado ("segundo a estimativa do IBGE, a média do feijão de 2ª safra na Bahia em 2026 é de cerca de 7 sacas por hectare"). Explique que é a média do estado, de lavouras grandes e pequenas, uma referência e não uma meta. Quando a linha da cultura disser "Queda forte", diga ao produtor que o ano foi ruim para essa cultura no estado todo, provavelmente pelo clima, para ele não achar que o problema é só dele. Em outras perguntas, não fale dessa seção.` : '';
     const secaoDeAlertas = d.alertas.length ? `
@@ -120,7 +128,7 @@ COMO RESPONDER
 - No Centro-Sul, soja e milho de primeira safra são lavouras de verão. Não indique soja no inverno: na maioria dos estados há o vazio sanitário (meses sem soja no campo, por lei, contra a ferrugem asiática).${regrasDeClima}
 - Leguminosas (põem nitrogênio na terra): feijão, soja, amendoim, ervilhaca, tremoço, crotalária, mucuna, feijão-de-porco, guandu. Soja, feijão-caupi e as de cobertura põem bastante; o feijão-comum (carioca, preto) põe pouco e ainda precisa de adubo com nitrogênio. Não são leguminosas: milho, milheto, sorgo, aveia, centeio, trigo, braquiária, nabo forrageiro, mandioca.
 - Use o nome certo de cada planta e não invente nomes populares: feijão-de-porco e crotalária são plantas diferentes. Mandioca se planta com pedaços do caule (manivas), não com semente.${regraDePerene}${regraDoMunicipio}
-${regraDaCondicao}${regraDaSafra}${secaoDeAlertas}
+${regraDaCondicao}${regraDaSafra}${regraDoAndamento}${secaoDeAlertas}
 
 ORIGEM DA INFORMAÇÃO
 - Use "📘 Segundo a Embrapa:" (sempre com essas palavras) antes do que vier dos trechos da Embrapa abaixo.
@@ -155,6 +163,9 @@ ${d.zarc || '(sem dados do ZARC para esta pergunta: não dê datas oficiais)'}
 ${d.safraDoEstado ? `
 SAFRA NO ESTADO (${d.safraDoEstado.fonte}; estimativas, revistas todo mês):
 ${d.safraDoEstado.linhas}
+` : ''}${d.progressoDaSafra ? `
+ANDAMENTO DO PLANTIO E DA COLHEITA NO ESTADO (${d.progressoDaSafra.fonte}):
+${d.progressoDaSafra.linhas}
 ` : ''}
 TRECHOS DA EMBRAPA:
 ${d.contexto || '(nenhum trecho relevante encontrado)'}`;

@@ -14,6 +14,7 @@ import { codigoDoMunicipio, epocaDePlantio, perguntaDeQuandoPlantar } from '@/li
 import { centroDoMunicipio, localDoMunicipio } from '@/lib/mesorregiao';
 import { culturasDoMunicipio } from '@/lib/producaoMunicipal';
 import { FONTE_DA_SAFRA, anoRuimNoEstado, safraDoEstado } from '@/lib/safraEstadual';
+import { FONTE_DO_PROGRESSO, progressoNoEstado } from '@/lib/progressoSafra';
 import { problemaDeAgrotoxico, semAgrotoxico } from '@/lib/agrotoxicos';
 import { AVISO_AGRONOMICO, problemaAgronomico } from '@/lib/errosAgronomicos';
 import { problemaDeAtribuicao } from '@/lib/atribuicao';
@@ -37,6 +38,8 @@ const CARACTERES_POR_MENSAGEM_DO_HISTORICO = 500;
 const PERGUNTA_DE_CAMPO = /plant|semea|semeio|adub|aplic|pulveriz|colh|chuv|chov|irrig|previs|geada|semana|amanh/i;
 // A safra do estado (IBGE) só entra em perguntas sobre quanto se colhe ou sobre colheita fraca
 const PERGUNTA_DE_PRODUCAO = /colh|produ[cç][aã]o|produtividade|\brend|\bsacas?\b|dando pouco|deu pouco|\bfraca|quebr|\bperdi|quanto (d[aá]|se colhe|rende)|\bm[eé]dia\b/i;
+// O andamento do plantio no estado (Conab) só entra em perguntas sobre a hora de plantar ou colher
+const PERGUNTA_DE_ANDAMENTO = /plant|semea|semeio|colh|atrasad|adiantad|hora de|\bquando\b|\bj[aá] (posso|d[aá]|[eé])/i;
 
 // Dados do perfil que a IA pode pedir no meio da conversa. As opções são as do formulário
 // do cultivo (Meus Cultivos), para o valor salvo pelo chat ser o mesmo que o formulário gravaria.
@@ -334,6 +337,7 @@ export async function POST(req: Request) {
         const linhasDaSafra = deProducao ? safraDoEstado(p?.estado, `${userPrompt} ${busca} ${culturasDoProdutor}`) : null;
         // Só as culturas da pergunta: "meu feijão tá dando pouco" não é sobre o milho do perfil
         if (deProducao) alertas.push(...anoRuimNoEstado(p?.estado, `${userPrompt} ${busca}`));
+        const linhasDoAndamento = PERGUNTA_DE_ANDAMENTO.test(`${userPrompt} ${busca}`) ? progressoNoEstado(p?.estado, `${userPrompt} ${busca} ${culturasDoProdutor}`) : null;
         const systemPrompt = montarPrompt({
             hoje: hoje(),
             // A altitude ajuda a IA com a geada "nas partes altas"
@@ -350,6 +354,7 @@ export async function POST(req: Request) {
             lavouraPerene: temLavouraPerene(`${userPrompt} ${busca} ${perfil ?? ''}`),
             alertas,
             safraDoEstado: linhasDaSafra ? { linhas: linhasDaSafra, fonte: FONTE_DA_SAFRA } : null,
+            progressoDaSafra: linhasDoAndamento ? { linhas: linhasDoAndamento, fonte: FONTE_DO_PROGRESSO } : null,
         });
 
         const messages: MensagemGroq[] = [
@@ -443,7 +448,7 @@ export async function POST(req: Request) {
                 perguntaId,
                 busca: { texto: busca, maiorScore, trechosUsados: trechos.length, modelo: MODELO_EMBEDDING, ...(falhaDaBusca ? { falha: falhaDaBusca } : {}) },
                 geracao: { ...geracao, duracaoMs: Date.now() - inicio },
-                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined, alertas: alertas.length ? alertas : undefined, safra: linhasDaSafra || undefined },
+                contexto: { perfil: perfil ?? undefined, clima: clima || undefined, previsao: previsao || undefined, zarc: zarc || undefined, alertas: alertas.length ? alertas : undefined, safra: linhasDaSafra || undefined, andamento: linhasDoAndamento || undefined },
                 ...(pedido.form ? { form: pedido.form, pediu: pedido.codigos } : {}),
                 ...(quadroZarc ? { epoca: quadroZarc } : {}),
             },
