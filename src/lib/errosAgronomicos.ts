@@ -141,6 +141,23 @@ function quenteComoDeFrio(resposta: string, { estado }: Contexto): string | null
     return `${lista[0].toUpperCase()}${lista.slice(1)} ${nomes.length > 1 ? 'são plantas' : 'é planta'} de clima quente: não aguenta${nomes.length > 1 ? 'm' : ''} frio nem geada. Não diga que tolera${nomes.length > 1 ? 'm' : ''} frio${doNordeste ? '' : ' nem chame de planta de inverno'}.`;
 }
 
+// Feijão com densidade de milho. Em 05/11/2026, numa resposta sobre feijão: "Plantar de 30 a 35 mil
+// sementes por hectare costuma dar boa produção". O feijão-comum vai a uns 200 a 300 mil plantas por
+// hectare (10 a 15 por metro), e mesmo o caupi, mais espaçado, passa de 50 mil.
+const POUCAS_MIL_POR_HECTARE = 45;
+const DENSIDADE = /\b(\d{1,3})(?:\s*(?:a|-|ou)\s*(\d{1,3}))?\s*mil (?:sementes|plantas)(?: de feijao)? (?:por hectare|por ha\b|\/\s*ha\b)/;
+const OUTRA_CULTURA_NA_FRASE = /\b(milho|sorgo|soja|mandioca|milheto|algodao|girassol|crotalaria|mucuna)\b/;
+
+function feijaoRalo(resposta: string, { pergunta }: Contexto): string | null {
+    const n = sem(resposta);
+    if (!/\bfeij(ao|oes)\b/.test(`${sem(pergunta)} ${n}`)) return null;
+    const errada = n.split(/[.;!?\n]+/).some((frase) => {
+        const m = frase.match(DENSIDADE);
+        return m && !OUTRA_CULTURA_NA_FRASE.test(frase) && Number(m[2] ?? m[1]) <= POUCAS_MIL_POR_HECTARE;
+    });
+    return errada ? 'A densidade do feijão está errada: de 30 a 45 mil por hectare é densidade de milho. O feijão-comum vai a uns 200 a 300 mil plantas por hectare (10 a 15 por metro de linha); o caupi, mais espaçado, passa de 50 mil. Se não tiver certeza do número, diga para seguir a recomendação da semente e da assistência técnica.' : null;
+}
+
 // Planta de inverno semeada na primavera ou no verão. Em 03/11/2026 o plano do Rafael (ES) mandou
 // semear aveia, ervilhaca ou tremoço "em outubro-novembro"; em todo o país elas vão no fim do
 // verão ou no outono (de fevereiro a junho, conforme a região). Vale qualquer estado.
@@ -185,6 +202,7 @@ export function problemaAgronomico(resposta: string, contexto: Contexto): string
         leguminosaErrada(resposta),
         mandiocaSemeada(resposta),
         quenteComoDeFrio(resposta, contexto),
+        feijaoRalo(resposta, contexto),
     ].filter(Boolean);
     return erros.length ? `A resposta tem erros agronômicos: ${erros.join(' ')} Reescreva a resposta completa, sem esses erros.` : null;
 }

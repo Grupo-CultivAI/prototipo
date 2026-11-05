@@ -14,6 +14,7 @@ import { montarPrompt, temLavouraPerene, VERSAO_DO_PROMPT } from '../src/lib/pro
 import { alertasDoCultivo, alertasDoTempo } from '../src/lib/alertas.ts';
 import { centroDoMunicipio, localDoMunicipio } from '../src/lib/mesorregiao.ts';
 import { culturasDoMunicipio } from '../src/lib/producaoMunicipal.ts';
+import { anoRuimNoEstado, safraDoEstado } from '../src/lib/safraEstadual.ts';
 
 let falhas = 0;
 let total = 0;
@@ -96,6 +97,12 @@ const AGRONOMIA = [
     ['Milheto e aveia: a aveia é planta de inverno.', 'rotação', 'PR', '', false],
     ['Sorgo resiste bem à seca.', 'rotação', 'GO', '', false],
     ['Crotalária – não; para o frio, use aveia-preta, que aguenta a geada.', 'inverno', 'SC', '', false],
+    // Feijão com densidade de milho (05/11/2026, Cruz das Almas, BA)
+    ['2. **Ajustar a densidade de semeadura** – Plantar de 30 a 35 mil sementes por hectare costuma dar boa produção.', 'meu feijão tá dando pouco', 'BA', '', true],
+    ['Semeie o feijão com 40 mil plantas por hectare.', 'feijão', 'MG', '', true],
+    ['Use de 200 a 300 mil sementes de feijão por hectare (10 a 15 por metro).', 'feijão', 'MG', '', false],
+    ['Depois do feijão, plante o milho com 60 mil sementes por hectare.', 'rotação', 'MG', '', false],
+    ['No milho, 45 mil plantas por hectare bastam em lavoura sem irrigação.', 'feijão e milho', 'BA', '', false],
 ];
 for (const [frase, pergunta, estado, irrigacao, deveMarcar] of AGRONOMIA) {
     const marcou = Boolean(problemaAgronomico(frase, { pergunta, estado, irrigacao }));
@@ -184,6 +191,40 @@ const plantadasEmCruz = culturasDoMunicipio('2909802') ?? '';
 confere('produção municipal', 'Cruz das Almas: mandioca é a mais plantada, com área em hectares', /^Mais plantadas no município \(IBGE, área colhida em \d{4}\): mandioca \([\d.]+ ha\)/.test(plantadasEmCruz), plantadasEmCruz);
 confere('produção municipal', 'Cruz das Almas: limão marcado como perene, mandioca não', plantadasEmCruz.includes('limão (') && /limão \([\d.]+ ha, perene\)/.test(plantadasEmCruz) && !/mandioca \([^)]*perene/.test(plantadasEmCruz), plantadasEmCruz);
 confere('produção municipal', 'código desconhecido: nada', culturasDoMunicipio('9999999') === null && culturasDoMunicipio(null) === null);
+
+// --- Safra do ano no estado (src/lib/safraEstadual.ts, IBGE, levantamento mensal) ---
+// Os números mudam a cada levantamento: os testes conferem o formato, não os valores
+const feijaoNaBahia = safraDoEstado('BA', 'meu feijão tá dando pouco') ?? '';
+confere('safra do estado', 'feijão na BA: linhas por safra, com sacas e comparação com o ano anterior', /^- Feijão \(1ª safra\) em BA: rendimento médio estimado em \d{4} de [\d.]+ quilos por hectare \(cerca de \d+ sacas de 60 quilos\); em \d{4}, [\d.]+ \((\d+% a (mais|menos) agora|igual)\)/m.test(feijaoNaBahia) && feijaoNaBahia.includes('Feijão (2ª safra) em BA'), feijaoNaBahia);
+const mandiocaNoParana = safraDoEstado('PR', 'mandioca') ?? '';
+confere('safra do estado', 'mandioca em toneladas por hectare, com uma casa decimal', /Mandioca em PR: rendimento médio estimado em \d{4} de \d+,\d toneladas por hectare; em \d{4}, \d+,\d /.test(mandiocaNoParana), mandiocaNoParana);
+const SAFRA_CASOS = [
+    // [estado, texto, deve ter, não pode ter]
+    ['MG', 'Culturas: Milho safrinha', 'Milho (2ª safra)', 'Milho (1ª safra)'],
+    ['MG', 'café', 'Café arábica', 'Milho'],
+    ['SP', 'batata-doce', null, null],
+    ['XX', 'feijão', null, null],
+    ['BA', 'como controlo o nematoide?', null, null],
+];
+for (const [uf, texto, tem, naoTem] of SAFRA_CASOS) {
+    const linhas = safraDoEstado(uf, texto);
+    confere('safra do estado', `${uf}, "${texto}"`, tem ? Boolean(linhas?.includes(tem)) && !linhas.includes(naoTem) : linhas === null, String(linhas));
+}
+// A marca de ano ruim acompanha a queda de 15% ou mais, em qualquer estado e cultura
+const todasAsLinhas = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO']
+    .flatMap((uf) => (safraDoEstado(uf, 'feijão milho soja mandioca arroz trigo') ?? '').split('\n').filter(Boolean));
+const marcaCerta = todasAsLinhas.every((l) => {
+    const queda = Number(l.match(/\((\d+)% a menos agora\)/)?.[1] ?? 0);
+    return (queda >= 15) === l.includes('Queda forte');
+});
+confere('safra do estado', 'marca "Queda forte" só com queda de 15% ou mais no rendimento', marcaCerta && todasAsLinhas.length > 20, `${todasAsLinhas.length} linhas`);
+// O alerta de ano ruim sai das mesmas linhas marcadas com "Queda forte"
+const comQueda = todasAsLinhas.filter((l) => l.includes('Queda forte'));
+const ufDaQueda = comQueda[0]?.match(/ em ([A-Z]{2}):/)?.[1];
+const alertasDeQueda = ufDaQueda ? anoRuimNoEstado(ufDaQueda, 'feijão milho soja mandioca arroz trigo') : [];
+confere('safra do estado', 'alerta de ano ruim para cada linha com "Queda forte" do estado', !ufDaQueda || (alertasDeQueda.length === comQueda.filter((l) => l.includes(` em ${ufDaQueda}:`)).length && alertasDeQueda.every((a) => a.startsWith('- Ano ruim no estado:'))), alertasDeQueda.join(' | '));
+confere('safra do estado', 'sem a cultura na pergunta, nenhum alerta de ano ruim', !anoRuimNoEstado('BA', 'como controlo o nematoide?').length);
+confere('safra do estado', 'no máximo 4 linhas', (safraDoEstado('MG', 'feijão, milho, soja, café, mandioca') ?? '').split('\n').length <= 4);
 confere('mesorregião', 'código desconhecido ou vazio: null', localDoMunicipio('9999999') === null && localDoMunicipio('') === null && localDoMunicipio(null) === null);
 const meso = (codigo, nome) => ({ mesorregiao: codigo, nomeDaMesorregiao: nome });
 const REGRAS_DA_MESORREGIAO = [
@@ -249,6 +290,8 @@ confere('prompt', 'lavoura perene: café em formação aceita feijão nas entrel
 confere('prompt', 'regras de clima do estado vêm depois da linha da soja (Roraima é exceção a ela)', (() => { const p = montarPrompt({ ...BASE_DO_PROMPT, regrasDeClima: regrasDoClima('RR') }); return p.indexOf('Em Roraima') > p.indexOf('Não indique soja no inverno'); })());
 const comAlerta = montarPrompt({ ...BASE_DO_PROMPT, alertas: ['- Geada: a previsão indica mínima de 2 °C na qua 05/11.'] });
 confere('prompt', 'alertas: a seção só entra com alerta, e acima do material de consulta', !semNada.includes('ALERTAS DO CULTIVO') && comAlerta.includes('mínima de 2 °C') && comAlerta.indexOf('ALERTAS DO CULTIVO') < comAlerta.indexOf('Tudo abaixo é material de consulta'));
+const comSafra = montarPrompt({ ...BASE_DO_PROMPT, safraDoEstado: { linhas: feijaoNaBahia, fonte: 'IBGE, levantamento de setembro 2026' } });
+confere('safra do estado', 'a seção e a regra só entram com a safra; a regra acima do material de consulta', comSafra.includes('SAFRA NO ESTADO (IBGE, levantamento de setembro 2026') && comSafra.indexOf('A seção SAFRA NO ESTADO') < comSafra.indexOf('Tudo abaixo é material de consulta') && !semNada.includes('SAFRA NO ESTADO'));
 const comMunicipio = montarPrompt({ ...BASE_DO_PROMPT, perfil: `Cultivo: Roça\n${plantadasEmCruz}` });
 confere('produção municipal', 'a regra das culturas do município só entra com a linha no perfil', comMunicipio.includes('pelo menos uma dessas') && !semNada.includes('pelo menos uma dessas'));
 confere('prompt', 'versão do prompt definida (AAAA-MM-DD)', /^\d{4}-\d{2}-\d{2}/.test(VERSAO_DO_PROMPT), VERSAO_DO_PROMPT);
