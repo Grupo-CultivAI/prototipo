@@ -29,8 +29,10 @@
  *   Boa Vista (era "abril e maio").
  * - 2026-11-04.5: no Nordeste, em MS e no norte de MG, a regra de clima é a da mesorregião do
  *   IBGE onde fica o cultivo (src/lib/estacao.ts), com os meses de plantio tirados do ZARC.
+ * - 2026-11-05: a chuva que já caiu, a evapotranspiração e a altitude (Open-Meteo) entram na
+ *   previsão e nos alertas (semeadura pela chuva recente, veranico, quanto irrigar).
  */
-export const VERSAO_DO_PROMPT = '2026-11-04.5';
+export const VERSAO_DO_PROMPT = '2026-11-05';
 
 // Perfil ou pergunta com lavoura perene: a regra das entrelinhas entra no prompt
 const LAVOURA_PERENE = /caf[eé]|laranj|citr|lim[aã]o|banana|cacau|frut[ií]fer|pomar|entrelinha|perene|videira|\buva|maracuj|coqueir|seringueira|eucalipto/i;

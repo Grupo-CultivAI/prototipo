@@ -11,8 +11,15 @@ type Tabela = {
     municipios: Record<string, number>;
     microrregioes: Record<string, [string, number]>;
     mesorregioes: Record<string, [string, string]>;
+    centros: Record<string, [number, number]>;
 };
-const { municipios, microrregioes, mesorregioes } = tabela as unknown as Tabela;
+const { municipios, microrregioes, mesorregioes, centros } = tabela as unknown as Tabela;
+
+/** O centro do município (IBGE), para quando o cultivo não tem o ponto marcado no mapa. */
+export function centroDoMunicipio(codigo?: string | null): { lat: number; lng: number } | null {
+    const centro = centros[String(codigo ?? '').trim()];
+    return centro ? { lat: centro[0], lng: centro[1] } : null;
+}
 
 export type LocalDoCultivo = { mesorregiao: number; nomeDaMesorregiao: string; microrregiao: number; uf: string };
 

@@ -118,3 +118,64 @@ export function previsaoEmTexto(dias: DiaDePrevisao[]) {
         return `- ${hoje ? 'hoje, ' : ''}${semana} ${data}: ${min} a ${max}°C, ${textoChuva}`;
     }).join('\n');
 }
+
+// --- Chuva dos últimos dias, evapotranspiração e altitude (Open-Meteo) ---
+// A OpenWeather gratuita só dá a previsão: sem a chuva que já caiu, o alerta de semeadura não
+// sabia se a terra estava úmida. A Open-Meteo (https://open-meteo.com, dados CC BY 4.0, uso não
+// comercial sem chave) estima a chuva dos dias passados, a evapotranspiração (FAO-56) e a altitude.
+const DIAS_PASSADOS = 30;
+// Dia com menos de 1 mm conta como seco (o mesmo limiar dos índices de dias secos seguidos da OMM)
+const DIA_SECO_MM = 1;
+
+export type ChuvaRecente = {
+    altitude: number | null;
+    chuva7: number;
+    chuva30: number;
+    // Dias seguidos sem chuva, contados de ontem para trás
+    diasSemChuva: number;
+    // Chuva do resto dos 30 dias, antes desses dias secos: mostra se a época das chuvas já tinha começado
+    chuvaAntesDaSeca: number;
+    // Evapotranspiração de referência (ET0) média de hoje e dos 2 próximos dias, em mm por dia
+    et0: number | null;
+};
+
+export async function getChuvaRecente(ponto: Ponto): Promise<ChuvaRecente | null> {
+    if (!temPonto(ponto)) return null;
+    const key = `open-meteo:${ponto.lat.toFixed(2)},${ponto.lng.toFixed(2)}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < TTL_PREVISAO_MS) return hit.value as ChuvaRecente;
+    try {
+        const url = new URL('https://api.open-meteo.com/v1/forecast');
+        url.searchParams.set('latitude', String(ponto.lat));
+        url.searchParams.set('longitude', String(ponto.lng));
+        url.searchParams.set('daily', 'precipitation_sum,et0_fao_evapotranspiration');
+        url.searchParams.set('past_days', String(DIAS_PASSADOS));
+        url.searchParams.set('forecast_days', '3');
+        url.searchParams.set('timezone', 'America/Sao_Paulo');
+        const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+        if (!res.ok) return null;
+        const d = await res.json();
+        const chuva: number[] = (d.daily?.precipitation_sum ?? []).map((v: number | null) => v ?? 0);
+        const et0: (number | null)[] = d.daily?.et0_fao_evapotranspiration ?? [];
+        if (chuva.length < DIAS_PASSADOS + 1) return null;
+        // Os DIAS_PASSADOS primeiros são os dias passados; depois vêm hoje e os próximos
+        const passados = chuva.slice(0, DIAS_PASSADOS);
+        const soma = (lista: number[]) => Math.round(lista.reduce((a, b) => a + b, 0));
+        let diasSemChuva = 0;
+        while (diasSemChuva < passados.length && passados[passados.length - 1 - diasSemChuva] < DIA_SECO_MM) diasSemChuva++;
+        const proximos = et0.slice(DIAS_PASSADOS).filter((v): v is number => typeof v === 'number');
+        const value: ChuvaRecente = {
+            altitude: typeof d.elevation === 'number' ? Math.round(d.elevation) : null,
+            chuva7: soma(passados.slice(-7)),
+            chuva30: soma(passados),
+            diasSemChuva,
+            chuvaAntesDaSeca: soma(passados.slice(0, passados.length - diasSemChuva)),
+            et0: proximos.length ? Math.round(10 * proximos.reduce((a, b) => a + b, 0) / proximos.length) / 10 : null,
+        };
+        if (cache.size > 400) cache.clear();
+        cache.set(key, { at: Date.now(), value });
+        return value;
+    } catch {
+        return null;
+    }
+}

@@ -37,6 +37,18 @@ const CHUVA_PARA_ADIAR_IRRIGACAO_MM = 15;
 const DIAS_PARA_ADIAR_IRRIGACAO = 3;
 // Chance mínima para a chuva contar na decisão de irrigar
 const CHANCE_DE_CHUVA = 0.5;
+// Chuva dos últimos 7 dias que deixa a terra úmida para semear (regra prática, a validar)
+const CHUVA_RECENTE_PARA_SEMEAR_MM = 20;
+// Veranico: dias seguidos sem chuva no meio da época das chuvas. A partir de 10 dias já reduz a
+// produção das lavouras de sequeiro (Assad e outros, "Veranicos na região dos Cerrados
+// brasileiros", Pesquisa Agropecuária Brasileira, 1993). A chuva antes dos dias secos mostra que a
+// época das chuvas tinha começado: sem ela, é só a estação seca.
+const DIAS_DE_VERANICO = 10;
+const CHUVA_ANTES_DO_VERANICO_MM = 50;
+
+// Mesmo formato de src/lib/weather.ts (getChuvaRecente, Open-Meteo)
+type ChuvaRecente = { chuva7: number; diasSemChuva: number; chuvaAntesDaSeca: number; et0: number | null };
+const PERGUNTA_DE_IRRIGAR = /irrig|\bregar\b|\brega\b|molhar|agua/i;
 
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‐-―−]/g, '-').trim().toLowerCase();
 const quando = (d: DiaDaPrevisao) => (d.hoje ? `hoje (${d.semana} ${d.data})` : `na ${d.semana} ${d.data}`);
@@ -46,8 +58,11 @@ const PERGUNTA_DE_SEMEAR = /plant|seme|semeio/i;
 // No teste de 04/11/2026, com essa pergunta, a IA mandou esperar a terra molhar para semear.
 const CITA_UM_MES = /janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro/i;
 
-/** Alertas da previsão dos próximos dias: geada, chuva forte e chuva para semear ou irrigar. */
-export function alertasDoTempo(dias: DiaDaPrevisao[] | null | undefined, { pergunta, irrigacao }: { pergunta: string; irrigacao?: string | null }): string[] {
+/** Alertas da previsão e da chuva recente: geada, chuva forte, veranico e chuva para semear ou irrigar. */
+export function alertasDoTempo(
+    dias: DiaDaPrevisao[] | null | undefined,
+    { pergunta, irrigacao, chuva }: { pergunta: string; irrigacao?: string | null; chuva?: ChuvaRecente | null },
+): string[] {
     if (!dias?.length) return [];
     const alertas: string[] = [];
 
@@ -63,14 +78,28 @@ export function alertasDoTempo(dias: DiaDaPrevisao[] | null | undefined, { pergu
         alertas.push(`- Chuva forte: a previsão indica cerca de ${pior.chuvaMm} mm ${quando(pior)} (o INMET considera perigo a partir de ${CHUVA_FORTE_MM} mm num dia). Se a pergunta for sobre adubar, aplicar produto, semear ou preparar a terra, sugira não fazer isso antes dessa chuva: ela lava o adubo, arrasta a semente e abre erosão na terra descoberta.`);
     }
 
+    const semChuvaPrevista = !dias.some((d) => d.chuvaMm >= CHUVA_PARA_SEMEAR_MM);
+    if (chuva && chuva.diasSemChuva >= DIAS_DE_VERANICO && chuva.chuvaAntesDaSeca >= CHUVA_ANTES_DO_VERANICO_MM && semChuvaPrevista) {
+        alertas.push(`- Veranico: não chove há ${chuva.diasSemChuva} dias, depois de cerca de ${chuva.chuvaAntesDaSeca} mm de chuva nas semanas anteriores, e a previsão não indica chuva de ${CHUVA_PARA_SEMEAR_MM} mm. Em perguntas sobre a lavoura, a adubação ou o plantio, avise: a falta de água agora pesa mais nas lavouras em florada ou enchendo o grão; sem chuva, adie a semeadura e a adubação de cobertura, porque a planta não aproveita o adubo sem água; mantenha a palha sobre a terra; quem irriga deve dar prioridade a essas lavouras.`);
+    }
+
     if (irriga(irrigacao)) {
         const proximos = dias.slice(0, DIAS_PARA_ADIAR_IRRIGACAO);
-        const chuva = proximos.filter((d) => d.chance >= CHANCE_DE_CHUVA).reduce((soma, d) => soma + d.chuvaMm, 0);
-        if (chuva >= CHUVA_PARA_ADIAR_IRRIGACAO_MM) {
-            alertas.push(`- Irrigação: a previsão indica cerca de ${chuva} mm de chuva até ${proximos.at(-1)!.semana} ${proximos.at(-1)!.data}. Se a pergunta for sobre irrigar, sugira esperar a chuva e conferir a umidade da terra antes de ligar a irrigação.`);
+        const chuvaPrevista = proximos.filter((d) => d.chance >= CHANCE_DE_CHUVA).reduce((soma, d) => soma + d.chuvaMm, 0);
+        if (chuvaPrevista >= CHUVA_PARA_ADIAR_IRRIGACAO_MM) {
+            alertas.push(`- Irrigação: a previsão indica cerca de ${chuvaPrevista} mm de chuva até ${proximos.at(-1)!.semana} ${proximos.at(-1)!.data}. Se a pergunta for sobre irrigar, sugira esperar a chuva e conferir a umidade da terra antes de ligar a irrigação.`);
         }
-    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !CITA_UM_MES.test(pergunta) && !dias.some((d) => d.chuvaMm >= CHUVA_PARA_SEMEAR_MM)) {
-        alertas.push(`- Semeadura: a previsão não indica chuva de ${CHUVA_PARA_SEMEAR_MM} mm ou mais nos próximos ${dias.length} dias. Se a pergunta for sobre semear agora, diga para semear só com a terra úmida, depois de uma boa chuva: em terra seca, a semente pode não nascer.`);
+        // Evapotranspiração de referência (FAO-56): a água que um gramado bem regado perde por dia.
+        // A lavoura gasta essa quantidade vezes o coeficiente da cultura, menor no começo e perto de
+        // 1 ou mais na florada.
+        if (chuva?.et0 && PERGUNTA_DE_IRRIGAR.test(pergunta)) {
+            alertas.push(`- Quanto irrigar: a evapotranspiração de referência prevista é de cerca de ${String(chuva.et0).replace('.', ',')} mm por dia (a água que um gramado bem regado perde). Se perguntarem quanto irrigar, use esse número como ponto de partida: a lavoura gasta menos no começo e mais na florada, e a chuva que cair é descontada. Oriente acertar a quantidade com a assistência técnica.`);
+        }
+    } else if (PERGUNTA_DE_SEMEAR.test(pergunta) && !CITA_UM_MES.test(pergunta) && semChuvaPrevista
+        && !(chuva && chuva.chuva7 >= CHUVA_RECENTE_PARA_SEMEAR_MM)) {
+        // Com a chuva recente, só avisa quando a terra deve estar seca
+        const recente = chuva ? `nos últimos 7 dias choveu só cerca de ${chuva.chuva7} mm, e ` : '';
+        alertas.push(`- Semeadura: ${recente}a previsão não indica chuva de ${CHUVA_PARA_SEMEAR_MM} mm ou mais nos próximos ${dias.length} dias. Se a pergunta for sobre semear agora, diga para semear só com a terra úmida, depois de uma boa chuva: em terra seca, a semente pode não nascer.`);
     }
     return alertas;
 }

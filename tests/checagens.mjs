@@ -266,6 +266,25 @@ for (const [nome, dias, pergunta, irrigacao, trecho] of TEMPO) {
     confere('alertas', `tempo: ${nome}`, trecho ? alertas.length === 1 && alertas[0].includes(trecho) : !alertas.length, alertas.join(' | '));
 }
 confere('alertas', 'tempo: sem previsão, nenhum alerta', !alertasDoTempo(null, { pergunta: 'semear' }).length);
+// Chuva que já caiu (Open-Meteo, src/lib/weather.ts getChuvaRecente)
+const chuvaRecente = (chuva7, diasSemChuva = 0, chuvaAntesDaSeca = 0, et0 = 5.4) => ({ chuva7, diasSemChuva, chuvaAntesDaSeca, et0 });
+const SECO = [dia('05/11', 18, 2, 0.4), dia('06/11', 18)];
+const RECENTE = [
+    // [nome, chuva recente, pergunta, irrigação, trechos esperados (vazio: nenhum alerta)]
+    ['semeadura: terra úmida (25 mm na semana) não recebe', chuvaRecente(25), 'posso semear o feijão agora?', 'Não irrigo', []],
+    ['semeadura: 6 mm na semana recebe, com o número', chuvaRecente(6), 'posso semear o feijão agora?', 'Não irrigo', ['choveu só cerca de 6 mm']],
+    ['veranico: 12 dias sem chuva depois de 80 mm', chuvaRecente(0, 12, 80), 'como está minha lavoura de milho?', 'Não irrigo', ['não chove há 12 dias', 'cerca de 80 mm']],
+    ['veranico: 12 dias secos sem chuva antes é só a estação seca', chuvaRecente(0, 12, 10), 'como está minha lavoura de milho?', 'Não irrigo', []],
+    ['veranico: 7 dias secos ainda não é veranico', chuvaRecente(0, 7, 80), 'como está minha lavoura de milho?', 'Não irrigo', []],
+    ['irrigação: evapotranspiração em pergunta sobre irrigar', chuvaRecente(0), 'quanto devo irrigar o feijão?', 'Gotejamento', ['cerca de 5,4 mm por dia']],
+    ['irrigação: sem a evapotranspiração em outra pergunta', chuvaRecente(0), 'como controlo a lagarta?', 'Gotejamento', []],
+];
+for (const [nome, chuva, pergunta, irrigacao, trechos] of RECENTE) {
+    const alertas = alertasDoTempo(SECO, { pergunta, irrigacao, chuva });
+    const texto = alertas.join(' | ');
+    confere('alertas', `chuva recente: ${nome}`, trechos.length ? alertas.length === 1 && trechos.every((t) => texto.includes(t)) : !alertas.length, texto);
+}
+confere('alertas', 'veranico: com chuva de 12 mm prevista não entra', !alertasDoTempo([dia('05/11', 18, 12, 0.9)], { pergunta: 'lavoura', irrigacao: 'Não irrigo', chuva: chuvaRecente(0, 12, 80) }).length);
 const soja = (ano, periodo = 'verao') => ({ cultura: 'Soja', ano, periodo });
 const CULTIVO = [
     // [nome, cultivo, trecho esperado (ou '' para nenhum alerta)]
