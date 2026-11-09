@@ -67,7 +67,7 @@
 }
 
 .fundoEscuro {
-    background: var(--primary-dark);
+    background: var(--primary-dark-fill);
 }
 
 .fundoEscuro th {

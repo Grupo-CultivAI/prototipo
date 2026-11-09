@@ -29,7 +29,7 @@
 .cabecalho[aria-expanded="true"] {
     border-bottom: 1px solid var(--border);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    background: var(--primary);
+    background: var(--primary-fill);
     color: var(--white);
 }
 

@@ -79,13 +79,16 @@ for (const m of municipios) {
     centros[m.id] = [Number(m.centroide.longitude.toFixed(2)), Number(m.centroide.latitude.toFixed(2))];
 }
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largura} ${altura}" role="img" aria-label="Mapa do Brasil">`
-    + `<g fill="#E3EFE7" stroke="#FFFFFF" stroke-width="1.2" stroke-linejoin="round">`
+// Uma imagem por tema: dentro de um <img>, o SVG não enxerga as variáveis de CSS. As cores
+// acompanham o fundo dos cartões (--surface) de cada tema em src/styles/variables.css.
+const desenho = (preenchimento, contorno) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largura} ${altura}" role="img" aria-label="Mapa do Brasil">`
+    + `<g fill="${preenchimento}" stroke="${contorno}" stroke-width="1.2" stroke-linejoin="round">`
     + Object.entries(contornos).map(([uf, d]) => `<path id="${uf}" d="${d}"/>`).join('')
     + '</g></svg>\n';
 
 fs.mkdirSync(path.join('public', 'mapa'), { recursive: true });
-fs.writeFileSync(path.join('public', 'mapa', 'brasil.svg'), svg);
+fs.writeFileSync(path.join('public', 'mapa', 'brasil.svg'), desenho('#E3EFE7', '#FFFFFF'));
+fs.writeFileSync(path.join('public', 'mapa', 'brasil-escuro.svg'), desenho('#26332B', '#16201A'));
 fs.mkdirSync(path.join('src', 'lib', 'dados'), { recursive: true });
 fs.writeFileSync(path.join('src', 'lib', 'dados', 'mapa-brasil.json'), JSON.stringify({ largura, altura, projecao, contornos, centros }));
 console.log(`${Object.keys(contornos).length} estados e ${Object.keys(centros).length} municípios; desenho de ${largura} x ${altura}`);

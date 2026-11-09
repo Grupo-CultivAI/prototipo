@@ -26,7 +26,10 @@ export default function MapaPropriedade({ pontos = [] }) {
     return (
         <div className={styles.mapa}>
             {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático, sem otimização */}
-            <img src="/mapa/brasil.svg" alt="" width={largura} height={altura} className={styles.mapaBase} />
+            <img src="/mapa/brasil.svg" alt="" width={largura} height={altura} loading="lazy" className={`${styles.mapaBase} ${styles.mapaClaro}`} />
+            {/* Tema escuro: o CSS mostra uma das duas; com loading="lazy", a escondida nem é baixada */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- SVG estático, sem otimização */}
+            <img src="/mapa/brasil-escuro.svg" alt="" width={largura} height={altura} loading="lazy" className={`${styles.mapaBase} ${styles.mapaEscuro}`} />
             <svg viewBox={`0 0 ${largura} ${altura}`} className={styles.mapaCamada} role="img" aria-label={descricao}>
                 {estados.map((uf) => <path key={uf} d={contornos[uf]} className={styles.estadoDestaque} />)}
                 {marcados.map((p) => (

@@ -9,6 +9,11 @@
   --primary: #15803D;
   --primary-dark: #06402B;
   --primary-medium: #0B6B45; /* só no degradê do cartão de boas-vindas do Painel */
+  /* Verdes de FUNDO, com texto branco por cima (botão principal, item ativo do menu). No tema
+     claro são os mesmos verdes de cima; no escuro, --primary e --primary-dark viram verdes claros,
+     para texto e ícones, e estes continuam escuros para o branco seguir legível. */
+  --primary-fill: #15803D;
+  --primary-dark-fill: #06402B;
   /* Tons claros por transparência, para funcionar sobre o branco e sobre o fundo cinza. A base
      é o verde antigo (#16A34A), que ficou só aqui, nos fundos: com ela os tons saem mais vivos. */
   --primary-tint-weak: rgba(22, 163, 74, 0.06);   /* fundo de dica e de destaque discreto */
@@ -38,11 +43,13 @@
   --on-dark-faint: rgba(255, 255, 255, 0.2);
   --on-dark-subtle: rgba(255, 255, 255, 0.1);
   --on-dark-accent: #86EFAC;
+  --on-dark-hover: #E6F6EC; /* botão claro sobre o verde-escuro, ao passar o mouse (igual nos dois temas) */
 
   /* --- Estados: erro, aviso, informação ---
      Erros e ações de apagar: 6,47:1 sobre branco (o #EF4444 usado antes dava 3,76:1). */
   --erro: #B91C1C;
   --erro-forte: #DC2626;      /* fundo e borda de botão de apagar (texto branco: 4,83:1) */
+  --erro-fill: #B91C1C;       /* botão de apagar ao passar o mouse (texto branco: 6,47:1, nos dois temas) */
   --erro-fundo: #FEF2F2;
   --erro-fundo-forte: #FEE2E2; /* passar o mouse sobre um botão de apagar */
   --erro-borda: #FECACA;
@@ -111,4 +118,64 @@
   /* --- Impressão --- */
   --print-text: #000000;
   --print-line: #BBBBBB;
+}
+
+/* --- Tema escuro ---
+   Ligado por data-tema="escuro" no <html>: o script do layout (src/lib/tema.js) põe o atributo
+   antes da página aparecer, conforme a escolha salva ou, sem escolha, o tema do aparelho. Só na
+   tela: a impressão da conversa sai sempre no claro. Contraste conferido par a par (texto 13,9:1
+   no cartão, texto de apoio 5,3:1 ou mais em todos os fundos, verde 9,6:1, branco sobre os verdes
+   de fundo 5,02:1 e 9,1:1); o npm run acessibilidade confere também as telas no escuro. */
+@media screen {
+  :root[data-tema="escuro"] {
+    color-scheme: dark; /* barras de rolagem, calendário e caixas de seleção do navegador */
+
+    --primary: #4ADE80;        /* texto, links, ícones e bordas verdes */
+    --primary-dark: #A7F0BE;   /* títulos e texto sobre os fundos verde-claros */
+    --primary-medium: #166534;
+    --primary-dark-fill: #14532D;
+    --primary-tint-weak: rgba(74, 222, 128, 0.06);
+    --primary-tint: rgba(74, 222, 128, 0.1);
+    --primary-tint-strong: rgba(74, 222, 128, 0.18);
+    --primary-line: rgba(74, 222, 128, 0.4);
+    --primary-soft: #173524;
+
+    --bg: #0E1511;
+    --surface: #16201A;
+    --surface-muted: #1A251E;
+    --surface-translucent: rgba(14, 21, 17, 0.85);
+    --surface-hover: rgba(255, 255, 255, 0.06);
+    --border: #2B3A31;
+    --placeholder: #223029;
+    --text-primary: #E5ECE7;
+    --text-secondary: #A3B1A8;
+
+    --erro: #F87171;
+    --erro-fundo: #2B1515;
+    --erro-fundo-forte: #3B1C1C;
+    --erro-borda: #7F1D1D;
+    --aviso: #FCD34D;
+    --aviso-forte: #FBBF24;
+    --aviso-icone: #F59E0B;
+    --aviso-fundo: #2A2111;
+    --aviso-borda: #6B4F12;
+    --info: #60A5FA;
+
+    --risco-nenhum: #26332B;
+    --mapa-destaque: #2E7D4F;
+    --mapa-onda: rgba(74, 222, 128, 0.3);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.45);
+    --shadow-strong: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-up: 0 -6px 12px rgba(0, 0, 0, 0.3);
+    --shadow-float: 0 6px 18px rgba(0, 0, 0, 0.5);
+    --shadow-primary: 0 8px 20px rgba(0, 0, 0, 0.4);
+    --shadow-primary-sm: 0 4px 10px rgba(0, 0, 0, 0.35);
+    --focus-ring: 0 0 0 3px rgba(74, 222, 128, 0.35);
+    --focus-ring-erro: 0 0 0 3px rgba(248, 113, 113, 0.35);
+    --scrollbar: rgba(255, 255, 255, 0.18);
+    --scrollbar-hover: rgba(255, 255, 255, 0.32);
+  }
 }

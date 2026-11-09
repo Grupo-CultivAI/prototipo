@@ -15,9 +15,9 @@ const VARIANTES: VarianteBotao[] = ['principal', 'secundario', 'neutro', 'discre
 const TAMANHOS: TamanhoBotao[] = ['p', 'm', 'g'];
 // Os tokens de cor, como em src/styles/variables.css
 const CORES: Record<string, string[]> = {
-    Marca: ['--primary', '--primary-dark', '--primary-medium', '--primary-tint-weak', '--primary-tint', '--primary-tint-strong', '--primary-line', '--primary-soft'],
+    Marca: ['--primary', '--primary-dark', '--primary-fill', '--primary-dark-fill', '--primary-medium', '--primary-tint-weak', '--primary-tint', '--primary-tint-strong', '--primary-line', '--primary-soft'],
     Neutros: ['--white', '--bg', '--surface', '--surface-muted', '--border', '--placeholder', '--text-primary', '--text-secondary'],
-    Estados: ['--erro', '--erro-forte', '--erro-fundo', '--erro-borda', '--aviso', '--aviso-icone', '--aviso-fundo', '--aviso-borda', '--info'],
+    Estados: ['--erro', '--erro-forte', '--erro-fill', '--erro-fundo', '--erro-borda', '--aviso', '--aviso-icone', '--aviso-fundo', '--aviso-borda', '--info'],
     Gráficos: ['--risco-20', '--risco-30', '--risco-40', '--risco-nenhum', '--mapa-destaque'],
 };
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Trash2, KeyRound } from 'lucide-react';
 import { Entrada } from '@/components/ui/Campo';
 import BotaoSair from '@/components/BotaoSair';
+import BotaoTema from '@/components/BotaoTema';
 import Botao from '@/components/ui/Botao';
 import Aviso from '@/components/ui/Aviso';
 import styles from '../paginas.module.css';
@@ -77,7 +78,7 @@ export default function Conta() {
 
             <div className={styles.cartaoConta} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '3rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
-                    <div style={{ width: '80px', height: '80px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'var(--white)', fontWeight: 'bold', boxShadow: 'var(--shadow-primary-sm)' }}>
+                    <div style={{ width: '80px', height: '80px', background: 'var(--primary-fill)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'var(--white)', fontWeight: 'bold', boxShadow: 'var(--shadow-primary-sm)' }}>
                         {user.nome.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -105,7 +106,8 @@ export default function Conta() {
                     <Botao href={`/redefinir-senha?email=${encodeURIComponent(user.email)}&voltar=/conta`} variante="secundario" icone={KeyRound}>
                         Trocar senha
                     </Botao>
-                    {/* No celular, este é o lugar do "Sair" (saiu da navegação do rodapé) */}
+                    {/* No celular, este é o lugar do tema e do "Sair" (não cabem na navegação do rodapé) */}
+                    <BotaoTema />
                     <BotaoSair />
                 </div>
             </div>

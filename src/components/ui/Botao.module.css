@@ -83,13 +83,13 @@
 
 /* --- Variantes --- */
 .botao.principal {
-    background: var(--primary);
+    background: var(--primary-fill);
     color: var(--white);
     box-shadow: var(--shadow-primary-sm);
 }
 
 .botao.principal:hover:not(:disabled) {
-    background: var(--primary-dark);
+    background: var(--primary-dark-fill);
 }
 
 .botao.secundario {
@@ -137,7 +137,7 @@
 }
 
 .botao.perigo:hover:not(:disabled) {
-    background: var(--erro);
+    background: var(--erro-fill);
 }
 
 .botao.perigoDiscreto {
@@ -153,11 +153,11 @@
 /* Sobre o verde-escuro (cartão de boas-vindas do Painel) */
 .botao.claro {
     background: var(--white);
-    color: var(--primary-dark);
+    color: var(--primary-dark-fill);
 }
 
 .botao.claro:hover:not(:disabled) {
-    background: var(--primary-soft);
+    background: var(--on-dark-hover);
 }
 
 /* No celular, os botões pequenos crescem para o dedo (40 px) */

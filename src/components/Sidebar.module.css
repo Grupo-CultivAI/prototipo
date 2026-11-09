@@ -46,7 +46,7 @@
 
 .ativo,
 .ativo:hover {
-    background: var(--primary-dark);
+    background: var(--primary-dark-fill);
     color: var(--white);
     font-weight: 600;
     box-shadow: var(--shadow-strong);
@@ -58,6 +58,9 @@
 
 .rodape {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 /* No celular a barra lateral vira uma navegação fixa no rodapé: com 280px de

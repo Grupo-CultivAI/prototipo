@@ -18,8 +18,8 @@
 .mapa .marcador {
     border: 3px solid var(--white);
     border-radius: 50%;
-    background: var(--primary-dark);
-    box-shadow: 0 0 0 2px var(--primary-dark), var(--shadow-float);
+    background: var(--primary-dark-fill);
+    box-shadow: 0 0 0 2px var(--primary-dark-fill), var(--shadow-float);
 }
 
 .acoes {

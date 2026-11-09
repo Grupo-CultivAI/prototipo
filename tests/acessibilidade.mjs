@@ -19,9 +19,15 @@ const BASE = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, ''
 const REGRAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 const REPROVA = new Set(['serious', 'critical']);
 const IMPACTO = { critical: 'crítico', serious: 'grave', moderate: 'moderado', minor: 'menor' };
+// Cada tela também no tema escuro: sem escolha salva, o app segue o tema do aparelho, que aqui é
+// o colorScheme do navegador. O contraste muda todo de um tema para o outro.
+const CELULAR = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
+const COMPUTADOR = { viewport: { width: 1366, height: 900 } };
 const TELAS = {
-    celular: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
-    computador: { viewport: { width: 1366, height: 900 } },
+    celular: { ...CELULAR, colorScheme: 'light' },
+    computador: { ...COMPUTADOR, colorScheme: 'light' },
+    'celular escuro': { ...CELULAR, colorScheme: 'dark' },
+    'computador escuro': { ...COMPUTADOR, colorScheme: 'dark' },
 };
 const json = { 'Content-Type': 'application/json' };
 
