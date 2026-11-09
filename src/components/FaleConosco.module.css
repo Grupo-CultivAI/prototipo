@@ -9,7 +9,7 @@
     gap: 0.5rem;
     padding: 0.7rem 1.1rem;
     border-radius: var(--radius-pill);
-    background: var(--primary-dark);
+    background: var(--primary-dark-fill);
     color: var(--white);
     font-weight: 600;
     font-size: 0.9rem;
@@ -20,6 +20,6 @@
 
 .botao:hover,
 .botao:focus-visible {
-    background: var(--primary);
+    background: var(--primary-fill);
     transform: translateY(-2px);
 }

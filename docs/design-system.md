@@ -14,8 +14,9 @@ Cores, raios, sombras e camadas das telas saem dos tokens de [`src/styles/variab
 
 | Token | Para quê |
 | --- | --- |
-| `--primary` | Botão principal, links, ícones da marca. Texto branco sobre ele: 5,02:1 |
-| `--primary-dark` | Títulos, texto sobre fundo verde-claro, item ativo do menu. Texto branco sobre ele: 11,8:1 |
+| `--primary` | Texto, links, ícones e bordas verdes. Como fundo, use `--primary-fill` |
+| `--primary-dark` | Títulos e texto sobre fundo verde-claro. Como fundo, use `--primary-dark-fill` |
+| `--primary-fill` / `--primary-dark-fill` | Verdes de **fundo** com texto branco por cima: botão principal, item ativo do menu, cabeçalho aberto do formulário. Branco sobre eles: 5,02:1 e 11,8:1 (no escuro, 9,1:1) |
 | `--primary-medium` | Só o degradê do cartão de boas-vindas do Painel |
 | `--primary-tint-weak` / `--primary-tint` / `--primary-tint-strong` | Fundos verde-claros em transparência: dica, item marcado, passar o mouse |
 | `--primary-line` | Borda de aviso de sucesso e de item marcado |
@@ -24,9 +25,9 @@ Cores, raios, sombras e camadas das telas saem dos tokens de [`src/styles/variab
 | `--surface-translucent` / `--surface-hover` | Topo translúcido da página inicial / passar o mouse num botão neutro |
 | `--border` / `--placeholder` | Bordas e divisórias / esboço da tela enquanto carrega |
 | `--text-primary` / `--text-secondary` | Texto principal (14:1) / texto de apoio (5,6:1 ou mais em todos os fundos) |
-| `--on-dark-muted` / `--on-dark-faint` / `--on-dark-subtle` / `--on-dark-accent` | Texto e detalhes sobre o verde-escuro |
+| `--on-dark-muted` / `--on-dark-faint` / `--on-dark-subtle` / `--on-dark-accent` / `--on-dark-hover` | Texto e detalhes sobre o verde-escuro / fundo do botão claro ao passar o mouse |
 | `--erro` | Texto de erro e de ação de apagar (6,47:1) |
-| `--erro-forte` | Fundo e borda de botão de apagar (texto branco: 4,83:1) |
+| `--erro-forte` / `--erro-fill` | Fundo e borda de botão de apagar (texto branco: 4,83:1) / o mesmo botão ao passar o mouse (6,47:1) |
 | `--erro-fundo` / `--erro-fundo-forte` / `--erro-borda` | Fundo de aviso de erro / passar o mouse / borda |
 | `--aviso` / `--aviso-forte` | Texto de aviso (7,1:1) / destaque "fecha logo" no calendário |
 | `--aviso-icone` / `--aviso-fundo` / `--aviso-borda` | Ícones e filetes de aviso (não é texto) / fundo / borda |
@@ -36,6 +37,16 @@ Cores, raios, sombras e camadas das telas saem dos tokens de [`src/styles/variab
 | `--print-text` / `--print-line` | Só na impressão da conversa |
 
 Antes de usar um texto novo sobre um fundo novo, confira o contraste (4,5:1 para texto normal). A checagem de acessibilidade do CI (`npm run acessibilidade`) mede isso em todas as telas.
+
+## Tema escuro
+
+O botão de tema (`src/components/BotaoTema.jsx`) fica no topo das páginas públicas, na barra lateral do computador e em Minha Conta. Ele põe `data-tema="escuro"` no `<html>`, e `variables.css` troca o valor dos tokens. A escolha fica salva no navegador; sem escolha, vale o tema do aparelho. Um script no `<head>` (`src/lib/tema.js`) aplica o tema antes da página aparecer, para não piscar o claro. A impressão sai sempre no tema claro.
+
+**A regra que faz o tema funcionar:** no escuro, `--primary` e `--primary-dark` viram verdes claros, para texto. Por isso, um fundo verde com texto branco por cima usa `--primary-fill` ou `--primary-dark-fill`, nunca `--primary` ou `--primary-dark`. Da mesma forma, um cartão usa `--surface`, e não `--white`: o `--white` é o branco fixo do texto sobre os fundos coloridos.
+
+**Imagens com cor própria** não enxergam os tokens. O mapa do Brasil do Painel tem uma versão para cada tema (`public/mapa/brasil.svg` e `brasil-escuro.svg`, geradas por `scripts/gerar-mapa-brasil.mjs`).
+
+**Quem confere:** `npm run acessibilidade` passa por todas as telas também no tema escuro.
 
 ## Raios
 

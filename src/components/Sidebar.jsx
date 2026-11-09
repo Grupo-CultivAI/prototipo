@@ -6,6 +6,7 @@ import { House, MessageCircle, Sprout, CircleUser, Mail } from 'lucide-react';
 import folha from "@/assets/leaves-of-a-plant.png";
 import { EMAIL_DO_PROJETO, linkFaleConosco } from '@/lib/faleConosco';
 import BotaoSair from './BotaoSair';
+import BotaoTema from './BotaoTema';
 import styles from './Sidebar.module.css';
 
 // Ícones de traço (lucide), os mesmos da página inicial e do Painel: os emojis mudavam de
@@ -23,7 +24,7 @@ export default function Sidebar() {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.marca}>
-                <div style={{ background: 'var(--primary-dark)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--primary-dark-fill)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Image src={folha} alt="Logo CultivAI" width={24} height={24} style={{ filter: 'brightness(0) invert(1)' }} />
                 </div>
                 <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--primary-dark)', letterSpacing: '-0.5px' }}>CultivAI</h2>
@@ -43,6 +44,7 @@ export default function Sidebar() {
 
             {/* No celular some (fica em Minha Conta): ver Sidebar.module.css */}
             <div className={styles.rodape}>
+                <BotaoTema larguraTotal />
                 <BotaoSair larguraTotal />
             </div>
         </aside>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Botao from "@/components/ui/Botao";
+import BotaoTema from "@/components/BotaoTema";
 import styles from "./Navbar.module.css";
 
 // Seções da página inicial (src/app/(public)/page.js)
@@ -47,6 +48,7 @@ export default function Navbar() {
 
       {/* NAVIGATION / RIGHT UTILS */}
       <div className={styles.acoes}>
+        <BotaoTema variante="discreto" apenasIcone />
         <Link href="/login" className={styles.entrar}>Entrar</Link>
         <Botao href="/cadastro" pilula>Criar conta</Botao>
       </div>

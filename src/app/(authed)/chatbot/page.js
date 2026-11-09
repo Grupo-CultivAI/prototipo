@@ -776,7 +776,7 @@ export default function ChatCultivAI() {
         {messages.map((msg) => (
           <div key={msg.id} className={styles.bolha} style={{ alignSelf: msg.sender === "user" ? 'flex-end' : 'flex-start', animation: 'fadeIn 0.3s ease', width: (msg.form || msg.submittedData) ? '100%' : 'auto' }}>
             <div className={styles.balao} style={{
-              background: msg.sender === "user" ? 'var(--primary-dark)' : 'var(--bg)',
+              background: msg.sender === "user" ? 'var(--primary-dark-fill)' : 'var(--bg)',
               color: msg.sender === "user" ? 'var(--white)' : 'var(--text-primary)',
               boxShadow: msg.sender === "user" ? 'var(--shadow-strong)' : 'var(--shadow-sm)',
               border: msg.sender === "user" ? 'none' : '1px solid var(--border)',

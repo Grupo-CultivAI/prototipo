@@ -52,7 +52,7 @@
     gap: 2rem;
     padding: 2rem;
     border-radius: var(--radius-2xl);
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+    background: linear-gradient(135deg, var(--primary-dark-fill), var(--primary-medium));
     color: var(--white);
 }
 
@@ -239,7 +239,7 @@
     display: block;
     height: 100%;
     border-radius: var(--radius-pill);
-    background: var(--primary);
+    background: var(--primary-fill);
 }
 
 /* --- Escolha do cultivo (com mais de um) --- */
@@ -268,8 +268,8 @@
 }
 
 .painel .seletor a[aria-current='true'] {
-    border-color: var(--primary-dark);
-    background: var(--primary-dark);
+    border-color: var(--primary-dark-fill);
+    background: var(--primary-dark-fill);
     color: var(--white);
 }
 
@@ -385,6 +385,21 @@
     overflow: visible;
 }
 
+/* Uma imagem dos estados por tema (dentro de um <img>, o SVG não vê as variáveis de CSS) */
+.mapaEscuro {
+    display: none;
+}
+
+@media screen {
+    :root[data-tema="escuro"] .mapaClaro {
+        display: none;
+    }
+
+    :root[data-tema="escuro"] .mapaEscuro {
+        display: block;
+    }
+}
+
 .estadoDestaque {
     fill: var(--mapa-destaque);
     stroke: var(--primary);
@@ -393,14 +408,14 @@
 }
 
 .ponto {
-    fill: var(--primary-dark);
+    fill: var(--primary-dark-fill);
     stroke: var(--white);
     stroke-width: 2;
 }
 
 /* Os outros cultivos, menores e sem a onda */
 .pontoOutro {
-    fill: var(--primary);
+    fill: var(--primary-fill);
     stroke: var(--white);
     stroke-width: 1.5;
 }
@@ -496,7 +511,7 @@
 .selo {
     padding: 0 0.4rem;
     border-radius: var(--radius-pill);
-    background: var(--primary-dark);
+    background: var(--primary-dark-fill);
     color: var(--white);
     font-size: 0.68rem;
     font-weight: 600;

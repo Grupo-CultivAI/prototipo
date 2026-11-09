@@ -5,7 +5,7 @@
     gap: 0.25rem;
     padding: 0.2rem 0.6rem;
     border-radius: var(--radius-pill);
-    background: var(--white);
+    background: var(--surface);
     color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 600;
@@ -28,7 +28,7 @@
 }
 
 .destaque {
-    background: var(--primary);
+    background: var(--primary-fill);
     color: var(--white);
     box-shadow: none;
 }
